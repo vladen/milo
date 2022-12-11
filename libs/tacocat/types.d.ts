@@ -4,11 +4,25 @@ declare namespace Tacocat {
   type isPromise = (value: any) => value is Promise<any>;
   type isUndefined = (value: any) => value is undefined;
 
+  type hasContext = (
+    candidate: Result<any, any> | Internal.Result
+  ) => candidate is Result<any, any>;
+  type isFailure = (
+    candidate: Failure<any> | Internal.Failure
+  ) => candidate is Failure<any>;
+  type isProduct = (
+    candidate: Product<any, any> | Internal.Product
+  ) => candidate is Product<any, any>;
+
+  type Failure<T> = { context: T; error?: Error };
+  type Product<T, U> = { context: T; value?: U };
+  type Result<T, U> = Failure<T> | Product<T, U>;
+
   type Safe<T> = (
     message: string,
     callback: (() => T) | Promise<T>,
     log?: Log.Instance
-  ) => T | undefined;
+  ) => T | Promise<T> | undefined;
 
   module Engine {
     // --- types ---
@@ -27,16 +41,15 @@ declare namespace Tacocat {
       declare<T extends object>(declarer: Declarer<object, T>): Declare<T>;
     };
 
-    type Failure<T> = { context: T; error: Error };
-
-    type Listener = (element: Element, listener: (event: Event) => void) => () => void;
+    type Listener = (
+      element: Element,
+      listener: (event: Event) => void
+    ) => () => void;
 
     type Mutations = Omit<
       MutationObserverInit,
       'attributeOldValue' | 'characterDataOldValue'
     >;
-
-    type Product<T, U> = { context: T; value?: U };
 
     type Provider<T, U> = (contexts: T[], signal: AbortSignal) => Results<T, U>;
 
@@ -95,6 +108,15 @@ declare namespace Tacocat {
       render(renderers: Renderers<T, U>): Render<T, U>;
     }
 
+    type PendingRenderer = (element: Element) => Effect;
+    type RejectedRenderer<T> = (
+      element: Element,
+      failure: Failure<T>
+    ) => Effect;
+    type ResolvedRenderer<T, U> = (
+      element: Element,
+      product: Product<T, U>
+    ) => Effect;
     interface Renderers<T, U> {
       /**
        * @returns
@@ -102,11 +124,11 @@ declare namespace Tacocat {
        * - null - the template removed/replaced placeholder element and it should not be handled anymore
        * - Element - the template either updated existing placeholder element or created new one, it should be handled
        */
-      pending?(element: Element): Effect;
+      pending?: PendingRenderer | PendingRenderer[];
 
-      rejected?(element: Element, failure: Failure<T>): Effect;
+      rejected?: RejectedRenderer<T> | RejectedRenderer<T>[];
 
-      resolved?(element: Element, product: Product<T, U>): Effect;
+      resolved?: ResolvedRenderer<T, U> | ResolvedRenderer<T, U>[];
     }
 
     interface Transform<T, U> {
@@ -124,7 +146,7 @@ declare namespace Tacocat {
     type CombinedDeclarer = Tacocat.Engine.Declarer<any, any>;
     type Engine = Omit<Tacocat.Engine.Observe<any, any>, 'observe'>;
     type Extractor = Tacocat.Engine.Extractor<any, any>;
-    type Failure = Tacocat.Engine.Failure<any> & { key: string };
+    type Failure = Tacocat.Failure<any> & { key?: string };
     type Listener = Tacocat.Engine.Listener;
     type Observer = (
       consumer: (placeholders: Placeholder[]) => void,
@@ -136,14 +158,15 @@ declare namespace Tacocat {
     type Processor = (
       product: Tacocat.Internal.Product
     ) => Tacocat.Internal.Product;
-    type Product = Tacocat.Engine.Product<any, any> & { key: string };
+    type Product = Tacocat.Product<any, any> & { key?: string };
     type Provider = Tacocat.Engine.Provider<any, any>;
     type Renderer = (
       element: Element,
-      result?: Tacocat.Engine.Product<any, any> | Tacocat.Engine.Failure<any>
+      result?: Tacocat.Product<any, any> | Tacocat.Failure<any>
     ) => Tacocat.Engine.Effect;
     type Renderers = Tacocat.Engine.Renderers<any, any>;
     type Resolver = (products: Tacocat.Internal.Product[]) => void;
+    type Result = Tacocat.Result<any, any>;
     type Results = Tacocat.Engine.Results<any, any>;
     type Transformer = (product: Product) => Product;
   }
@@ -155,6 +178,7 @@ declare namespace Tacocat {
       (namespace: string): Instance;
       common: Instance;
       level: Level;
+      reset(): void;
       use(...modules: Module[]): Factory;
     };
 
@@ -171,13 +195,13 @@ declare namespace Tacocat {
       level: Level;
       message: string;
       namespace: string;
-      parameters: any[];
+      params: any[];
       timestamp: number;
     }
 
     interface Module {
-      filter(record: Record): boolean;
-      write(record: Record): void;
+      filter?(record: Record): boolean;
+      write?(record: Record): void;
     }
 
     interface Instance {

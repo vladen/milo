@@ -1,5 +1,6 @@
-import Log from "./log";
-import safe from "./safe";
+import Log from './log.js';
+import safe from './safe.js';
+import { isObject } from './utilities.js';
 
 const log = Log.common.module('extract');
 
@@ -10,9 +11,13 @@ const log = Log.common.module('extract');
  */
 const Extract = (declarer, extractors) => (element) => {
   const context = extractors.reduce(
-    (context, extractor) => safe('Callback error:', () => extractor(context, element), log),
+    (extracted, extractor) => {
+      const result = safe('Extractor callback error:', () => extractor(extracted, element), log);
+      return isObject(result) ? Object.assign(extracted, result) : extracted;
+    },
     declarer(),
   );
+
   log.debug('Extracted:', { context, extractors });
   return context;
 };

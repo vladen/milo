@@ -1,6 +1,7 @@
-import Log from "./log";
-import safe from "./safe";
-import { isFunction, isUndefined } from "./utilities";
+import Log from './log.js';
+import safe from './safe.js';
+import { isProduct } from './product.js';
+import { isFunction, isUndefined } from './utilities.js';
 
 const log = Log.common.module('render');
 
@@ -10,33 +11,41 @@ const log = Log.common.module('render');
  */
 const Render = (renderers) => {
   const groups = {
+    /** @type {Tacocat.Internal.Renderer[]} */
     pending: [],
+    /** @type {Tacocat.Internal.Renderer[]} */
     rejected: [],
+    /** @type {Tacocat.Internal.Renderer[]} */
     resolved: [],
   };
 
-  for (const { pending, rejected, resolved } of renderers) {
-    if (isFunction(pending)) groups.pending.push(pending);
-    if (isFunction(rejected)) groups.rejected.push(rejected);
-    if (isFunction(resolved)) groups.rejected.push(resolved);
-  }
+  renderers.forEach(({ pending, rejected, resolved }) => {
+    [pending].flat(2).forEach((renderer) => {
+      if (isFunction(renderer)) groups.pending.push(renderer);
+    });
+    [rejected].flat(2).forEach((renderer) => {
+      if (isFunction(renderer)) groups.rejected.push(renderer);
+    });
+    [resolved].flat(2).forEach((renderer) => {
+      if (isFunction(renderer)) groups.resolved.push(renderer);
+    });
+  });
 
   log.debug('Created:', { renderers: Object.values(groups) });
 
-  // @ts-ignore
   return (element, product) => {
     let group;
     let result;
 
     if (isUndefined(product)) group = groups.pending;
-    // @ts-ignore
-    else if (isUndefined(product.value)) group = groups.rejected;
-    else group = groups.resolved;
+    else if (isProduct(product)) group = groups.resolved;
+    else group = groups.rejected;
 
-    for (const renderer of group) {
+    group.every((renderer) => {
+      // @ts-ignore
       result = safe('', () => renderer(element, product), log);
-      if (!isUndefined(result)) break;
-    }
+      return !isUndefined(result);
+    });
 
     log.debug('Rendered:', { element, product, renderers: group });
 

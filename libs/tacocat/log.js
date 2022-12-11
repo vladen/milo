@@ -1,46 +1,63 @@
-import { getConfig } from '../utils/utils';
-import safe from './safe';
+import { getConfig } from '../utils/utils.js';
+import { isFunction } from './utilities.js';
 
 const epoch = Date.now();
-const isProd = 'prod' === getConfig().env.name;
-export const level = Object.freeze({
+const isProd = getConfig().env?.name === 'prod';
+export const Level = Object.freeze({
   debug: 'debug',
   error: 'error',
   info: 'info',
-  warn: 'warn'
+  warn: 'warn',
 });
-const filters = [];
+const filters = new Set();
 const tag = 'Log';
-const writers = [];
-
-if (isProd) {
-  filters.push(({ level }) => level !== level.debug);
-} else {
-  writers.push(({ level, message, namespace, parameters, timestamp }) => {
-    console[level](`[${namespace}]`, message, ...parameters, `(+${timestamp}ms)`);
-  });
-}
+const writers = new Set();
 
 const isLog = (object) => object != null && object[Symbol.toStringTag] === tag;
 
-function write(level, message, namespace, params) {
-  const record = {
-    level,
+const createRecord = (level, message, namespace, params) => ({
+  level,
+  message,
+  namespace,
+  params,
+  timestamp: Date.now() - epoch,
+});
+
+const debugFilter = { filter: ({ level }) => level !== Level.debug };
+
+const consoleWriter = {
+  write({ level, message, namespace, params, timestamp }) {
+    // eslint-disable-next-line no-console
+    console[level](`[${namespace}]`, message, ...params, `(+${timestamp}ms)`);
+  },
+};
+
+function registerError(message, ...params) {
+  consoleWriter.write(createRecord(
+    Level.error,
     message,
-    namespace,
+    // eslint-disable-next-line no-use-before-define
+    Log.common.namespace,
     params,
-    timestamp: Date.now() - epoch,
-  };
-  if (
-    filters.every((filter) => safe(
-      'Log filter error:',
-      () => filter(record)
-    ))
-  ) {
-    writers.forEach((write) => safe(
-      'Log writer error:',
-      () => write(record)
-    ));
+  ));
+}
+
+function commitRecord(record) {
+  if ([...filters].every((filter) => {
+    try {
+      return filter(record);
+    } catch (error) {
+      registerError('Log filter error:', { record, filter });
+      return true;
+    }
+  })) {
+    writers.forEach((writer) => {
+      try {
+        writer(record);
+      } catch (error) {
+        registerError('Log eriter error:', { record, writer });
+      }
+    });
   }
 }
 
@@ -53,37 +70,52 @@ const Log = (namespace) => ({
     return Log(`${namespace}/${name}`);
   },
   debug(message, ...params) {
-    write(level.debug, message, namespace, params);
+    commitRecord(createRecord(Level.debug, message, namespace, params));
   },
   error(message, ...params) {
-    write(level.error, message, namespace, params);
+    commitRecord(createRecord(Level.error, message, namespace, params));
   },
   info(message, ...params) {
-    write(level.info, message, namespace, params);
+    commitRecord(createRecord(Level.info, message, namespace, params));
   },
   warn(message, ...params) {
-    write(level.warn, message, namespace, params);
+    commitRecord(createRecord(Level.warn, message, namespace, params));
   },
   [Symbol.toStringTag]: tag,
 });
 
-Log.use = (...modules) => {
-  for (const module of modules) {
-    const { filter, write } = module;
-    if (typeof filter === 'function') {
-      filters.push(filter);
-    }
-    if (typeof write === 'function') {
-      writers.push(write);
-    } else {
-      Log.common.warn('Unknown log module:', { module });
-    }
+Log.level = Level;
+
+Log.reset = () => {
+  filters.clear();
+  writers.clear();
+  if (isProd) {
+    Log.use(debugFilter);
+  } else {
+    Log.use(consoleWriter);
   }
+};
+
+Log.use = (...modules) => {
+  modules.forEach(
+    (module) => {
+      const { filter, write } = module;
+      if (isFunction(filter)) {
+        filters.add(filter);
+      } else if (isFunction(write)) {
+        writers.add(write);
+      } else {
+        Log.common.warn('Unknown log module:', { module });
+      }
+    },
+  );
+
   return Log;
-}
+};
 
 Log.common = Log('tacocat');
-Log.level = level;
+Log.level = Level;
+Log.reset();
 
 export default Log;
-export { isLog, Log };
+export { isLog, debugFilter };
