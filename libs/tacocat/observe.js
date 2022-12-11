@@ -60,7 +60,9 @@ const Observe = (mutations, signal) => {
               ...[...removed].map((element) => product(false, element)),
               ...[...updated].map((element) => product(true, element)),
             ]);
+            if (removed.size) log.debug('Removed:', { elements: [...removed] });
             removed.clear();
+            if (updated.size) log.debug('Updated:', { elements: [...updated] });
             updated.clear();
           }
         });
@@ -91,7 +93,7 @@ const Observe = (mutations, signal) => {
                 removed.delete(element);
                 updated.add(element);
                 if (listeners.length) {
-                  log.debug('Listening:', { element });
+                  log.debug('Listening:', { element, listeners });
                   listeners.forEach((listener) => disposers.add(listener(element, () => {
                     updated.add(element);
                     produce();
@@ -113,7 +115,7 @@ const Observe = (mutations, signal) => {
     }
     produce();
 
-    log.debug('Observing:', { mutations, scope });
+    log.debug('Observing:', { mutations, scope, selector });
     observer.observe(scope, options);
     disposers.add(() => observer.disconnect());
     signal.addEventListener('abort', () => disposers.forEach((disposer) => disposer()));

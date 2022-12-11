@@ -36,10 +36,12 @@ function processPlaceholders(extractor, placeholders, provider, renderer, select
   /** @type {Map<string, Tacocat.Internal.Placeholder[]>} */
   const pending = new Map();
   for (const placeholder of selected) {
-    let { context, element, key } = placeholder;
+    let { context, element, key, value } = placeholder;
     if (context !== false) context = extractor(context, element);
-    if (context === false) placeholders.delete(element);
-    else {
+    if (context === false) {
+      log.debug('Disposed:', { context, element, value });
+      placeholders.delete(element);
+    } else {
       const existing = placeholders.get(element)?.context;
       if (existing) {
         if (existing === key) continue;
@@ -49,7 +51,7 @@ function processPlaceholders(extractor, placeholders, provider, renderer, select
       contexts.push(context);
       if (pending.has(key)) pending.get(key).push(placeholder);
       else pending.set(key, [placeholder]);
-      log.debug('Pending:', { context });
+      log.debug('Pending:', { context, element });
       renderer(element);
     }
   }
@@ -68,7 +70,7 @@ function renderRejected(pending, products, renderer) {
       const product = products.find((product) => key === product.key);
       placeholder.value = undefined;
       // @ts-ignore
-      log.debug('Rejected:', { context }, product.error);
+      log.debug('Rejected:', { context, element }, product.error);
       renderer(element, { context });
     });
   }
@@ -180,6 +182,7 @@ function Engine(extractor, listeners, observer, provider, renderer, scope, selec
   const placeholders = new Map();
 
   signal.addEventListener('abort', () => {
+    log.debug('Disposed');
     placeholders.clear();
   });
 
@@ -194,6 +197,8 @@ function Engine(extractor, listeners, observer, provider, renderer, scope, selec
       timeout,
     );
   }, listeners, scope, selector);
+
+  log.debug('Created:', { scope, selector, timeout });
 
   return {
     explore(scope, selector) {

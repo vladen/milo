@@ -1,4 +1,5 @@
-import { isLog, Log } from './log';
+import { Log } from './log';
+import { isFunction, isPromise } from './utilities';
 
 /**
  * @template T
@@ -10,12 +11,10 @@ export default function safe(message, callback, log) {
     (log ?? Log.common ?? console).error(message, error);
   };
   try {
-    const result = callback();
+    let result = isFunction(callback) ? callback() : callback;
     // @ts-ignore
-    return result instanceof Promise
-      ? result.catch(report)
-      : result;
+    return isPromise(result) ? result.catch(report) : result;
   } catch (error) {
-    report();
+    report(error);
   }
 }

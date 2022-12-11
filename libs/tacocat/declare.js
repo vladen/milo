@@ -21,7 +21,7 @@ const Declare = (declarers) => () => {
       else Object.assign(context, declarer);
     }
   }
-  log.debug('Declared:', { context });
+  log.debug('Declared:', { context, declarers });
   return context;
 };
 

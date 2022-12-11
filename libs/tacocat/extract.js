@@ -13,7 +13,7 @@ const Extract = (declarer, extractors) => (element) => {
     (context, extractor) => safe('Callback error:', () => extractor(context, element), log),
     declarer(),
   );
-  log.debug('Extracted:', { context });
+  log.debug('Extracted:', { context, extractors });
   return context;
 };
 

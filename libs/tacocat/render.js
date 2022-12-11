@@ -21,6 +21,8 @@ const Render = (renderers) => {
     if (isFunction(resolved)) groups.rejected.push(resolved);
   }
 
+  log.debug('Created:', { renderers: Object.values(groups) });
+
   // @ts-ignore
   return (element, product) => {
     let group;
@@ -35,6 +37,8 @@ const Render = (renderers) => {
       result = safe('', () => renderer(element, product), log);
       if (!isUndefined(result)) break;
     }
+
+    log.debug('Rendered:', { element, product, renderers: group });
 
     return result;
   };

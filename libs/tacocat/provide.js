@@ -20,19 +20,23 @@ const Provide = (provider, signal, transformers) => (contexts) => {
   );
   return Process(
     log,
-    () => {},
+    () => { },
     // @ts-ignore
     results,
-    (product) => transformers.reduce(
-      // @ts-ignore
-      (product, transformer) => {
+    (product) => {
+      const result = transformers.reduce(
         // @ts-ignore
-        const result = safe('Transformer callback error:', () => transformer(product), log);
-        log.debug('Transformed:', { product, result });
-        return result;
-      },
-      product,
-    ),
+        (product, transformer) => safe(
+          'Transformer callback error:',
+          // @ts-ignore
+          () => transformer(product),
+          log
+        ),
+        product,
+      );
+      log.debug('Provided:', { product, result, provider, transformers });
+      return result;
+    },
   );
 }
 
