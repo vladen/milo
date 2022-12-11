@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "rootDir": "../",
+    "module": "esnext",
+    "target": "esnext"
+  }
+}
