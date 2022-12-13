@@ -33,22 +33,27 @@ const Render = (renderers) => {
 
   log.debug('Created:', { renderers: Object.values(groups) });
 
-  return (element, product) => {
+  return (element, result) => {
     let group;
-    let result;
+    let output;
 
-    if (isUndefined(product)) group = groups.pending;
-    else if (isProduct(product)) group = groups.resolved;
+    if (isUndefined(result)) group = groups.pending;
+    else if (isProduct(result)) group = groups.resolved;
     else group = groups.rejected;
 
     group.every((renderer) => {
-      result = safeSync(log, 'Renderer callback error:', () => renderer(element, product));
-      return !isUndefined(result);
+      output = safeSync(log, 'Renderer callback error:', () => renderer(element, result));
+      if (isUndefined(output)) {
+        log.debug('Rendered:', { element, result, renderer });
+        return true;
+      }
+      return false;
     });
+    if (isUndefined(output) && !isUndefined(result)) {
+      log.debug('No renderer found:', { element, result, renderers: group });
+    }
 
-    log.debug('Rendered:', { element, product, renderers: group });
-
-    return result;
+    return output;
   };
 };
 

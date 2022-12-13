@@ -15,4 +15,20 @@ const isProduct = (result) => hasContext(result)
   // @ts-ignore
   && !isUndefined(result.value);
 
-export { hasContext, isFailure, isProduct };
+/**
+ * @template T
+ * @param {T} context
+ * @param {(Error | object)?} error
+ * @returns {Tacocat.Failure<T>}
+ */
+const Failure = (context, error = {}) => Object.assign(error, { context });
+
+/**
+ * @template T, U
+ * @param {T} context
+ * @param {U} value
+ * @returns {Tacocat.Product<T, U>}
+ */
+const Product = (context, value) => ({ context, value });
+
+export { Failure, hasContext, isFailure, isProduct, Product };

@@ -1,5 +1,7 @@
 /** @type {Tacocat.isFunction} */
 export const isFunction = (value) => typeof value === 'function';
+/** @type {Tacocat.isNil} */
+export const isNil = (value) => value == null;
 /** @type {Tacocat.isObject} */
 export const isObject = (value) => value != null && typeof value === 'object';
 /** @type {Tacocat.isPromise} */

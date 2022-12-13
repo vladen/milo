@@ -1,6 +1,7 @@
 declare namespace Tacocat {
   // --- types ---
   type isFunction = (value: any) => value is Function;
+  type isNil = (value: any) => value is null | undefined;
   type isObject = (value: any) => value is object;
   type isPromise = (value: any) => value is Promise<any>;
   type isUndefined = (value: any) => value is undefined;
@@ -9,21 +10,23 @@ declare namespace Tacocat {
   type isFailure = (candidate: any) => candidate is Failure<any>;
   type isProduct = (candidate: any) => candidate is Product<any, any>;
 
-  type Failure<T> = { context?: T; error?: Error };
-  type Product<T, U> = { context: T; value?: U };
+  type Contextful<T> = { context?: T };
+  type Failure<T> = Contextful<T> & Error;
+  type Product<T, U> = Contextful<T> & { value?: U };
   type Result<T, U> = Failure<T> | Product<T, U>;
-
-  // --- interfaces ---
-  interface Controls {
-    signal: AbortSignal;
-    timeout: number;
-  }
 
   module Engine {
     // --- types ---
     type Declarer<T, U extends object> = (context: T) => U;
 
-    type Effect = void | undefined | null | Element;
+    /**
+     * @returns
+     * - undefined - the template cannot be applied to this context/value
+     * - null - the template removed placeholder element and it should not be handled anymore
+     * - Element - the template updated existing placeholder element and confirms this by returning it
+     * - Element - the template replaced existing placeholder with new one, the new one is returned for tracking
+     */
+    type Effect = void | Element;
 
     type Extractor<T, U extends object> = (context: T, element: Element) => U;
 
@@ -45,13 +48,17 @@ declare namespace Tacocat {
       'attributeOldValue' | 'characterDataOldValue'
     >;
 
-    type Provider<T, U> = (controls: Controls, contexts: T[]) => U;
+    type Provider<T, U> = (control: Control, contexts: T[]) => any;
 
-    type Transformer<T, U extends T, V, W extends V> = (
-      product: Product<T, V>
-    ) => Product<U, W>;
+    type Transformer<T, U, V extends U> = (
+      product: Product<T, U>
+    ) => Result<T, V>;
 
     // --- interfaces ---
+    interface Control {
+      signal: AbortSignal;
+      timeout: number;
+    }
 
     interface Declare<T extends object> {
       declare<U extends object>(declarer: Declarer<T, U>): Declare<T & U>;
@@ -74,19 +81,20 @@ declare namespace Tacocat {
     }
 
     interface Observe<T, U> {
-      explore(scope: Element, selector?: string): Placeholder<T, U>[];
+      explore(scope: Element, selector?: string): Placeholder[];
 
       observe(scope: Element, selector?: string): Observe<T, U>;
 
-      refresh(scope: Element, selector?: string): void;
+      refresh(scope: Element, selector?: string): Promise<Placeholder[]>;
 
       resolve(context: T): Promise<Product<T, U>>;
     }
 
-    interface Placeholder<T, U> {
-      context: T;
+    interface Placeholder {
+      context: object;
       element: Element;
-      value?: U;
+      stage?: 'pending' | 'resolved' | 'rejected';
+      value?: any;
     }
 
     interface Render<T, U> {
@@ -105,12 +113,6 @@ declare namespace Tacocat {
       product: Product<T, U>
     ) => Effect;
     interface Renderers<T, U> {
-      /**
-       * @returns
-       * - undefined - the template cannot be applied to this context/value
-       * - null - the template removed/replaced placeholder element and it should not be handled anymore
-       * - Element - the template either updated existing placeholder element or created new one, it should be handled
-       */
       pending?: PendingRenderer | PendingRenderer[];
 
       rejected?: RejectedRenderer<T> | RejectedRenderer<T>[];
@@ -119,9 +121,9 @@ declare namespace Tacocat {
     }
 
     interface Transform<T, U> {
-      transform<V extends T, W extends U>(
-        transformer: Transformer<T, V, U, W>
-      ): Transform<T, U & V>;
+      transform<V extends U>(
+        transformer: Transformer<T, U, V>
+      ): Transform<T, V>;
 
       render(renderers: Renderers<T, U>): Render<T, U>;
     }
@@ -129,22 +131,21 @@ declare namespace Tacocat {
 
   module Internal {
     // --- types ---
+    type Control = Tacocat.Engine.Control & { promise: Promise<never> };
     type Declarer = Tacocat.Engine.Declarer<any, any>;
     type Engine = Omit<Tacocat.Engine.Observe<any, any>, 'observe'>;
     type Extractor = Tacocat.Engine.Extractor<any, any>;
-    type Failure = Keyed<Tacocat.Failure<any>>;
-    type Keyed<T extends object> = T & { key?: string };
+    type Failure = Tacocat.Failure<any>;
     type Listener = Tacocat.Engine.Listener;
-    type Placeholder = Keyed<Tacocat.Engine.Placeholder<any, any>>;
-    type Product = Keyed<Tacocat.Product<any, any>>;
+    type Product = Tacocat.Product<any, any>;
     type Provider = Tacocat.Engine.Provider<any, any>;
     type Renderers = Tacocat.Engine.Renderers<any, any>;
     type Resolver = (results: Tacocat.Internal.Result[]) => void;
-    type Result = Keyed<Tacocat.Result<any, any>>;
+    type Result = Tacocat.Result<any, any>;
     type SafeDeclarer = Tacocat.Engine.Declarer<any, any>;
     type SafeExtractor = (element: Element) => object;
     type SafeObserver = (
-      consumer: (placeholders: Placeholder[]) => void,
+      consumer: (placeholders: Tacocat.Engine.Placeholder[]) => void,
       subtree: Subtree
     ) => void;
     type SafeProvider = (contexts: object[]) => any;

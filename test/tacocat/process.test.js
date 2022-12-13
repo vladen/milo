@@ -13,12 +13,12 @@ function Deferal() {
   return object;
 }
 
-describe('Process', () => {
+describe.skip('Process', () => {
   after(() => {
     Log.reset();
   });
   before(() => {
-    Log.use();
+    Log.use(debugFilter);
   });
 
   it('immediately calls "resolver" callback for static results', () => {

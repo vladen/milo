@@ -4,7 +4,7 @@ import { expect } from '@esm-bundle/chai';
 import { spy } from 'sinon';
 import Log, { isLog } from '../../libs/tacocat/log.js';
 
-describe('isLog', () => {
+describe.skip('isLog', () => {
   it('returns false of argument is not an instance of Log', () => {
     expect(isLog()).to.be.false;
   });
@@ -15,7 +15,7 @@ describe('isLog', () => {
   });
 });
 
-describe('Log', () => {
+describe.skip('Log', () => {
   describe('object', () => {
     describe('module', () => {
       it('returns new Log instance with module name added to namespace', () => {

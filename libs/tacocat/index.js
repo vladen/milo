@@ -1,7 +1,9 @@
-import Log from "./log";
-import safe from "./safe";
-import Tacocat from "./tacocat";
-export { Log, safe, Tacocat };
+import Log from './log.js';
+import { Failure, Product } from './product.js';
+import { safeAsync, safeSync } from './safe.js';
+import Tacocat from './tacocat.js';
+
+export { Log, safeAsync, safeSync, Tacocat };
 
 const controller = new AbortController();
 const tacocat = Tacocat(controller.signal)
@@ -9,28 +11,22 @@ const tacocat = Tacocat(controller.signal)
   .declare({ test1: 'test1' })
   .declare(({ test1 }) => ({ test2: test1 }))
   // updates placeholder context with the data extracted from placeholder element
-  .extract((_, element) => ({
-    foo: element.id,
-  }), { attributeFilter: ['id'] })
+  .extract((_, element) => ({ foo: element.id }), { attributeFilter: ['id'] })
   .extract((context, element) => ({
     ...context,
     bar: element.closest(`.class-${context.foo}`).getAttribute('bar'),
   }), { childList: true })
   // provides values for extracted contexts, async
-  .provide(function* (contexts, signal) {
-    for (const context of contexts) {
-      if (signal.aborted) break;
+  .provide((controls, contexts) => contexts.map(
+    (context) => {
       if (context.foo === 'foo') {
-        yield Promise.resolve({ context, value: { baz: 42 } });
-      } else {
-        yield Promise.reject({ context });
+        return Promise.resolve(Product(context, { baz: 42 }));
       }
-    }
-  })
-  // transforms only successfully provided values, async
-  .transform((products) => products.map(
-    ({ context, value }) => ({ context, value: { ...value, qux: value.baz.toString() } })
+      return Promise.reject(Failure(context));
+    },
   ))
+  // transforms only successfully provided values, async
+  .transform(({ context, value }) => ({ context, value: { ...value, qux: value.baz.toString() } }))
   // registers functions updating placeholder elements
   .render({
     // updates placeholder awaiting for its value to resolve
@@ -40,7 +36,6 @@ const tacocat = Tacocat(controller.signal)
     // updates placeholder with resolution error
     rejected(element) {
       element.classList.add('tacocat-rejected');
-
     },
     // updates placeholder with resolved value
     resolved(element) {
@@ -48,10 +43,10 @@ const tacocat = Tacocat(controller.signal)
     },
   })
   .render({
-    pending(element, context) {
-      element.innerHTML = context.foo;
+    pending(element) {
+      element.innerHTML = '...';
     },
-    resolved(element, context, value) {
+    resolved(element, { context, value }) {
       element.innerHTML = `${context.foo} ${value.baz} ${value.qux}`;
     },
   })
@@ -76,9 +71,8 @@ tacocat.resolve({
   bar: 'bar',
   foo: 'foo',
   test1: 'test1',
-  test2: 'test2'
+  test2: 'test2',
 }).then(({ context, value }) => console.log('Resolved context:', context, value));
 
 // stops observation of DOM, processing of placeholders and other pending operations
 controller.abort();
-

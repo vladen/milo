@@ -5,19 +5,19 @@ import { safeAsync, safeSync } from './safe.js';
 const log = Log.common.module('provide');
 
 /**
- * @param {Tacocat.Controls} controls
+ * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.Provider} provider
  * @param {Tacocat.Internal.Transformer[]} transformers
  * @returns {Tacocat.Internal.SafeProvider}
  */
-const Provide = (controls, provider, transformers) => (contexts) => {
+const Provide = (control, provider, transformers) => (contexts) => {
   log.debug('Providing:', { contexts });
   const results = safeAsync(
     log,
     'Provider callback error:',
-    () => provider(controls, contexts),
+    () => provider(control, contexts),
   );
-  return Process(log, results, {
+  return Process(control, log, results, {
     transformer(product) {
       const result = transformers.reduce(
         (transformed, transformer) => safeSync(

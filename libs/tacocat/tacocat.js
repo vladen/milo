@@ -1,113 +1,53 @@
+import Control from './control.js';
 import Declare from './declare.js';
 import Engine from './engine.js';
 import Extract from './extract.js';
 import Observe from './observe.js';
 import Provide from './provide.js';
 import Render from './render.js';
+import Subtree from './subtree.js';
 import { mergeMutations } from './utilities.js';
 
 /**
- * @param {Tacocat.Options.Process} process
- * @param {Tacocat.Internal.Declarer[]} declarers
- */
-const declare = (process, declarers) => ({
-  declare(declarer) {
-    return declare(
-      process,
-      [...declarers, declarer],
-    );
-  },
-  extract(extractor, mutations) {
-    return extract(
-      process,
-      Declare(declarers),
-      [extractor],
-      [mutations],
-      [],
-    );
-  },
-});
-
-/**
- * @param {Tacocat.Options.Process} process
- * @param {Tacocat.Internal.SafeDeclarer} declarer
- * @param {Tacocat.Internal.Extractor[]} extractors
- * @param {MutationObserverInit[]} mutations
- * @param {Tacocat.Internal.Listener[]} listeners
- */
-const extract = (process, declarer, extractors, mutations, listeners = []) => ({
-  extract(extractor, newMutations, listener) {
-    return extract(
-      process,
-      declarer,
-      [...extractors, extractor],
-      [...mutations, newMutations],
-      [...listeners, listener],
-    );
-  },
-  provide(provider) {
-    return transform(
-      process,
-      Extract(declarer, extractors),
-      Observe(process, { listeners, mutations: mergeMutations(mutations) }),
-      provider,
-    );
-  },
-});
-
-/**
- *
- * @param {Tacocat.Internal.SafeExtractor} extractor
- * @param {Tacocat.Internal.Observer} observer
- * @param {Tacocat.Internal.Provider} provider
- * @param {Tacocat.Internal.SafeRenderer} renderer
- * @param {Tacocat.Options.Process} process
- * @param {Tacocat.Options.Subtree} subtree
+ * @param {Tacocat.Internal.Control} control
+ * @param {Tacocat.Internal.Workflow} workflow
+ * @param {Tacocat.Internal.Subtree} subtree
  * @returns
  */
-const observe = (process, extractor, observer, provider, renderer, subtree) => ({
+const observe = (control, workflow, subtree) => ({
   ...Engine(
-    process,
-    extractor,
-    observer,
-    provider,
-    renderer,
+    control,
+    workflow,
     subtree,
   ),
   observe(scope, selector) {
     return observe(
-      process,
-      extractor,
-      observer,
-      provider,
-      renderer,
-      { scope, selector },
+      control,
+      workflow,
+      Subtree(scope, selector),
     );
   },
 });
 
 /**
- * @param {Tacocat.Options.Process} process
+ * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.SafeExtractor} extractor
- * @param {Tacocat.Internal.Observer} observer
- * @param {Tacocat.Internal.Provider} provider
+ * @param {Tacocat.Internal.SafeObserver} observer
+ * @param {Tacocat.Internal.SafeProvider} provider
  * @param {Tacocat.Internal.Renderers[]} renderers
  * @returns
  */
-const render = (process, extractor, observer, provider, renderers = []) => ({
+const render = (control, extractor, observer, provider, renderers = []) => ({
   observe(scope, selector) {
     return observe(
-      process,
-      extractor,
-      observer,
-      provider,
-      Render(renderers),
-      { scope, selector },
+      control,
+      { extractor, observer, provider, renderer: Render(renderers) },
+      Subtree(scope, selector),
     );
   },
   render(newRenderers) {
     return render(
-      process,
+      control,
       extractor,
       observer,
       provider,
@@ -117,16 +57,16 @@ const render = (process, extractor, observer, provider, renderers = []) => ({
 });
 
 /**
- * @param {Tacocat.Options.Process} process
+ * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.SafeExtractor} extractor
- * @param {Tacocat.Internal.Observer} observer
+ * @param {Tacocat.Internal.SafeObserver} observer
  * @param {Tacocat.Internal.Provider} provider
  * @param {Tacocat.Internal.Transformer[]} transformers
  */
-const transform = (process, extractor, observer, provider, transformers = []) => ({
+const transform = (control, extractor, observer, provider, transformers = []) => ({
   transform(transformer) {
     return transform(
-      process,
+      control,
       extractor,
       observer,
       provider,
@@ -135,19 +75,69 @@ const transform = (process, extractor, observer, provider, transformers = []) =>
   },
   render(renderers) {
     return render(
-      process,
+      control,
       extractor,
       observer,
-      Provide(process, provider, transformers),
+      Provide(control, provider, transformers),
       [renderers],
     );
   },
 });
 
-/** @type {Tacocat.Engine.Factory} */
+/**
+ * @param {Tacocat.Internal.Control} control
+ * @param {Tacocat.Internal.SafeDeclarer} declarer
+ * @param {Tacocat.Internal.Extractor[]} extractors
+ * @param {MutationObserverInit[]} mutations
+ * @param {Tacocat.Internal.Listener[]} listeners
+ */
+const extract = (control, declarer, extractors, mutations, listeners = []) => ({
+  extract(extractor, newMutations, listener) {
+    return extract(
+      control,
+      declarer,
+      [...extractors, extractor],
+      [...mutations, newMutations],
+      [...listeners, listener],
+    );
+  },
+  provide(provider) {
+    return transform(
+      control,
+      Extract(declarer, extractors),
+      Observe(control, { listeners, mutations: mergeMutations(mutations) }),
+      provider,
+    );
+  },
+});
+
+/**
+ * @param {Tacocat.Internal.Control} control
+ * @param {Tacocat.Internal.Declarer[]} declarers
+ */
+const declare = (control, declarers) => ({
+  declare(declarer) {
+    return declare(
+      control,
+      [...declarers, declarer],
+    );
+  },
+  extract(extractor, mutations) {
+    return extract(
+      control,
+      Declare(declarers),
+      [extractor],
+      [mutations],
+    );
+  },
+});
+
+/**
+ * @type {Tacocat.Engine.Factory}
+ */
 const Tacocat = (signal, timeout) => ({
   declare(declarer) {
-    return declare({ signal, timeout }, [declarer]);
+    return declare(Control({ signal, timeout }), [declarer]);
   },
 });
 

@@ -1,33 +1,48 @@
-import { isFunction } from './utilities.js';
+import { isFunction, isObject, isUndefined } from './utilities.js';
 
-const { create, entries, fromEntries, getOwnPropertyDescriptors } = Object;
+const { defineProperties, entries, fromEntries, getOwnPropertyDescriptors } = Object;
 
-const getContextKey = (value) => (value == null ? '' : JSON.stringify(value));
+const contextKeys = new WeakMap();
 
 /**
- * @template T
- * @param {T | object} object
- * @returns {T}
+ * @param {object} context
+ * @returns {string}
  */
-const projectObject = (object) => create(
-  {},
+function getContextKey(context) {
+  if (!isObject(context)) return '';
+  let key = contextKeys.get(context);
+  if (isUndefined(key)) {
+    key = JSON.stringify(context);
+    contextKeys.set(context, key);
+  }
+  return key;
+}
+
+/**
+ * @template T, U
+ * @param {U | object} target
+ * @param {T | object} source
+ * @returns {T & U}
+ */
+const projectObject = (target, source) => defineProperties(
+  target,
   fromEntries(
-    entries(getOwnPropertyDescriptors(object))
+    entries(getOwnPropertyDescriptors(source))
       .map(
-        ([key, { configurable, value, writable, ...descriptor }]) => [
+        ([key, { configurable, enumerable, value, writable }]) => [
           key,
           !isFunction(value) && writable
             ? {
-              ...descriptor,
               configurable: false,
+              enumerable,
               get() {
-                return Reflect.get(object, key);
+                return Reflect.get(source, key);
               },
               set(newValue) {
-                return Reflect.set(object, key, newValue);
+                return Reflect.set(source, key, newValue);
               },
             }
-            : { ...descriptor, configurable, value },
+            : { configurable, enumerable, value, writable },
         ],
       ),
   ),

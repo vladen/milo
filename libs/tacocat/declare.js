@@ -1,7 +1,7 @@
 import { projectObject } from './context.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isFunction, isObject, isUndefined } from './utilities.js';
+import { isFunction, isNil, isObject } from './utilities.js';
 
 const log = Log.common.module('declare');
 
@@ -9,32 +9,32 @@ const log = Log.common.module('declare');
  * @param {({} | Tacocat.Internal.Declarer)[]} declarers
  * @returns {Tacocat.Internal.SafeDeclarer}
  */
-const Declare = (declarers) => () => {
-  let context;
-
-  declarers.forEach((declarer) => {
+const Declare = (declarers) => (context) => {
+  if (!isNil(context) && declarers.every((declarer, index) => {
+    let declared;
     if (isFunction(declarer)) {
-      const result = safeSync(
+      declared = safeSync(
         log,
         'Declarer callback error:',
         () => declarer(context),
       );
-      if (isObject(result)) {
-        if (isUndefined(context)) context = { ...result };
-        else Object.assign(context, result);
-      } else {
-        log.warn('Unexpected type:', { declarer, result });
+      if (isObject(declared)) {
+        Object.assign(context, declared);
+        return true;
       }
-    } else if (isObject(declarer)) {
-      if (isUndefined(context)) context = projectObject(declarer);
-      else Object.assign(context, declarer);
-    } else {
-      log.warn('Unexpected type:', { declarer });
+    } if (isObject(declarer)) {
+      declared = declarer;
+      if (index === 0) projectObject(context, declared);
+      else Object.assign(context, declared);
+      return true;
     }
-  });
-
-  log.debug('Declared:', { context, declarers });
-  return context;
+    log.warn('Unexpected declared type:', { declared, declarer });
+    return false;
+  })) {
+    log.debug('Declared:', { context, declarers });
+    return context;
+  }
+  return undefined;
 };
 
 export default Declare;

@@ -4,7 +4,7 @@ import { createSelectorMatcher, getMatchingSelfOrParent } from './utilities.js';
 const log = Log.common.module('observer');
 
 /**
- * @param {Tacocat.Controls} controls
+ * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.Reactions} reactions
  * @returns {Tacocat.Internal.SafeObserver}
  */
@@ -24,10 +24,9 @@ const Observe = ({ signal }, { listeners, mutations }) => (consumer, { scope, se
       timer = setTimeout(() => {
         timer = 0;
         if (removed.size || updated.size) {
-          const product = (context, element) => ({ context, element, key: '' });
           consumer([
-            ...[...removed].map((element) => product(false, element)),
-            ...[...updated].map((element) => product(true, element)),
+            ...[...removed].map((element) => ({ context: null, element })),
+            ...[...updated].map((element) => ({ context: {}, element })),
           ]);
           if (removed.size) log.debug('Removed:', { elements: [...removed] });
           removed.clear();
