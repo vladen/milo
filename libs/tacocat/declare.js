@@ -1,20 +1,24 @@
 import { projectObject } from './context.js';
 import Log from './log.js';
-import safe from './safe.js';
+import { safeSync } from './safe.js';
 import { isFunction, isObject, isUndefined } from './utilities.js';
 
 const log = Log.common.module('declare');
 
 /**
  * @param {({} | Tacocat.Internal.Declarer)[]} declarers
- * @returns {Tacocat.Internal.CombinedDeclarer}
+ * @returns {Tacocat.Internal.SafeDeclarer}
  */
 const Declare = (declarers) => () => {
   let context;
 
   declarers.forEach((declarer) => {
     if (isFunction(declarer)) {
-      const result = safe('Declarer callback error:', () => declarer(context), log);
+      const result = safeSync(
+        log,
+        'Declarer callback error:',
+        () => declarer(context),
+      );
       if (isObject(result)) {
         if (isUndefined(context)) context = { ...result };
         else Object.assign(context, result);

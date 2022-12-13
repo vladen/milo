@@ -1,57 +1,56 @@
 import { getContextKey } from './context.js';
 import { hasContext, isProduct } from './product.js';
-import safe from './safe.js';
+import { safeAsync } from './safe.js';
 import { isFunction, isPromise } from './utilities.js';
 
 /**
+ * @template T
+ * @param {Tacocat.Log.Instance} log
+ * @param {Tacocat.Internal.Processing} processing
  * @param {{
  *  pending: number,
  *  products: (Tacocat.Internal.Failure | Tacocat.Internal.Product)[]
  * }} context
- * @param {Tacocat.Log.Instance} log
- * @param {Tacocat.Internal.Resolver} resolver
- * @param {Tacocat.Internal.Results} results
- * @param {Tacocat.Internal.Transformer} transformer
- * @returns {Tacocat.Internal.Results}
+ * @param {T} input
+ * @returns {T}
  */
-function awaitProducts(context, log, resolver, results, transformer) {
+function awaitProducts(log, processing, context, input) {
   let result;
-  if (results != null) {
-    if (Array.isArray(results)) {
-      log.debug('array:', results);
-      context.pending += results.length;
-      result = results.flatMap(
-        (products) => awaitProducts(context, log, resolver, products, transformer),
+  if (input != null) {
+    if (Array.isArray(input)) {
+      log.debug('array:', input);
+      context.pending += input.length;
+      result = input.map(
+        (item) => awaitProducts(log, processing, context, item),
       );
-      context.pending -= results.length;
-    } else if (isProduct(results)) {
-      log.debug('product:', results);
+      context.pending -= input.length;
+    } else if (isProduct(input)) {
+      log.debug('product:', input);
       /** @type {Tacocat.Internal.Product} */
-      let product = results;
-      product = transformer(product);
+      let product = input;
+      product = processing.transformer(product);
       if (isProduct(product)) {
         product.key = getContextKey(product.context);
         context.products.push(product);
         result = product;
       } else log.warn('Transformer must return product:', { product });
-    } else if (isFunction(results)) {
-      log.debug('function:', results);
-      /** @type {Function} */
-      const callback = results;
-      const products = safe('Provided function error:', callback, log);
+    } else if (isFunction(input)) {
+      log.debug('function:', input);
+      // @ts-ignore
+      const products = safeAsync(log, 'Provided function error:', input);
       context.pending += 1;
-      result = awaitProducts(context, log, resolver, products, transformer);
+      result = awaitProducts(log, processing, context, products);
       context.pending -= 1;
-    } else if (isPromise(results)) {
+    } else if (isPromise(input)) {
       log.debug('promise');
       /** @type {Promise<any>} */
-      const promise = results;
+      const promise = input;
       context.pending += 1;
-      result = safe('Provided promise error:', promise, log)
+      result = safeAsync(log, 'Provided promise error:', () => promise)
         .then(
           (products) => {
             log.debug('promise resolved:', products);
-            return awaitProducts(context, log, resolver, products, transformer);
+            return awaitProducts(log, processing, context, products);
           },
           (error) => {
             log.debug('promise rejected:', error);
@@ -65,27 +64,34 @@ function awaitProducts(context, log, resolver, results, transformer) {
         )
         .finally(() => {
           context.pending -= 1;
-          if (context.pending === 0) resolver(context.products);
+          if (context.pending === 0) processing.resolver(context.products);
         });
     }
   }
-  if (context.pending === 0) resolver(context.products);
+  if (context.pending === 0) processing.resolver(context.products);
+  // @ts-ignore
   return result;
 }
 
 /**
+ * @template T
  * @param {Tacocat.Log.Instance} log
- * @param {Tacocat.Internal.Resolver} resolver
- * @param {Tacocat.Internal.Results} results
- * @param {Tacocat.Internal.Transformer?} transformer
- * @returns {Tacocat.Internal.Results}
+ * @param {T} input
+ * @param {Tacocat.Internal.Processing} processing
+ * @returns {T}
  */
-const Process = (log, resolver, results, transformer = (product) => product) => awaitProducts(
-  { pending: 0, products: [] },
+const Process = (
   log,
-  resolver,
-  results,
-  transformer,
+  input,
+  {
+    resolver = () => {},
+    transformer = (product) => product,
+  } = {},
+) => awaitProducts(
+  log,
+  { resolver, transformer },
+  { pending: 0, products: [] },
+  input,
 );
 
 export default Process;

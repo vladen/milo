@@ -1,43 +1,36 @@
-import Log from "./log";
-import Process from './process';
-import safe from "./safe";
+import Log from './log.js';
+import Process from './process.js';
+import { safeAsync, safeSync } from './safe.js';
 
 const log = Log.common.module('provide');
 
 /**
+ * @param {Tacocat.Controls} controls
  * @param {Tacocat.Internal.Provider} provider
- * @param {AbortSignal} signal
  * @param {Tacocat.Internal.Transformer[]} transformers
- * @returns {Tacocat.Internal.Provider}
+ * @returns {Tacocat.Internal.SafeProvider}
  */
-const Provide = (provider, signal, transformers) => (contexts) => {
-  log.debug('Providing:', { contexts })
-  const results = safe(
+const Provide = (controls, provider, transformers) => (contexts) => {
+  log.debug('Providing:', { contexts });
+  const results = safeAsync(
+    log,
     'Provider callback error:',
-    // @ts-ignore
-    () => provider(contexts, signal),
-    log,
+    () => provider(controls, contexts),
   );
-  return Process(
-    log,
-    () => { },
-    // @ts-ignore
-    results,
-    (product) => {
+  return Process(log, results, {
+    transformer(product) {
       const result = transformers.reduce(
-        // @ts-ignore
-        (product, transformer) => safe(
+        (transformed, transformer) => safeSync(
+          log,
           'Transformer callback error:',
-          // @ts-ignore
-          () => transformer(product),
-          log
+          () => transformer(transformed),
         ),
         product,
       );
       log.debug('Provided:', { product, result, provider, transformers });
       return result;
     },
-  );
-}
+  });
+};
 
 export default Provide;

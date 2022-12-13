@@ -1,32 +1,26 @@
 declare namespace Tacocat {
+  // --- types ---
   type isFunction = (value: any) => value is Function;
   type isObject = (value: any) => value is object;
   type isPromise = (value: any) => value is Promise<any>;
   type isUndefined = (value: any) => value is undefined;
 
-  type hasContext = (
-    candidate: Result<any, any> | Internal.Result
-  ) => candidate is Result<any, any>;
-  type isFailure = (
-    candidate: Failure<any> | Internal.Failure
-  ) => candidate is Failure<any>;
-  type isProduct = (
-    candidate: Product<any, any> | Internal.Product
-  ) => candidate is Product<any, any>;
+  type hasContext = (candidate: any) => candidate is Result<any, any>;
+  type isFailure = (candidate: any) => candidate is Failure<any>;
+  type isProduct = (candidate: any) => candidate is Product<any, any>;
 
-  type Failure<T> = { context: T; error?: Error };
+  type Failure<T> = { context?: T; error?: Error };
   type Product<T, U> = { context: T; value?: U };
   type Result<T, U> = Failure<T> | Product<T, U>;
 
-  type Safe<T> = (
-    message: string,
-    callback: (() => T) | Promise<T>,
-    log?: Log.Instance
-  ) => T | Promise<T> | undefined;
+  // --- interfaces ---
+  interface Controls {
+    signal: AbortSignal;
+    timeout: number;
+  }
 
   module Engine {
     // --- types ---
-
     type Declarer<T, U extends object> = (context: T) => U;
 
     type Effect = void | undefined | null | Element;
@@ -51,14 +45,7 @@ declare namespace Tacocat {
       'attributeOldValue' | 'characterDataOldValue'
     >;
 
-    type Provider<T, U> = (contexts: T[], signal: AbortSignal) => Results<T, U>;
-
-    type Results<T, U> =
-      | undefined
-      | null
-      | Iterable<Product<T, U>>
-      | Iterable<Promise<Product<T, U> | Iterable<Product<T, U>>>>
-      | Promise<Results<T, U>>;
+    type Provider<T, U> = (controls: Controls, contexts: T[]) => U;
 
     type Transformer<T, U extends T, V, W extends V> = (
       product: Product<T, V>
@@ -141,39 +128,57 @@ declare namespace Tacocat {
   }
 
   module Internal {
-    type CombinedExtractor = (element: Element) => object;
+    // --- types ---
     type Declarer = Tacocat.Engine.Declarer<any, any>;
-    type CombinedDeclarer = Tacocat.Engine.Declarer<any, any>;
     type Engine = Omit<Tacocat.Engine.Observe<any, any>, 'observe'>;
     type Extractor = Tacocat.Engine.Extractor<any, any>;
-    type Failure = Tacocat.Failure<any> & { key?: string };
+    type Failure = Keyed<Tacocat.Failure<any>>;
+    type Keyed<T extends object> = T & { key?: string };
     type Listener = Tacocat.Engine.Listener;
-    type Observer = (
-      consumer: (placeholders: Placeholder[]) => void,
-      listeners: Listener[],
-      scope: Element,
-      selector?: string
-    ) => void;
-    type Placeholder = Tacocat.Engine.Placeholder<any, any> & { key: string };
-    type Processor = (
-      product: Tacocat.Internal.Product
-    ) => Tacocat.Internal.Product;
-    type Product = Tacocat.Product<any, any> & { key?: string };
+    type Placeholder = Keyed<Tacocat.Engine.Placeholder<any, any>>;
+    type Product = Keyed<Tacocat.Product<any, any>>;
     type Provider = Tacocat.Engine.Provider<any, any>;
-    type Renderer = (
-      element: Element,
-      result?: Tacocat.Product<any, any> | Tacocat.Failure<any>
-    ) => Tacocat.Engine.Effect;
     type Renderers = Tacocat.Engine.Renderers<any, any>;
-    type Resolver = (products: Tacocat.Internal.Product[]) => void;
-    type Result = Tacocat.Result<any, any>;
-    type Results = Tacocat.Engine.Results<any, any>;
+    type Resolver = (results: Tacocat.Internal.Result[]) => void;
+    type Result = Keyed<Tacocat.Result<any, any>>;
+    type SafeDeclarer = Tacocat.Engine.Declarer<any, any>;
+    type SafeExtractor = (element: Element) => object;
+    type SafeObserver = (
+      consumer: (placeholders: Placeholder[]) => void,
+      subtree: Subtree
+    ) => void;
+    type SafeProvider = (contexts: object[]) => any;
+    type SafeRenderer = (
+      element: Element,
+      result: Tacocat.Result<any, any> | undefined
+    ) => Tacocat.Engine.Effect;
+    type SelectorMatcher = (element: Element) => boolean;
     type Transformer = (product: Product) => Product;
+
+    // --- interfaces ---
+    interface Processing {
+      resolver?: Tacocat.Internal.Resolver;
+      transformer?: Tacocat.Internal.Transformer;
+    }
+    interface Reactions {
+      listeners: Engine.Listener[];
+      mutations: Engine.Mutations;
+    }
+    interface Subtree {
+      matcher: SelectorMatcher;
+      scope: Element;
+      selector?: string;
+    }
+    interface Workflow {
+      observer: Tacocat.Internal.SafeObserver;
+      extractor: Tacocat.Internal.SafeExtractor;
+      provider: Tacocat.Internal.SafeProvider;
+      renderer: Tacocat.Internal.SafeRenderer;
+    }
   }
 
   module Log {
     // --- types ---
-
     type Factory = {
       (namespace: string): Instance;
       common: Instance;
@@ -190,20 +195,6 @@ declare namespace Tacocat {
     };
 
     // --- interfaces ---
-
-    interface Record {
-      level: Level;
-      message: string;
-      namespace: string;
-      params: any[];
-      timestamp: number;
-    }
-
-    interface Module {
-      filter?(record: Record): boolean;
-      write?(record: Record): void;
-    }
-
     interface Instance {
       readonly namespace: string;
       debug(message: string, ...params: any[]): void;
@@ -211,6 +202,19 @@ declare namespace Tacocat {
       module(name: string): Instance;
       info(message: string, ...params: any[]): void;
       warn(message: string, ...params: any[]): void;
+    }
+
+    interface Module {
+      filter?(record: Record): boolean;
+      write?(record: Record): void;
+    }
+
+    interface Record {
+      level: Level;
+      message: string;
+      namespace: string;
+      params: any[];
+      timestamp: number;
     }
   }
 }

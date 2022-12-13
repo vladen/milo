@@ -118,4 +118,4 @@ Log.level = Level;
 Log.reset();
 
 export default Log;
-export { isLog, debugFilter };
+export { debugFilter, isLog };

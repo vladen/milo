@@ -1,21 +1,40 @@
 import Log, { isLog } from './log.js';
-import { isFunction, isPromise } from './utilities.js';
+
+const getLog = (log) => (isLog(log) ? log : Log.common ?? console);
 
 /**
  * @template T
- * @type {Tacocat.Safe<T>}
- * @returns {T}
+ * @param {Tacocat.Log.Instance} log
+ * @param {string} message
+ * @param {() => T | Promise<T>} operation
+ * @returns {Promise<T>}
  */
-export default function safe(message, callback, log) {
-  const report = (error) => {
-    (isLog(log) ? log : Log.common ?? console).error(message, error);
+function safeAsync(log, message, operation) {
+  const reportError = (error) => {
+    getLog(log).error(message, error);
+    return Promise.reject(error);
   };
   try {
-    const result = isFunction(callback) ? callback() : callback;
-    // @ts-ignore
-    return isPromise(result) ? result.catch(report) : result;
+    return Promise.resolve(operation()).catch(reportError);
   } catch (error) {
-    report(error);
+    return reportError(error);
+  }
+}
+
+/**
+ * @template T
+ * @param {Tacocat.Log.Instance} log
+ * @param {string} message
+ * @param {() => T} operation
+ * @returns {T}
+ */
+function safeSync(log, message, operation) {
+  try {
+    return operation();
+  } catch (error) {
+    getLog(log).error(message, error);
     return undefined;
   }
 }
+
+export { safeAsync, safeSync };

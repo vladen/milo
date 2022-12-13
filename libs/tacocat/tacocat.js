@@ -1,184 +1,154 @@
-import Declare from './declare';
-import Engine from './engine';
-import Extract from './extract';
-import Observe from './observe';
-import Provide from './provide';
-import Render from './render';
+import Declare from './declare.js';
+import Engine from './engine.js';
+import Extract from './extract.js';
+import Observe from './observe.js';
+import Provide from './provide.js';
+import Render from './render.js';
+import { mergeMutations } from './utilities.js';
 
 /**
+ * @param {Tacocat.Options.Process} process
  * @param {Tacocat.Internal.Declarer[]} declarers
- * @param {AbortSignal} signal
- * @param {number} timeout
  */
-const declare = (declarers, signal, timeout) => ({
+const declare = (process, declarers) => ({
   declare(declarer) {
     return declare(
+      process,
       [...declarers, declarer],
-      signal,
-      timeout,
     );
   },
   extract(extractor, mutations) {
     return extract(
+      process,
       Declare(declarers),
       [extractor],
-      [],
       [mutations],
-      signal,
-      timeout,
+      [],
     );
-  }
+  },
 });
 
 /**
- * 
- * @param {Tacocat.Internal.CombinedDeclarer} declarer
+ * @param {Tacocat.Options.Process} process
+ * @param {Tacocat.Internal.SafeDeclarer} declarer
  * @param {Tacocat.Internal.Extractor[]} extractors
+ * @param {MutationObserverInit[]} mutations
  * @param {Tacocat.Internal.Listener[]} listeners
- * @param {MutationObserverInit[]} mutationList 
- * @param {AbortSignal} signal
- * @param {number} timeout
  */
-const extract = (declarer, extractors, listeners, mutationList, signal, timeout) => ({
-  extract(extractor, mutations, listener) {
+const extract = (process, declarer, extractors, mutations, listeners = []) => ({
+  extract(extractor, newMutations, listener) {
     return extract(
+      process,
       declarer,
       [...extractors, extractor],
+      [...mutations, newMutations],
       [...listeners, listener],
-      [...mutationList, mutations],
-      signal,
-      timeout
     );
   },
   provide(provider) {
     return transform(
+      process,
       Extract(declarer, extractors),
-      listeners,
-      Observe(mutationList, signal),
+      Observe(process, { listeners, mutations: mergeMutations(mutations) }),
       provider,
-      signal,
-      timeout,
-      [],
     );
-  }
+  },
 });
 
 /**
- * 
- * @param {Tacocat.Internal.CombinedExtractor} extractor
- * @param {Tacocat.Internal.Listener[]} listeners
+ *
+ * @param {Tacocat.Internal.SafeExtractor} extractor
  * @param {Tacocat.Internal.Observer} observer
  * @param {Tacocat.Internal.Provider} provider
- * @param {Tacocat.Internal.Renderer} renderer 
- * @param {Element} scope 
- * @param {string?} selector 
- * @param {AbortSignal} signal
- * @param {number} timeout
- * @returns 
+ * @param {Tacocat.Internal.SafeRenderer} renderer
+ * @param {Tacocat.Options.Process} process
+ * @param {Tacocat.Options.Subtree} subtree
+ * @returns
  */
-const observe = (extractor, listeners, observer, provider, renderer, scope, selector, signal, timeout) => ({
+const observe = (process, extractor, observer, provider, renderer, subtree) => ({
   ...Engine(
+    process,
     extractor,
-    listeners,
     observer,
     provider,
     renderer,
-    scope,
-    selector,
-    signal,
-    timeout
+    subtree,
   ),
   observe(scope, selector) {
     return observe(
+      process,
       extractor,
-      listeners,
       observer,
       provider,
       renderer,
-      scope,
-      selector,
-      signal,
-      timeout
+      { scope, selector },
     );
   },
 });
 
 /**
- * @param {Tacocat.Internal.CombinedExtractor} extractor
- * @param {Tacocat.Internal.Listener[]} listeners
+ * @param {Tacocat.Options.Process} process
+ * @param {Tacocat.Internal.SafeExtractor} extractor
  * @param {Tacocat.Internal.Observer} observer
  * @param {Tacocat.Internal.Provider} provider
- * @param {Tacocat.Internal.Renderers[]} rendererList
- * @param {AbortSignal} signal
- * @param {number} timeout
- * @returns 
+ * @param {Tacocat.Internal.Renderers[]} renderers
+ * @returns
  */
-const render = (extractor, listeners, observer, provider, rendererList = [], signal, timeout) => ({
+const render = (process, extractor, observer, provider, renderers = []) => ({
   observe(scope, selector) {
     return observe(
+      process,
       extractor,
-      listeners,
       observer,
       provider,
-      Render(rendererList),
-      scope,
-      selector,
-      signal,
-      timeout,
+      Render(renderers),
+      { scope, selector },
     );
   },
-  render(renderers) {
+  render(newRenderers) {
     return render(
+      process,
       extractor,
-      listeners,
       observer,
       provider,
-      [...rendererList, renderers],
-      signal,
-      timeout,
+      [...renderers, newRenderers],
     );
-  }
-})
+  },
+});
 
 /**
- * @param {Tacocat.Internal.CombinedExtractor} extractor
- * @param {Tacocat.Internal.Listener[]} listeners
+ * @param {Tacocat.Options.Process} process
+ * @param {Tacocat.Internal.SafeExtractor} extractor
  * @param {Tacocat.Internal.Observer} observer
- * @param {Tacocat.Internal.Provider} provider 
- * @param {AbortSignal} signal
- * @param {number} timeout
- * @param {Tacocat.Internal.Transformer[]} transformers 
+ * @param {Tacocat.Internal.Provider} provider
+ * @param {Tacocat.Internal.Transformer[]} transformers
  */
-const transform = (extractor, listeners, observer, provider, signal, timeout, transformers) => ({
+const transform = (process, extractor, observer, provider, transformers = []) => ({
   transform(transformer) {
     return transform(
+      process,
       extractor,
-      listeners,
       observer,
       provider,
-      signal,
-      timeout,
       [...transformers, transformer],
     );
   },
   render(renderers) {
     return render(
+      process,
       extractor,
-      listeners,
       observer,
-      Provide(provider, signal, transformers),
+      Provide(process, provider, transformers),
       [renderers],
-      signal,
-      timeout,
     );
-  }
+  },
 });
 
 /** @type {Tacocat.Engine.Factory} */
 const Tacocat = (signal, timeout) => ({
   declare(declarer) {
-    return declare([declarer], signal, timeout);
-  }
+    return declare({ signal, timeout }, [declarer]);
+  },
 });
 
 export default Tacocat;

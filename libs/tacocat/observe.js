@@ -1,125 +1,99 @@
-import Log from './log';
-import { createSelectorMatcher } from './utilities';
+import Log from './log.js';
+import { createSelectorMatcher, getMatchingSelfOrParent } from './utilities.js';
 
 const log = Log.common.module('observer');
 
 /**
- * @param {MutationObserverInit[]} mutations
+ * @param {Tacocat.Controls} controls
+ * @param {Tacocat.Internal.Reactions} reactions
+ * @returns {Tacocat.Internal.SafeObserver}
  */
-const mergeMutations = (mutations) => mutations
-  .reduce(
-    (options, {
-      attributeFilter,
-      attributes,
-      characterData,
-      childList,
-      subtree
-    } = {}) => {
-      if (attributeFilter) {
-        options.attributeFilter = (options.attributeFilter ?? []).concat(attributeFilter);
-      }
-      if (attributes) options.attributes &&= attributes;
-      if (characterData) options.characterData &&= characterData;
-      if (childList) options.childList &&= childList;
-      if (subtree) options.subtree &&= subtree;
-      return options;
-    },
-    {},
-  );
+const Observe = ({ signal }, { listeners, mutations }) => (consumer, { scope, selector }) => {
+  /** @type {Set<() => void>} */
+  const disposers = new Set();
+  /** @type {Set<Element>} */
+  const removed = new Set();
+  /** @type {Set<Element>} */
+  const updated = new Set();
+  let timer;
 
-/**
- * @param {Node} node
- */
-const getElement = (node) => (node instanceof Element ? node : node.parentElement);
+  const matcher = createSelectorMatcher(selector);
 
-/**
- * @param {MutationObserverInit[]} mutations
- * @param {AbortSignal} signal
- * @returns {Tacocat.Internal.Observer}
- */
-const Observe = (mutations, signal) => {
-  const options = mergeMutations(mutations);
-  return (consumer, listeners, scope, selector) => {
-    /** @type {Set<() => void>} */
-    const disposers = new Set();
-    /** @type {Set<Element>} */
-    const removed = new Set();
-    /** @type {Set<Element>} */
-    const updated = new Set();
-    let timer = 0;
+  function produce() {
+    if (!timer) {
+      timer = setTimeout(() => {
+        timer = 0;
+        if (removed.size || updated.size) {
+          const product = (context, element) => ({ context, element, key: '' });
+          consumer([
+            ...[...removed].map((element) => product(false, element)),
+            ...[...updated].map((element) => product(true, element)),
+          ]);
+          if (removed.size) log.debug('Removed:', { elements: [...removed] });
+          removed.clear();
+          if (updated.size) log.debug('Updated:', { elements: [...updated] });
+          updated.clear();
+        }
+      }, 0);
+    }
+  }
 
-    const matches = createSelectorMatcher(selector);
-
-    function produce() {
-      if (!timer) {
-        timer = setTimeout(() => {
-          timer = 0;
-          if (removed.size || updated.size) {
-            const product = (context, element) => ({ context, element, key: '' });
-            consumer([
-              ...[...removed].map((element) => product(false, element)),
-              ...[...updated].map((element) => product(true, element)),
-            ]);
-            if (removed.size) log.debug('Removed:', { elements: [...removed] });
-            removed.clear();
-            if (updated.size) log.debug('Updated:', { elements: [...updated] });
-            updated.clear();
+  const observer = new MutationObserver((records) => records.forEach((record) => {
+    const { type } = record;
+    if (type === 'attributes' || type === 'characterData') {
+      const element = getMatchingSelfOrParent(record.target, matcher);
+      if (element) updated.add(element);
+    } else if (type === 'childList') {
+      const { addedNodes, removedNodes } = record;
+      [...removedNodes].forEach((node) => {
+        const element = getMatchingSelfOrParent(node, matcher);
+        if (element) {
+          removed.add(element);
+          updated.delete(element);
+        }
+      });
+      [...addedNodes].forEach((node) => {
+        const element = getMatchingSelfOrParent(node, matcher);
+        if (element) {
+          removed.delete(element);
+          updated.add(element);
+          if (listeners.length) {
+            log.debug('Listening:', { element, listeners });
+            listeners.forEach((listener) => {
+              const disposer = listener(
+                element,
+                () => {
+                  updated.add(element);
+                  produce();
+                },
+              );
+              disposers.add(disposer);
+            });
           }
-        });
-      }
+        }
+      });
     }
 
-    const observer = new MutationObserver((records) => {
-      for (const record of records) {
-        const { type } = record;
-        switch (type) {
-          case 'attributes':
-          case 'characterData':
-            const element = getElement(record.target);
-            if (matches(element)) updated.add(element);
-            break;
-          case 'childList':
-            const { addedNodes, removedNodes } = record;
-            [...removedNodes].forEach((node) => {
-              const element = getElement(node);
-              if (matches(element)) {
-                removed.add(element);
-                updated.delete(element);
-              }
-            });
-            [...addedNodes].forEach((node) => {
-              const element = getElement(node);
-              if (matches(element)) {
-                removed.delete(element);
-                updated.add(element);
-                if (listeners.length) {
-                  log.debug('Listening:', { element, listeners });
-                  listeners.forEach((listener) => disposers.add(listener(element, () => {
-                    updated.add(element);
-                    produce();
-                  })));
-                }
-              }
-            });
-            break;
-        }
-      }
+    produce();
+  }));
 
-      produce();
-    });
+  if (!signal.aborted) {
+    log.debug('Observing:', { listeners, mutations, scope, selector });
 
     const elements = [scope];
-    for (const element of elements) {
+    elements.forEach((element) => {
       elements.push(...element.children);
-      if (matches(element)) updated.add(element);
-    }
+      if (matcher(element)) updated.add(element);
+    });
     produce();
+    observer.observe(scope, mutations);
 
-    log.debug('Observing:', { mutations, scope, selector });
-    observer.observe(scope, options);
     disposers.add(() => observer.disconnect());
-    signal.addEventListener('abort', () => disposers.forEach((disposer) => disposer()));
-  };
-}
+    signal.addEventListener(
+      'abort',
+      () => disposers.forEach((disposer) => disposer()),
+    );
+  }
+};
 
 export default Observe;

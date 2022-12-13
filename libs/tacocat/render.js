@@ -1,5 +1,5 @@
 import Log from './log.js';
-import safe from './safe.js';
+import { safeSync } from './safe.js';
 import { isProduct } from './product.js';
 import { isFunction, isUndefined } from './utilities.js';
 
@@ -7,15 +7,15 @@ const log = Log.common.module('render');
 
 /**
  * @param {Tacocat.Internal.Renderers[]} renderers
- * @returns {Tacocat.Internal.Renderer}
+ * @returns {Tacocat.Internal.SafeRenderer}
  */
 const Render = (renderers) => {
   const groups = {
-    /** @type {Tacocat.Internal.Renderer[]} */
+    /** @type {Tacocat.Internal.SafeRenderer[]} */
     pending: [],
-    /** @type {Tacocat.Internal.Renderer[]} */
+    /** @type {Tacocat.Internal.SafeRenderer[]} */
     rejected: [],
-    /** @type {Tacocat.Internal.Renderer[]} */
+    /** @type {Tacocat.Internal.SafeRenderer[]} */
     resolved: [],
   };
 
@@ -42,8 +42,7 @@ const Render = (renderers) => {
     else group = groups.rejected;
 
     group.every((renderer) => {
-      // @ts-ignore
-      result = safe('', () => renderer(element, product), log);
+      result = safeSync(log, 'Renderer callback error:', () => renderer(element, product));
       return !isUndefined(result);
     });
 
