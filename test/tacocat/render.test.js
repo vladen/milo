@@ -5,7 +5,7 @@ import { spy } from 'sinon';
 import Log, { debugFilter } from '../../libs/tacocat/log.js';
 import Render from '../../libs/tacocat/render.js';
 
-describe.skip('Render', () => {
+describe('Render', () => {
   after(() => {
     Log.reset();
   });

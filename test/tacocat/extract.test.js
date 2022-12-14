@@ -5,7 +5,7 @@ import { spy } from 'sinon';
 import Extract from '../../libs/tacocat/extract.js';
 import Log, { debugFilter } from '../../libs/tacocat/log.js';
 
-describe.skip('Extract', () => {
+describe('Extract', () => {
   after(() => {
     Log.reset();
   });

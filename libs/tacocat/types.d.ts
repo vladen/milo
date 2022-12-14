@@ -7,8 +7,8 @@ declare namespace Tacocat {
   type isUndefined = (value: any) => value is undefined;
 
   type hasContext = (candidate: any) => candidate is Result<any, any>;
-  type isFailure = (candidate: any) => candidate is Failure<any>;
-  type isProduct = (candidate: any) => candidate is Product<any, any>;
+  type isFailure = (candidate: any, key?: string) => candidate is Failure<any>;
+  type isProduct = (candidate: any, key?: string) => candidate is Product<any, any>;
 
   type Contextful<T> = { context?: T };
   type Failure<T> = Contextful<T> & Error;
@@ -131,6 +131,7 @@ declare namespace Tacocat {
 
   module Internal {
     // --- types ---
+    type Consumer = (product: Product) => void;
     type Control = Tacocat.Engine.Control & { promise: Promise<never> };
     type Declarer = Tacocat.Engine.Declarer<any, any>;
     type Engine = Omit<Tacocat.Engine.Observe<any, any>, 'observe'>;
@@ -140,7 +141,7 @@ declare namespace Tacocat {
     type Product = Tacocat.Product<any, any>;
     type Provider = Tacocat.Engine.Provider<any, any>;
     type Renderers = Tacocat.Engine.Renderers<any, any>;
-    type Resolver = (results: Tacocat.Internal.Result[]) => void;
+    type Resolver = (products: Product[]) => void;
     type Result = Tacocat.Result<any, any>;
     type SafeDeclarer = Tacocat.Engine.Declarer<any, any>;
     type SafeExtractor = (element: Element) => object;
@@ -148,7 +149,10 @@ declare namespace Tacocat {
       consumer: (placeholders: Tacocat.Engine.Placeholder[]) => void,
       subtree: Subtree
     ) => void;
-    type SafeProvider = (contexts: object[]) => any;
+    type SafeProvider = (
+      contexts: object[],
+      consumer: Consumer,
+    ) => Promise<Product[]>;
     type SafeRenderer = (
       element: Element,
       result: Tacocat.Result<any, any> | undefined
@@ -157,10 +161,6 @@ declare namespace Tacocat {
     type Transformer = (product: Product) => Product;
 
     // --- interfaces ---
-    interface Processing {
-      resolver?: Tacocat.Internal.Resolver;
-      transformer?: Tacocat.Internal.Transformer;
-    }
     interface Reactions {
       listeners: Engine.Listener[];
       mutations: Engine.Mutations;

@@ -5,7 +5,7 @@ import { spy } from 'sinon';
 import Log, { debugFilter } from '../../libs/tacocat/log.js';
 import Declare from '../../libs/tacocat/declare.js';
 
-describe.skip('Declare', () => {
+describe('Declare', () => {
   after(() => {
     Log.reset();
   });

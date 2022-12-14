@@ -30,7 +30,7 @@ describe.skip('Log', () => {
     });
   });
 
-  describe.only('use', () => {
+  describe('use', () => {
     it('registers log filter module', () => {
       const filter = spy();
       Log.use({ filter });

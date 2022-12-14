@@ -10,6 +10,24 @@ export const isPromise = (value) => value != null && value instanceof Promise;
 export const isUndefined = (value) => value === undefined;
 
 /**
+ * @param {number} timeout
+ * @param {AbortSignal} signal
+ * @returns {Promise<never>}
+ */
+export const delay = (timeout, signal = null) => new Promise((_, reject) => {
+  let timer;
+  const aborted = () => {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', aborted);
+    reject(new Error('Aborted'));
+  };
+  signal?.addEventListener('abort', aborted);
+  if (timeout > 0 && timeout < Infinity) {
+    timer = setTimeout(aborted, timeout);
+  }
+});
+
+/**
  * @param {string} selector
  * @returns {Tacocat.Internal.SelectorMatcher}
  */

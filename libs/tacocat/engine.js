@@ -1,7 +1,6 @@
 import { getContextKey } from './context.js';
 import Log from './log.js';
-import Process from './process.js';
-import { isProduct } from './product.js';
+import { isFailure, isProduct } from './product.js';
 import Subtree from './subtree.js';
 import { isNil } from './utilities.js';
 
@@ -10,6 +9,7 @@ const log = Log.common.module('engine');
 /**
  * @param {Map<Element, Tacocat.Engine.Placeholder>} placeholders
  * @param {Tacocat.Internal.Subtree} subtree
+ * @returns {Tacocat.Engine.Placeholder[]}
  */
 function exploreScope(placeholders, { matcher, scope }) {
   const elements = [scope, ...scope.children];
@@ -24,81 +24,75 @@ function exploreScope(placeholders, { matcher, scope }) {
 }
 
 /**
- * @param {Tacocat.Internal.Workflow} workflow
- * @param {Tacocat.Engine.Placeholder[]} placeholders
- * @param {(Tacocat.Internal.Failure | Tacocat.Internal.Product)[]} products
+ * @param {{
+ *  key?: string;
+ *  resolve: (product: Tacocat.Internal.Product, key: string) => void;
+ *  reject: (failure: Tacocat.Internal.Failure, key: string) => void
+ * }} workflow
  */
-function renderRejected({ renderer }, placeholders, products) {
-  placeholders.forEach((placeholder) => {
-    const { context, element } = placeholder;
-    const rejectedKey = getContextKey(context);
-    const product = products.find(
-      (candidate) => rejectedKey === getContextKey(candidate.context),
-    );
-    placeholder.value = undefined;
-    log.debug('Rejected:', { ...product, context, element });
-    return renderer(element, product ? { ...product, context } : { context });
-  });
+function resultHandler({ key, resolve, reject = () => { } }) {
+  /** @param {Tacocat.Internal.Result} result */
+  return (result) => {
+    if (isProduct(result, key)) {
+      log.debug('Resolved:', result);
+      resolve(result, getContextKey(result.context));
+    } else if (isFailure(result, key)) {
+      log.debug('Rejected:', { context, ...result });
+      reject(result, getContextKey(result.context));
+    }
+  };
 }
 
 /**
- * @param {Tacocat.Internal.Workflow} workflow
- * @param {Tacocat.Engine.Placeholder[]} placeholders
- * @param {Tacocat.Internal.Product} product
- */
-function renderResolved({ renderer }, placeholders, product) {
-  placeholders?.forEach((placeholder) => {
-    placeholder.value = product.value;
-    const { element } = placeholder;
-    log.debug('Resolved:', { ...product, element });
-    return renderer(element, product);
-  });
-}
-
-/**
- * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.Workflow} workflow
  * @param {Map<string, Tacocat.Engine.Placeholder[]>} pending
- * @param {any} results
- * @return {Promise<Tacocat.Engine.Placeholder[]>}
+ * @param {Tacocat.Engine.Placeholder[]} rendered
+ * @param {Tacocat.Internal.Result[]} results
  */
-function renderResults(control, workflow, pending, results) {
-  /** @type {Tacocat.Engine.Placeholder[]} */
-  const rendered = [];
-  return Promise.race([
-    control.promise,
-    new Promise((resolve) => {
-      Process(control, log, results, {
-        resolver(products) {
-          const placeholders = [...pending.values()].flat();
-          rendered.push(...placeholders);
-          renderRejected(workflow, placeholders, products);
-          resolve(rendered);
-          pending.clear();
-        },
-        transformer(product) {
-          const resolvedKey = getContextKey(product.context);
-          const placeholders = pending.get(resolvedKey);
-          if (placeholders) {
-            renderResolved(workflow, placeholders, product);
-            rendered.push(...placeholders);
-            pending.delete(resolvedKey);
-          }
-          return product;
-        },
-      });
-    }),
-  ]);
+function renderPlaceholders({ renderer }, pending, rendered, results) {
+  function render(product, key) {
+    pending.get(key)?.forEach((placeholder) => {
+      placeholder.value = product.value;
+      renderer(placeholder.element, product);
+      rendered.push(placeholder);
+    });
+    pending.delete(key);
+  }
+
+  results.forEach(resultHandler({
+    resolve: render,
+    reject: render,
+  }));
 }
 
 /**
- * @param {Tacocat.Internal.Control} control
+ * @param {Tacocat.Internal.Workflow} workflow
+ * @param {Map<string, Tacocat.Engine.Placeholder[]>} pending
+ */
+function provideResults(workflow, pending) {
+  /** @type {Tacocat.Engine.Placeholder[]} */
+  const rendered = [];
+  return workflow
+    .provider([...pending], (result) => {
+      renderPlaceholders(workflow, pending, rendered, [result]);
+    })
+    .then(() => {
+      const error = new Error('Not provided');
+      const failures = [...pending.values()]
+        .flat()
+        .map(({ context }) => ({ context, error }));
+      renderPlaceholders(workflow, pending, rendered, failures);
+    })
+    .then(() => rendered);
+}
+
+/**
  * @param {Tacocat.Internal.Workflow} workflow
  * @param {Map<Element, Tacocat.Engine.Placeholder>} placeholders
  * @param {Tacocat.Engine.Placeholder[]} observed
  * @return {Promise<Tacocat.Engine.Placeholder[]>}
  */
-function processPlaceholders(control, workflow, placeholders, observed) {
+function processPlaceholders(workflow, placeholders, observed) {
   /** @type {Map<string, Tacocat.Engine.Placeholder[]>} */
   const pending = new Map();
   observed.forEach((placeholder) => {
@@ -125,40 +119,24 @@ function processPlaceholders(control, workflow, placeholders, observed) {
       workflow.renderer(element, undefined);
     }
   });
-  return renderResults(control, workflow, pending, workflow.provider([...pending]));
+  return provideResults(workflow, pending);
 }
 
 /**
- * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.Workflow} workflow
  * @param {any} context
  */
-const resolveContext = (control, workflow, context) => Promise.race([
-  control.promise,
-  new Promise((resolve, reject) => {
-    const resolvingKey = getContextKey(context);
-    log.debug('Resolving:', { context });
-    Process(
-      control,
-      log,
-      workflow.provider([context]),
-      {
-        resolver(products) {
-          const product = products.find(
-            (candidate) => resolvingKey === getContextKey(candidate.context),
-          ) ?? { context };
-          if (isProduct(product)) {
-            log.debug('Resolved:', product);
-            resolve(product);
-          } else {
-            log.debug('Rejected:', { context, ...product });
-            reject(product);
-          }
-        },
-      },
-    );
-  }),
-]);
+const resolveContext = (workflow, context) => new Promise((resolve, reject) => {
+  log.debug('Resolving:', { context });
+  const handleResult = resultHandler({
+    key: getContextKey(context),
+    resolve,
+    reject,
+  });
+  workflow
+    .provider([context], handleResult)
+    .then((results) => results.forEach(handleResult));
+});
 
 /**
  * @param {Tacocat.Internal.Control} control
@@ -178,36 +156,20 @@ function Engine(control, workflow, subtree) {
   });
 
   workflow.observer(
-    (observed) => processPlaceholders(
-      control,
-      workflow,
-      placeholders,
-      observed,
-    ),
+    (observed) => processPlaceholders(workflow, placeholders, observed),
     subtree,
   );
 
   return {
     explore(newScope, newSelector) {
-      return exploreScope(
-        placeholders,
-        Subtree(newScope, newSelector),
-      );
+      return exploreScope(placeholders, Subtree(newScope, newSelector));
     },
     refresh(newScope, newSelector) {
-      return processPlaceholders(
-        control,
-        workflow,
-        placeholders,
-        exploreScope(placeholders, Subtree(newScope, newSelector)),
-      );
+      const observed = exploreScope(placeholders, Subtree(newScope, newSelector));
+      return processPlaceholders(workflow, placeholders, observed);
     },
     resolve(context) {
-      return resolveContext(
-        control,
-        workflow,
-        context,
-      );
+      return resolveContext(workflow, context);
     },
   };
 }

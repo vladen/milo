@@ -24,6 +24,7 @@ const createRecord = (level, message, namespace, params) => ({
 });
 
 const debugFilter = { filter: ({ level }) => level !== Level.debug };
+const quietFilter = { filter: () => false };
 
 const consoleWriter = {
   write({ level, message, namespace, params, timestamp }) {
@@ -118,4 +119,4 @@ Log.level = Level;
 Log.reset();
 
 export default Log;
-export { debugFilter, isLog };
+export { debugFilter, isLog, quietFilter };
