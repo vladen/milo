@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import Log, { debugFilter } from '../../libs/tacocat/log.js';
+import Log, { quietFilter } from '../../libs/tacocat/log.js';
 import { getContextKey, projectObject } from '../../libs/tacocat/context.js';
 
 describe('context', () => {
@@ -7,7 +7,7 @@ describe('context', () => {
     Log.reset();
   });
   before(() => {
-    Log.use(debugFilter);
+    Log.use(quietFilter);
   });
 
   describe('getContextKey', () => {
@@ -25,7 +25,7 @@ describe('context', () => {
   describe('projectObject', () => {
     it('returns an object having same properties as the passed object', () => {
       const passed = { boolean: true, number: 1, string: 'string' };
-      expect(projectObject({}, passed)).to.eql(passed);
+      expect(projectObject({}, passed)).to.deep.equal(passed);
     });
 
     it('setting property on the passed object projects it to the returned object', () => {

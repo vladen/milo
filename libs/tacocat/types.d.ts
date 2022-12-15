@@ -132,7 +132,10 @@ declare namespace Tacocat {
   module Internal {
     // --- types ---
     type Consumer = (product: Product) => void;
-    type Control = Tacocat.Engine.Control & { promise: Promise<never> };
+    type Control = Tacocat.Engine.Control & {
+      dispose(disposer: () => void): void;
+      promise: Promise<never>;
+    };
     type Declarer = Tacocat.Engine.Declarer<any, any>;
     type Engine = Omit<Tacocat.Engine.Observe<any, any>, 'observe'>;
     type Extractor = Tacocat.Engine.Extractor<any, any>;
@@ -143,8 +146,8 @@ declare namespace Tacocat {
     type Renderers = Tacocat.Engine.Renderers<any, any>;
     type Resolver = (products: Product[]) => void;
     type Result = Tacocat.Result<any, any>;
-    type SafeDeclarer = Tacocat.Engine.Declarer<any, any>;
-    type SafeExtractor = (element: Element) => object;
+    type SafeDeclarer = (context: object) => boolean;
+    type SafeExtractor = (context: object, element: Element) => boolean;
     type SafeObserver = (
       consumer: (placeholders: Tacocat.Engine.Placeholder[]) => void,
       subtree: Subtree
@@ -207,7 +210,7 @@ declare namespace Tacocat {
 
     interface Module {
       filter?(record: Record): boolean;
-      write?(record: Record): void;
+      writer?(record: Record): void;
     }
 
     interface Record {

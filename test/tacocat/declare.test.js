@@ -1,16 +1,18 @@
 /// <reference path="../../libs/tacocat/types.d.ts" />
 
-import { expect } from '@esm-bundle/chai';
+import { expect, use } from '@esm-bundle/chai';
 import { spy } from 'sinon';
-import Log, { debugFilter } from '../../libs/tacocat/log.js';
+import Log, { quietFilter } from '../../libs/tacocat/log.js';
 import Declare from '../../libs/tacocat/declare.js';
+
+use(require('sinon-chai'));
 
 describe('Declare', () => {
   after(() => {
     Log.reset();
   });
   before(() => {
-    Log.use(debugFilter);
+    Log.use(quietFilter);
   });
 
   it('returns function', () => {
@@ -18,48 +20,70 @@ describe('Declare', () => {
   });
 
   describe('returned function', () => {
-    it('creates context merged of declared objects and declarer function results', () => {
+    it('returns false if its argument is not an object', () => {
+      expect(Declare([null])({})).to.be.false;
+    });
+
+    it('returns false if its argument is not a function returning an object', () => {
+      expect(Declare([() => null])({})).to.be.false;
+    });
+
+    it('returns false if the declarer function throws', () => {
+      const declarer = () => {
+        throw new Error('test');
+      };
+      expect(Declare([declarer])({})).to.be.false;
+    });
+
+    it('returns true if all arguments are objects or functions returning objects', () => {
+      expect(Declare([{}, () => {}])({})).to.be.true;
+    });
+
+    it('merges declared objects and declarer function results into the context object', () => {
+      const context = {};
       const object1 = { test1: 1 };
       const object2 = { test2: 2 };
       const object3 = { test3: 3 };
-      const object4 = { test4: 4 };
-      const declared = Declare([object1, () => object2, object3, () => object4])({});
-      expect(declared).to.be.eql({ ...object1, ...object2, ...object3, ...object4 });
+      Declare([object1, () => object2, object3])(context);
+      expect(context).to.deep.equal({ ...object1, ...object2, ...object3 });
     });
 
-    it('overrides previoudly declared property', () => {
+    it('overrides previoudly declared property in the context object', () => {
       const object1 = { test: 1 };
       const object2 = { test: 2 };
-      const declared = Declare([object1, () => object2])({});
-      expect(declared).to.be.eql(object2);
+      Declare([object1, () => object2])(context);
+      expect(context).to.deep.equal(object2);
     });
 
-    it('passes already constructed context to the next declarer', () => {
+    it('calls declarer function with context argument', () => {
+      const context = {};
       const object1 = { test: 1 };
       const object2 = { test: 2 };
       const declarer = spy(() => ({}));
-      Declare([object1, () => object2, declarer])({});
-      expect(declarer.firstCall.firstArg).to.be.eql(object2);
+      Declare([object1, declarer, () => object2, declarer])(context);
+      expect(declarer).to.have.been.calledTwice();
+      expect(declarer).to.have.been.always.calledWithExactly(context);
     });
 
-    it('projects first static context to the returned object', () => {
-      const context = { test: 1 };
-      const object1 = { test1: 2 };
-      const object2 = { test2: 3 };
-      const object = Declare([context, object1, () => object2])({});
-      expect(object.test).to.be.equal(1);
-      object.test = 4;
-      expect(context.test).to.be.equal(4);
+    it('projects first declared object to the context object', () => {
+      const context = {};
+      const object1 = { test: 1 };
+      const object2 = { test: 2 };
+      Declare([object1, () => object2])(context);
+      expect(context.test).to.equal(1);
+      context.test = 3;
+      expect(object1.test).to.equal(3);
     });
 
-    it('does not project not first context to the returned object', () => {
-      const context = { test: 1 };
-      const object1 = { test1: 2 };
-      const object = Declare([() => object1, context])({});
-      expect(object.test).to.be.equal(1);
-      object.test = 4;
-      expect(context.test).to.be.equal(1);
-      expect(object.test).to.be.equal(4);
+    it('does not project second declared object to the context object', () => {
+      const context = {};
+      const object1 = { test1: 1 };
+      const object2 = { test2: 2 };
+      Declare([() => object1, object2])(context);
+      expect(context.test2).to.equal(2);
+      context.test2 = 3;
+      expect(context.test2).to.equal(3);
+      expect(object2.test2).to.equal(2);
     });
   });
 });

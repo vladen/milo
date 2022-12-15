@@ -9,9 +9,8 @@ const log = Log.common.module('extract');
  * @param {Tacocat.Internal.Extractor[]} extractors
  * @returns {Tacocat.Internal.SafeExtractor}
  */
-const Extract = (declarer, extractors) => (element) => {
-  const context = declarer();
-  if (!isNil(context) && extractors.every((extractor) => {
+const Extract = (declarer, extractors) => (context, element) => {
+  if (declarer(context) && extractors.every((extractor) => {
     const extracted = safeSync(
       log,
       'Extractor callback error:',
@@ -20,15 +19,16 @@ const Extract = (declarer, extractors) => (element) => {
     if (isObject(extracted)) {
       Object.assign(context, extracted);
       return true;
-    } if (!isNil(extracted)) {
+    }
+    if (!isNil(extracted)) {
       log.warn('Unexpected extracted type:', { extracted, extractor });
     }
     return false;
   })) {
     log.debug('Extracted:', { context, extractors });
-    return context;
+    return true;
   }
-  return undefined;
+  return false;
 };
 
 export default Extract;

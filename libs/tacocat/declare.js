@@ -22,19 +22,22 @@ const Declare = (declarers) => (context) => {
         Object.assign(context, declared);
         return true;
       }
-    } if (isObject(declarer)) {
+    }
+    if (isObject(declarer)) {
       declared = declarer;
       if (index === 0) projectObject(context, declared);
       else Object.assign(context, declared);
       return true;
     }
-    log.warn('Unexpected declared type:', { declared, declarer });
+    if (!isNil(declared)) {
+      log.warn('Unexpected declared type:', { declared, declarer });
+    }
     return false;
   })) {
     log.debug('Declared:', { context, declarers });
-    return context;
+    return true;
   }
-  return undefined;
+  return false;
 };
 
 export default Declare;

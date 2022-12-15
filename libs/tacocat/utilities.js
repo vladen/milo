@@ -12,14 +12,14 @@ export const isUndefined = (value) => value === undefined;
 /**
  * @param {number} timeout
  * @param {AbortSignal} signal
- * @returns {Promise<never>}
+ * @returns {Promise<boolean>}
  */
-export const delay = (timeout, signal = null) => new Promise((_, reject) => {
+export const delay = (timeout, signal = null) => new Promise((resolve) => {
   let timer;
   const aborted = () => {
     clearTimeout(timer);
     signal?.removeEventListener('abort', aborted);
-    reject(new Error('Aborted'));
+    resolve(signal?.aborted ?? false);
   };
   signal?.addEventListener('abort', aborted);
   if (timeout > 0 && timeout < Infinity) {
@@ -36,16 +36,6 @@ export const createSelectorMatcher = (selector) => (
     ? (element) => element?.matches(selector)
     : (element) => element && element instanceof Element
 );
-
-/**
- * @param {Node} node
- * @param {(element: Element) => boolean} matcher
- * @returns {Element | undefined}
- */
-export function getMatchingSelfOrParent(node, matcher) {
-  const element = (node instanceof Element ? node : node.parentElement);
-  return element && matcher(element) ? element : undefined;
-}
 
 /**
  * @param {MutationObserverInit[]} mutations

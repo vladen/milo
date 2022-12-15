@@ -4,9 +4,10 @@ import { expect } from '@esm-bundle/chai';
 import { spy } from 'sinon';
 import Log, { isLog } from '../../libs/tacocat/log.js';
 
-describe.skip('isLog', () => {
+describe('function "isLog"', () => {
   it('returns false of argument is not an instance of Log', () => {
     expect(isLog()).to.be.false;
+    expect(isLog({})).to.be.false;
   });
 
   it('returns true of argument is an instance of Log', () => {
@@ -15,22 +16,22 @@ describe.skip('isLog', () => {
   });
 });
 
-describe.skip('Log', () => {
-  describe('object', () => {
-    describe('module', () => {
+describe.skip('function "Log"', () => {
+  describe('returned object', () => {
+    describe('method "module"', () => {
       it('returns new Log instance with module name added to namespace', () => {
         expect(Log('test').module('module').namespace).to.contain('module');
       });
     });
 
-    describe('namespace', () => {
+    describe('property "namespace"', () => {
       it('returns namespace assigned to the Log instance', () => {
         expect(Log('test').namespace).to.contain('test');
       });
     });
   });
 
-  describe('use', () => {
+  describe('static method "use"', () => {
     it('registers log filter module', () => {
       const filter = spy();
       Log.use({ filter });
@@ -43,7 +44,7 @@ describe.skip('Log', () => {
 
     it.only('registers log writer module', () => {
       const write = spy();
-      Log.use({ write });
+      Log.use({ writer: write });
       Log.common.error('Test');
       expect(write.firstCall.firstArg).to.contain({
         level: Log.level.error,

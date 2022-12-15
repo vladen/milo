@@ -19,6 +19,7 @@ function exploreScope(placeholders, { matcher, scope }) {
       const placeholder = placeholders.get(element);
       if (placeholder) results.push({ ...placeholder });
     }
+    elements.push(...element.children);
   });
   return results;
 }
@@ -45,18 +46,20 @@ function resultHandler({ key, resolve, reject = () => { } }) {
 
 /**
  * @param {Tacocat.Internal.Workflow} workflow
- * @param {Map<string, Tacocat.Engine.Placeholder[]>} pending
+ * @param {Map<string, Map<Element, Tacocat.Engine.Placeholder>>} pending
  * @param {Tacocat.Engine.Placeholder[]} rendered
  * @param {Tacocat.Internal.Result[]} results
  */
 function renderPlaceholders({ renderer }, pending, rendered, results) {
   function render(product, key) {
-    pending.get(key)?.forEach((placeholder) => {
-      placeholder.value = product.value;
-      renderer(placeholder.element, product);
-      rendered.push(placeholder);
-    });
-    pending.delete(key);
+    if (pending.has(key)) {
+      [...pending.get(key).values()].forEach((placeholder) => {
+        placeholder.value = product.value;
+        renderer(placeholder.element, product);
+        rendered.push(placeholder);
+      });
+      pending.delete(key);
+    }
   }
 
   results.forEach(resultHandler({
@@ -67,7 +70,7 @@ function renderPlaceholders({ renderer }, pending, rendered, results) {
 
 /**
  * @param {Tacocat.Internal.Workflow} workflow
- * @param {Map<string, Tacocat.Engine.Placeholder[]>} pending
+ * @param {Map<string, Map<Element, Tacocat.Engine.Placeholder>>} pending
  */
 function provideResults(workflow, pending) {
   /** @type {Tacocat.Engine.Placeholder[]} */
@@ -78,9 +81,11 @@ function provideResults(workflow, pending) {
     })
     .then(() => {
       const error = new Error('Not provided');
-      const failures = [...pending.values()]
-        .flat()
-        .map(({ context }) => ({ context, error }));
+      const failures = [...pending.values()].flatMap(
+        (placeholders) => [...placeholders.values()].map(
+          ({ context }) => ({ context, error }),
+        ),
+      );
       renderPlaceholders(workflow, pending, rendered, failures);
     })
     .then(() => rendered);
@@ -93,13 +98,11 @@ function provideResults(workflow, pending) {
  * @return {Promise<Tacocat.Engine.Placeholder[]>}
  */
 function processPlaceholders(workflow, placeholders, observed) {
-  /** @type {Map<string, Tacocat.Engine.Placeholder[]>} */
+  /** @type {Map<string, Map<Element, Tacocat.Engine.Placeholder>>} */
   const pending = new Map();
   observed.forEach((placeholder) => {
-    const { element, value } = placeholder;
-    let { context } = placeholder;
-    if (!isNil(context)) context = workflow.extractor(element);
-    if (isNil(context)) {
+    const { context, element, value } = placeholder;
+    if (isNil(context) || !workflow.extractor(context, element)) {
       log.debug('Disposed:', { element, context, value });
       placeholders.delete(element);
     } else {
@@ -110,11 +113,10 @@ function processPlaceholders(workflow, placeholders, observed) {
       } else {
         placeholders.set(element, { context, element, stage: 'pending', value });
       }
-      if (pending.has(observedKey)) {
-        pending.get(observedKey).push(placeholder);
-      } else {
-        pending.set(observedKey, [placeholder]);
+      if (!pending.has(observedKey)) {
+        pending.set(observedKey, new Map());
       }
+      pending.get(observedKey).set(element, placeholder);
       log.debug('Pending:', { context, element });
       workflow.renderer(element, undefined);
     }

@@ -27,7 +27,7 @@ const debugFilter = { filter: ({ level }) => level !== Level.debug };
 const quietFilter = { filter: () => false };
 
 const consoleWriter = {
-  write({ level, message, namespace, params, timestamp }) {
+  writer({ level, message, namespace, params, timestamp }) {
     // eslint-disable-next-line no-console
     console[level](`[${namespace}]`, message, ...params, `(+${timestamp}ms)`);
   },
@@ -100,11 +100,11 @@ Log.reset = () => {
 Log.use = (...modules) => {
   modules.forEach(
     (module) => {
-      const { filter, write } = module;
+      const { filter, writer } = module;
       if (isFunction(filter)) {
         filters.add(filter);
-      } else if (isFunction(write)) {
-        writers.add(write);
+      } else if (isFunction(writer)) {
+        writers.add(writer);
       } else {
         Log.common.warn('Unknown log module:', { module });
       }
