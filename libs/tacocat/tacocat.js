@@ -105,7 +105,7 @@ const extract = (control, declarer, extractors, mutations, listeners = []) => ({
     return transform(
       control,
       Extract(declarer, extractors),
-      Observe(control, { listeners, mutations: mergeMutations(mutations) }),
+      Observe(control, listeners, mergeMutations(mutations)),
       provider,
     );
   },

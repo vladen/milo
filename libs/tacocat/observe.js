@@ -1,24 +1,23 @@
-import { dispose } from './control.js';
 import Log from './log.js';
-import { createSelectorMatcher } from './utilities.js';
+import { safeSync } from './safe.js';
+import { isFunction } from './utilities.js';
 
 const log = Log.common.module('observer');
 
 /**
  * @param {Tacocat.Internal.Control} control
- * @param {Tacocat.Internal.Reactions} reactions
+ * @param {Tacocat.Internal.Listener[]} listeners
+ * @param {Tacocat.Internal.Mutations} mutations
  * @returns {Tacocat.Internal.SafeObserver}
  */
-const Observe = (control, { listeners, mutations }) => (consumer, { scope, selector }) => {
-  /** @type {Map<Element, (() => void)[]>} */
-  const listening = new Map();
+const Observe = (control, listeners, mutations) => (consumer, { matcher, scope, selector }) => {
+  /** @type {Set<Element>} */
+  const listening = new Set();
   /** @type {Set<Element>} */
   const removed = new Set();
   /** @type {Set<Element>} */
   const updated = new Set();
   let timer;
-
-  const matcher = createSelectorMatcher(selector);
   /**
    * @param {Node} node
    * @returns {Element | undefined}
@@ -29,7 +28,12 @@ const Observe = (control, { listeners, mutations }) => (consumer, { scope, selec
       : node.parentElement;
     if (element) {
       if (matcher(element)) return element;
-      if (mutations.subtree) return element.closest(selector);
+      if (mutations.subtree) {
+        const closest = element.closest(selector);
+        if (closest?.compareDocumentPosition(scope) === Node.DOCUMENT_POSITION_CONTAINS) {
+          return closest;
+        }
+      }
     }
     return undefined;
   }
@@ -57,6 +61,38 @@ const Observe = (control, { listeners, mutations }) => (consumer, { scope, selec
     }
   }
 
+  function remove(element) {
+    if (!element) return;
+
+    control.dismiss(element);
+    removed.add(element);
+    updated.delete(element);
+  }
+
+  function update(element) {
+    if (!element) return;
+
+    removed.delete(element);
+    updated.add(element);
+
+    if (listeners.length && !listening.has(element)) {
+      const listen = () => {
+        updated.add(element);
+        produce();
+      };
+      listeners.forEach((listener) => {
+        const disposer = safeSync(log, 'Listener callback error:', () => listener(element, listen));
+        if (isFunction(disposer)) {
+          control.dispose(disposer, element);
+        } else {
+          log.error('Listener callback must return a function:', { listener });
+        }
+      });
+      log.debug('Listening:', { element, listeners });
+      listening.add(element);
+    }
+  }
+
   const observer = new MutationObserver((records) => records.forEach((record) => {
     const { type } = record;
     if (type === 'attributes' || type === 'characterData') {
@@ -64,49 +100,33 @@ const Observe = (control, { listeners, mutations }) => (consumer, { scope, selec
       if (element) updated.add(element);
     } else if (type === 'childList') {
       const { addedNodes, removedNodes } = record;
-
       [...removedNodes].forEach((node) => {
-        const element = match(node);
-        if (element) {
-          listening.get(element)?.forEach(dispose);
-          removed.add(element);
-          updated.delete(element);
-        }
+        remove(match(node));
       });
-
       [...addedNodes].forEach((node) => {
-        const element = match(node);
-        if (element) {
-          removed.delete(element);
-          updated.add(element);
-
-          if (listeners.length && !listening.has(element)) {
-            const disposers = listeners.map((listener) => listener(element, () => {
-              updated.add(element);
-              produce();
-            }));
-            log.debug('Listening:', { element, listeners });
-            listening.set(element, disposers);
-          }
-        }
+        update(match(node));
       });
     }
 
     produce();
   }));
 
-  if (!control.signal.aborted) {
-    log.debug('Observing:', { listeners, mutations, scope, selector });
-
+  if (!control.signal?.aborted) {
     const elements = [scope];
-    elements.forEach((element) => {
-      elements.push(...element.children);
-      if (matcher(element)) updated.add(element);
-    });
+    let index = 0;
+    while (index < elements.length) {
+      const element = elements[index];
+      if (mutations.childList) elements.push(...element.children);
+      update(match(element));
+      index += 1;
+    }
     produce();
 
     observer.observe(scope, mutations);
-    control.dispose(() => observer.disconnect());
+    control.dispose(() => {
+      observer.disconnect();
+    });
+    log.debug('Observing:', { listeners, mutations, scope, selector });
   }
 };
 

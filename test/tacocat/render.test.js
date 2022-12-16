@@ -1,11 +1,11 @@
 /// <reference path="../../libs/tacocat/types.d.ts" />
 
-import { expect } from '@esm-bundle/chai';
-import { spy } from 'sinon';
+import { expect, spy } from './tools.js';
 import Log, { debugFilter } from '../../libs/tacocat/log.js';
 import Render from '../../libs/tacocat/render.js';
+import { Failure, Product } from '../../libs/tacocat/product.js';
 
-describe('Render', () => {
+describe('function "Render"', () => {
   after(() => {
     Log.reset();
   });
@@ -18,50 +18,42 @@ describe('Render', () => {
   });
 
   describe('returned function', () => {
-    it('calls pending renderer callback for undefined product and returns element returned by it', () => {
+    it('calls only "pending" callback for undefined product', () => {
       const element = document.body;
-      const pending = spy((e) => e);
-      const rejected = spy();
-      const resolved = spy();
-      expect(Render([{ pending, rejected, resolved }])(element)).to.equal(element);
-      expect(pending.firstCall.args).to.equal([element]);
-      expect(rejected.called).to.equal(false);
-      expect(resolved.called).to.equal(false);
-    });
-
-    it.only('calls rejected renderer callback for failure product and returns element returned by it', () => {
-      const element = document.body;
-      const product = { context: {}, error: 'Test' };
-      const pending = spy();
-      const rejected = spy((e) => e);
-      const resolved = spy();
-      expect(Render([{ pending, rejected, resolved }])(element, product)).to.equal(element);
-      expect(rejected.firstCall.firstArg).to.equal(element);
-      expect(pending.called).to.equal(false);
-      expect(resolved.called).to.equal(false);
-    });
-
-    it('calls rejected renderer callback for failure product and returns element returned by it', () => {
-      const element = document.body;
-      const product = { context: {}, value: 'Value' };
       const pending = spy();
       const rejected = spy();
-      const resolved = spy((e) => e);
-      expect(Render([{ pending, rejected, resolved }])(element)).to.equal(element);
-      expect(resolved.firstCall.args).to.equal([element, product]);
-      expect(pending.called).to.equal(false);
-      expect(rejected.called).to.equal(false);
+      const resolved = spy();
+      const renderer = Render([{ pending, rejected, resolved }]);
+      renderer(element);
+      expect(pending).to.have.been.called;
+      expect(rejected).not.to.have.been.called;
+      expect(resolved).not.to.have.been.called;
     });
 
-    it('attempts renderers until one returns element', () => {
+    it.only('calls only "rejected" callbacks for provider failure', () => {
       const element = document.body;
-      const renderer1 = spy();
-      const renderer2 = spy((e) => e);
-      const renderer3 = spy();
-      expect(Render([{ pending: [renderer1, renderer2, renderer3] }])(element)).to.equal(element);
-      expect(renderer1.called).to.equal(true);
-      expect(renderer2.called).to.equal(true);
-      expect(renderer3.called).to.equal(false);
+      const failure = Failure({}, new Error('Test'));
+      const pending = spy();
+      const rejected = spy();
+      const resolved = spy();
+      const renderer = Render([{ pending, rejected, resolved }]);
+      renderer(element, failure);
+      expect(pending).not.to.have.been.called;
+      expect(rejected).to.have.been.calledOnceWith(element, failure);
+      expect(resolved).not.to.have.been.called;
+    });
+
+    it('calls only "resolved" callbacks for provided product', () => {
+      const element = document.body;
+      const product = Product({}, 'Value');
+      const pending = spy();
+      const rejected = spy();
+      const resolved = spy();
+      const renderer = Render([{ pending, rejected, resolved }]);
+      renderer(element, product);
+      expect(pending).not.to.have.been.called;
+      expect(resolved).to.has.been.calledOnceWith(element, product);
+      expect(rejected).not.to.have.been.called;
     });
   });
 });

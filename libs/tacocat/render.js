@@ -31,29 +31,25 @@ const Render = (renderers) => {
     });
   });
 
-  log.debug('Created:', { renderers: Object.values(groups) });
+  log.debug('Created:', { renderers: groups });
 
   return (element, result) => {
     let group;
-    let output;
 
     if (isUndefined(result)) group = groups.pending;
     else if (isProduct(result)) group = groups.resolved;
     else group = groups.rejected;
 
-    group.every((renderer) => {
-      output = safeSync(log, 'Renderer callback error:', () => renderer(element, result));
-      if (isUndefined(output)) {
-        log.debug('Rendered:', { element, result, renderer });
-        return true;
-      }
-      return false;
-    });
-    if (isUndefined(output) && !isUndefined(result)) {
-      log.debug('No renderer found:', { element, result, renderers: group });
+    const rendered = group.filter((renderer) => safeSync(
+      log,
+      'Renderer callback error:',
+      () => renderer(element, result),
+    ));
+    if (renderers.length) {
+      log.debug('Rendered:', { element, result, renderers: rendered });
+    } else {
+      log.debug('Not rendered:', { element, result });
     }
-
-    return output;
   };
 };
 

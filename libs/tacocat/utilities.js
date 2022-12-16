@@ -10,22 +10,11 @@ export const isPromise = (value) => value != null && value instanceof Promise;
 export const isUndefined = (value) => value === undefined;
 
 /**
- * @param {number} timeout
- * @param {AbortSignal} signal
- * @returns {Promise<boolean>}
+ * @param {boolean?} existing
+ * @param {boolean?} overriding
+ * @returns {boolean}
  */
-export const delay = (timeout, signal = null) => new Promise((resolve) => {
-  let timer;
-  const aborted = () => {
-    clearTimeout(timer);
-    signal?.removeEventListener('abort', aborted);
-    resolve(signal?.aborted ?? false);
-  };
-  signal?.addEventListener('abort', aborted);
-  if (timeout > 0 && timeout < Infinity) {
-    timer = setTimeout(aborted, timeout);
-  }
-});
+const combineFlags = (existing, overriding) => (existing ?? false) || (overriding ?? false);
 
 /**
  * @param {string} selector
@@ -38,33 +27,37 @@ export const createSelectorMatcher = (selector) => (
 );
 
 /**
- * @param {MutationObserverInit[]} mutations
+ * @param {number} timeout
+ * @param {AbortSignal} signal
+ * @returns {Promise<Error?>}
  */
-export const mergeMutations = (mutations) => mutations
-  .reduce(
-    (options, {
-      attributeFilter,
-      attributes,
-      characterData,
-      childList,
-      subtree,
-    } = {}) => {
-      if (attributeFilter) {
-        options.attributeFilter = (options.attributeFilter ?? []).concat(attributeFilter);
-      }
-      if (attributes) options.attributes &&= attributes;
-      if (characterData) options.characterData &&= characterData;
-      if (childList) options.childList &&= childList;
-      if (subtree) options.subtree &&= subtree;
-      return options;
-    },
-    {},
-  );
+export const delay = (timeout, signal = null) => new Promise((resolve) => {
+  let timer;
+  if (timeout > 0 && timeout < Infinity) {
+    timer = setTimeout(resolve, timeout);
+    signal?.addEventListener('abort', () => clearTimeout(timer), { once: true });
+  }
+});
 
 /**
- * @param {number} timeout
- * @returns {Promise<never>}
+ * @param {MutationObserverInit[]} mutations
  */
-export const rejectAfter = (timeout = 0) => new Promise((_, reject) => {
-  setTimeout(() => reject, timeout);
-});
+export const mergeMutations = (mutations) => mutations.reduce(
+  (options, {
+    attributeFilter,
+    attributes,
+    characterData,
+    childList,
+    subtree,
+  } = {}) => {
+    if (attributeFilter) {
+      options.attributeFilter = (options.attributeFilter ?? []).concat(attributeFilter);
+    }
+    options.attributes = combineFlags(options.attributes, attributes);
+    options.characterData = combineFlags(options.characterData, characterData);
+    options.childList = combineFlags(options.childList, childList);
+    options.subtree = combineFlags(options.subtree, subtree);
+    return options;
+  },
+  {},
+);

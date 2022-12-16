@@ -1,13 +1,10 @@
 /// <reference path="../../libs/tacocat/types.d.ts" />
 
-import { expect, use } from '@esm-bundle/chai';
-import { spy } from 'sinon';
+import { expect, spy } from './tools.js';
 import Log, { quietFilter } from '../../libs/tacocat/log.js';
 import Declare from '../../libs/tacocat/declare.js';
 
-use(require('sinon-chai'));
-
-describe('Declare', () => {
+describe('function "Declare"', () => {
   after(() => {
     Log.reset();
   });
@@ -36,7 +33,7 @@ describe('Declare', () => {
     });
 
     it('returns true if all arguments are objects or functions returning objects', () => {
-      expect(Declare([{}, () => {}])({})).to.be.true;
+      expect(Declare([{}, () => ({})])({})).to.be.true;
     });
 
     it('merges declared objects and declarer function results into the context object', () => {
@@ -49,10 +46,10 @@ describe('Declare', () => {
     });
 
     it('overrides previoudly declared property in the context object', () => {
-      const object1 = { test: 1 };
-      const object2 = { test: 2 };
-      Declare([object1, () => object2])(context);
-      expect(context).to.deep.equal(object2);
+      const context = { test: 1 };
+      const object = { test: 2 };
+      Declare([() => context, () => object])(context);
+      expect(context).to.deep.equal(object);
     });
 
     it('calls declarer function with context argument', () => {
@@ -61,7 +58,7 @@ describe('Declare', () => {
       const object2 = { test: 2 };
       const declarer = spy(() => ({}));
       Declare([object1, declarer, () => object2, declarer])(context);
-      expect(declarer).to.have.been.calledTwice();
+      expect(declarer).to.have.been.calledTwice;
       expect(declarer).to.have.been.always.calledWithExactly(context);
     });
 
@@ -70,7 +67,7 @@ describe('Declare', () => {
       const object1 = { test: 1 };
       const object2 = { test: 2 };
       Declare([object1, () => object2])(context);
-      expect(context.test).to.equal(1);
+      expect(context.test).to.equal(2);
       context.test = 3;
       expect(object1.test).to.equal(3);
     });

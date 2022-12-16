@@ -7,8 +7,8 @@ declare namespace Tacocat {
   type isUndefined = (value: any) => value is undefined;
 
   type hasContext = (candidate: any) => candidate is Result<any, any>;
-  type isFailure = (candidate: any, key?: string) => candidate is Failure<any>;
-  type isProduct = (candidate: any, key?: string) => candidate is Product<any, any>;
+  type isFailure = (candidate: any) => candidate is Failure<any>;
+  type isProduct = (candidate: any) => candidate is Product<any, any>;
 
   type Contextful<T> = { context?: T };
   type Failure<T> = Contextful<T> & Error;
@@ -18,15 +18,6 @@ declare namespace Tacocat {
   module Engine {
     // --- types ---
     type Declarer<T, U extends object> = (context: T) => U;
-
-    /**
-     * @returns
-     * - undefined - the template cannot be applied to this context/value
-     * - null - the template removed placeholder element and it should not be handled anymore
-     * - Element - the template updated existing placeholder element and confirms this by returning it
-     * - Element - the template replaced existing placeholder with new one, the new one is returned for tracking
-     */
-    type Effect = void | Element;
 
     type Extractor<T, U extends object> = (context: T, element: Element) => U;
 
@@ -103,15 +94,15 @@ declare namespace Tacocat {
       render(renderers: Renderers<T, U>): Render<T, U>;
     }
 
-    type PendingRenderer = (element: Element) => Effect;
+    type PendingRenderer = (element: Element) => boolean;
     type RejectedRenderer<T> = (
       element: Element,
       failure: Failure<T>
-    ) => Effect;
+    ) => boolean;
     type ResolvedRenderer<T, U> = (
       element: Element,
       product: Product<T, U>
-    ) => Effect;
+    ) => boolean;
     interface Renderers<T, U> {
       pending?: PendingRenderer | PendingRenderer[];
 
@@ -133,14 +124,16 @@ declare namespace Tacocat {
     // --- types ---
     type Consumer = (product: Product) => void;
     type Control = Tacocat.Engine.Control & {
-      dispose(disposer: () => void): void;
-      promise: Promise<never>;
+      dismiss(key: any): void;
+      dispose(disposer: () => void, key: any): void;
+      promise: Promise<Error>;
     };
     type Declarer = Tacocat.Engine.Declarer<any, any>;
     type Engine = Omit<Tacocat.Engine.Observe<any, any>, 'observe'>;
     type Extractor = Tacocat.Engine.Extractor<any, any>;
     type Failure = Tacocat.Failure<any>;
     type Listener = Tacocat.Engine.Listener;
+    type Mutations = Tacocat.Engine.Mutations;
     type Product = Tacocat.Product<any, any>;
     type Provider = Tacocat.Engine.Provider<any, any>;
     type Renderers = Tacocat.Engine.Renderers<any, any>;
@@ -159,15 +152,11 @@ declare namespace Tacocat {
     type SafeRenderer = (
       element: Element,
       result: Tacocat.Result<any, any> | undefined
-    ) => Tacocat.Engine.Effect;
+    ) => void;
     type SelectorMatcher = (element: Element) => boolean;
     type Transformer = (product: Product) => Product;
 
     // --- interfaces ---
-    interface Reactions {
-      listeners: Engine.Listener[];
-      mutations: Engine.Mutations;
-    }
     interface Subtree {
       matcher: SelectorMatcher;
       scope: Element;

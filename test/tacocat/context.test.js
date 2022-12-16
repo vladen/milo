@@ -1,8 +1,8 @@
-import { expect } from '@esm-bundle/chai';
+import { expect } from './tools.js';
 import Log, { quietFilter } from '../../libs/tacocat/log.js';
 import { getContextKey, projectObject } from '../../libs/tacocat/context.js';
 
-describe('context', () => {
+describe('module "context"', () => {
   after(() => {
     Log.reset();
   });
@@ -10,7 +10,7 @@ describe('context', () => {
     Log.use(quietFilter);
   });
 
-  describe('getContextKey', () => {
+  describe('function "getContextKey"', () => {
     it('returns empty string for null and undefined', () => {
       expect(getContextKey()).to.equal('');
       expect(getContextKey(null)).to.equal('');
@@ -22,7 +22,7 @@ describe('context', () => {
     });
   });
 
-  describe('projectObject', () => {
+  describe('function "projectObject"', () => {
     it('returns an object having same properties as the passed object', () => {
       const passed = { boolean: true, number: 1, string: 'string' };
       expect(projectObject({}, passed)).to.deep.equal(passed);

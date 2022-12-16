@@ -1,7 +1,6 @@
 /// <reference path="../../libs/tacocat/types.d.ts" />
 
-import { expect } from '@esm-bundle/chai';
-import { spy } from 'sinon';
+import { expect, spy } from './tools.js';
 import Log, { isLog } from '../../libs/tacocat/log.js';
 
 describe('function "isLog"', () => {

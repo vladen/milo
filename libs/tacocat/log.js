@@ -33,7 +33,7 @@ const consoleWriter = {
   },
 };
 
-function registerError(message, ...params) {
+function commitError(message, ...params) {
   consoleWriter.write(createRecord(
     Level.error,
     message,
@@ -48,7 +48,7 @@ function commitRecord(record) {
     try {
       return filter(record);
     } catch (error) {
-      registerError('Log filter error:', { record, filter });
+      commitError('Log filter error:', { record, filter });
       return true;
     }
   })) {
@@ -56,7 +56,7 @@ function commitRecord(record) {
       try {
         writer(record);
       } catch (error) {
-        registerError('Log eriter error:', { record, writer });
+        commitError('Log eriter error:', { record, writer });
       }
     });
   }

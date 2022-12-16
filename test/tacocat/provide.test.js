@@ -1,17 +1,17 @@
 /// <reference path="../../libs/tacocat/types.d.ts" />
 
-import { expect } from '@esm-bundle/chai';
-import { spy } from 'sinon';
+import { expect, spy } from './tools.js';
 import Control from '../../libs/tacocat/control.js';
 import Log, { quietFilter } from '../../libs/tacocat/log.js';
 import Provide from '../../libs/tacocat/provide.js';
 import { delay } from '../../libs/tacocat/utilities.js';
+import { Failure, Product } from '../../libs/tacocat/product.js';
 
 // use(chaiAsPromised);
 
 const control = Control({ timeout: Infinity });
 
-describe('Provide', () => {
+describe('function "Provide"', () => {
   after(() => {
     Log.reset();
   });
@@ -26,10 +26,10 @@ describe('Provide', () => {
   describe('returned function', () => {
     it('returns a promise resolving to array of provided products', async () => {
       const context = {};
-      const product1 = { context, value: 1 };
-      const failure1 = { context, error: 'Error1' };
-      const product2 = { context, value: 2 };
-      const failure2 = { context, error: 'Error2' };
+      const product1 = Product(context, 1);
+      const failure1 = Failure(context, new Error('Error1'));
+      const product2 = Product(context, 2);
+      const failure2 = Failure(context, new Error('Error2'));
       const provide = Provide(
         control,
         () => Promise.resolve([
@@ -49,8 +49,8 @@ describe('Provide', () => {
 
     it('applies all transformers to each provided product', async () => {
       const context = {};
-      const product1 = { context, value: 'one' };
-      const product2 = { context, value: 'two' };
+      const product1 = Product(context, 'one');
+      const product2 = Product(context, 'two');
       const provide = Provide(
         control,
         () => [Promise.resolve(product1), Promise.resolve([product2])],
@@ -68,7 +68,7 @@ describe('Provide', () => {
 
     it('does apply transformers to failure', async () => {
       const context = {};
-      const failure = { context, error: 'Error' };
+      const failure = Failure(context, new Error('Error'));
       const transformer1 = spy((product) => product);
       const transformer2 = spy((product) => product);
       const provide = Provide(
@@ -80,15 +80,15 @@ describe('Provide', () => {
         ],
       );
       await provide([context], () => { });
-      expect(transformer1.called).to.be.false;
-      expect(transformer2.called).to.be.false;
+      expect(transformer1).not.to.be.called;
+      expect(transformer2).not.to.be.called;
     });
 
     it('calls consumer callback for each provided product', async () => {
       const context = {};
-      const product1 = { context, value: 1 };
-      const failure = { context, error: 'Error1' };
-      const product2 = { context, value: 2 };
+      const product1 = Product(context, 1);
+      const failure = Failure(context, new Error('Error1'));
+      const product2 = Product(context, 2);
       const consume = spy();
       const provide = Provide(control, () => [
         Promise.resolve(product1),
@@ -104,10 +104,15 @@ describe('Provide', () => {
 
     it('returns a promise fulfiling on timeout', async () => {
       const context = {};
-      const product = { context, value: 1 };
-      const provide = Provide(control, () => delay(2).then(() => product), []);
-      const [error] = await provide([context], () => {});
-      return expect(error).be.instanceOf(Error);
+      const product = Product(context, 1);
+      const provide = Provide(
+        Control({ timeout: 1 }),
+        () => delay(10).then(() => product),
+        [],
+      );
+      const products = await provide([context], () => {});
+      expect(products).to.be.instanceOf(Array);
+      expect(products).to.be.empty;
     });
   });
 });

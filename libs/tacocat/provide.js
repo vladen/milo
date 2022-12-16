@@ -1,7 +1,7 @@
 import Log from './log.js';
 import { isFailure, isProduct } from './product.js';
 import { safeAsync } from './safe.js';
-import { isFunction, isPromise } from './utilities.js';
+import { delay, isFunction, isPromise } from './utilities.js';
 
 const log = Log.common.module('provide');
 
@@ -100,7 +100,7 @@ const Provide = (control, provider, transformers) => (contexts, consumer) => {
     () => provider(control, contexts),
   );
   return Promise.race([
-    control.promise,
+    control.promise.catch(() => []),
     new Promise((resolver) => {
       processProducts(control, {
         awaiting: 0,

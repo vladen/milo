@@ -1,16 +1,12 @@
 /// <reference path="../../libs/tacocat/types.d.ts" />
 
-import { expect, use } from '@esm-bundle/chai';
-import { spy } from 'sinon';
-import sinon from 'sinon-chai';
+import { expect, spy } from './tools.js';
 import Extract from '../../libs/tacocat/extract.js';
 import Log, { quietFilter } from '../../libs/tacocat/log.js';
 
-use(sinon);
-
 const declarer = () => true;
 
-describe('Extract', () => {
+describe('function "Extract"', () => {
   after(() => {
     Log.reset();
   });
@@ -39,7 +35,7 @@ describe('Extract', () => {
     });
 
     it('returns true if all arguments are functions returning objects', () => {
-      expect(Extract(declarer, [() => {}, () => {}])({})).to.be.true;
+      expect(Extract(declarer, [() => ({}), () => ({})])({})).to.be.true;
     });
 
     it('calls the extractor callback with the context and element arguments', () => {
@@ -47,7 +43,7 @@ describe('Extract', () => {
       const element = document.createElement('i');
       const extractor = spy(() => ({}));
       Extract(declarer, [extractor, extractor])(context, element);
-      expect(extractor).to.have.been.calledTwice();
+      expect(extractor).to.have.been.calledTwice;
       expect(extractor).to.have.been.always.calledWithExactly(context, element);
     });
 
@@ -57,8 +53,8 @@ describe('Extract', () => {
       element.setAttribute('test1', ' 1');
       element.setAttribute('test2', ' 2');
       Extract(declarer, [
-        (ctx, elem) => ({ test: ctx.test + elem.getAttribute('test1') }),
-        (ctx, elem) => ({ test: ctx.test + elem.getAttribute('test2') }),
+        (ctx, elem) => ({ test: ctx.test + elem.getAttribute('test1').trim() }),
+        (ctx, elem) => ({ test: ctx.test + elem.getAttribute('test2').trim() }),
       ])(context, element);
       expect(context.test).to.equal('012');
     });
