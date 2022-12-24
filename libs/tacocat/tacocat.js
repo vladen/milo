@@ -10,20 +10,29 @@ import { mergeMutations } from './utilities.js';
 
 /**
  * @param {Tacocat.Internal.Control} control
- * @param {Tacocat.Internal.Workflow} workflow
+ * @param {Tacocat.Internal.SafeExtractor} extractor
+ * @param {Tacocat.Internal.SafeObserver} observer
+ * @param {Tacocat.Internal.SafeProvider} provider
+ * @param {Tacocat.Internal.SafeRenderer} renderer
  * @param {Tacocat.Internal.Subtree} subtree
  * @returns
  */
-const observe = (control, workflow, subtree) => ({
+const observe = (control, extractor, observer, provider, renderer, subtree) => ({
   ...Engine(
     control,
-    workflow,
+    extractor,
+    observer,
+    provider,
+    renderer,
     subtree,
   ),
   observe(scope, selector) {
     return observe(
       control,
-      workflow,
+      extractor,
+      observer,
+      provider,
+      renderer,
       Subtree(scope, selector),
     );
   },
@@ -41,7 +50,10 @@ const render = (control, extractor, observer, provider, renderers = []) => ({
   observe(scope, selector) {
     return observe(
       control,
-      { extractor, observer, provider, renderer: Render(renderers) },
+      extractor,
+      observer,
+      provider,
+      Render(renderers),
       Subtree(scope, selector),
     );
   },
@@ -137,7 +149,10 @@ const declare = (control, declarers) => ({
  */
 const Tacocat = (signal, timeout) => ({
   declare(declarer) {
-    return declare(Control({ signal, timeout }), [declarer]);
+    return declare(
+      Control({ signal, timeout }),
+      [declarer],
+    );
   },
 });
 

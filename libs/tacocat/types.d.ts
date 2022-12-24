@@ -6,9 +6,9 @@ declare namespace Tacocat {
   type isPromise = (value: any) => value is Promise<any>;
   type isUndefined = (value: any) => value is undefined;
 
-  type hasContext = (candidate: any) => candidate is Result<any, any>;
-  type isFailure = (candidate: any) => candidate is Failure<any>;
-  type isProduct = (candidate: any) => candidate is Product<any, any>;
+  type hasContext = (candidate: any, key?: string) => candidate is Result<any, any>;
+  type isFailure = (candidate: any, key?: string) => candidate is Failure<any>;
+  type isProduct = (candidate: any, key?: string) => candidate is Product<any, any>;
 
   type Contextful<T> = { context?: T };
   type Failure<T> = Contextful<T> & Error;
@@ -47,8 +47,8 @@ declare namespace Tacocat {
 
     // --- interfaces ---
     interface Control {
-      signal: AbortSignal;
-      timeout: number;
+      signal?: AbortSignal;
+      timeout?: number;
     }
 
     interface Declare<T extends object> {
@@ -94,15 +94,15 @@ declare namespace Tacocat {
       render(renderers: Renderers<T, U>): Render<T, U>;
     }
 
-    type PendingRenderer = (element: Element) => boolean;
+    type PendingRenderer = (element: Element) => void;
     type RejectedRenderer<T> = (
       element: Element,
       failure: Failure<T>
-    ) => boolean;
+    ) => void;
     type ResolvedRenderer<T, U> = (
       element: Element,
       product: Product<T, U>
-    ) => boolean;
+    ) => void;
     interface Renderers<T, U> {
       pending?: PendingRenderer | PendingRenderer[];
 
@@ -124,9 +124,9 @@ declare namespace Tacocat {
     // --- types ---
     type Consumer = (product: Product) => void;
     type Control = Tacocat.Engine.Control & {
-      dismiss(key: any): void;
-      dispose(disposer: () => void, key: any): void;
-      promise: Promise<Error>;
+      dispose(disposer: () => void, key: any): boolean;
+      expire<T>(fallback: T): Promise<T>;
+      release(key: any): void;
     };
     type Declarer = Tacocat.Engine.Declarer<any, any>;
     type Engine = Omit<Tacocat.Engine.Observe<any, any>, 'observe'>;
@@ -203,6 +203,7 @@ declare namespace Tacocat {
     }
 
     interface Record {
+      instance: number;
       level: Level;
       message: string;
       namespace: string;

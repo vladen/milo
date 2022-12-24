@@ -1,5 +1,3 @@
-/// <reference path="../../libs/tacocat/types.d.ts" />
-
 import { expect, spy } from './tools.js';
 import Extract from '../../libs/tacocat/extract.js';
 import Log, { quietFilter } from '../../libs/tacocat/log.js';

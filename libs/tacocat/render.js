@@ -3,13 +3,14 @@ import { safeSync } from './safe.js';
 import { isProduct } from './product.js';
 import { isFunction, isUndefined } from './utilities.js';
 
-const log = Log.common.module('render');
-
 /**
  * @param {Tacocat.Internal.Renderers[]} renderers
  * @returns {Tacocat.Internal.SafeRenderer}
  */
 const Render = (renderers) => {
+  const log = Log.common.module('render');
+  log.debug('Created:', { renderers });
+
   const groups = {
     /** @type {Tacocat.Internal.SafeRenderer[]} */
     pending: [],
@@ -31,8 +32,6 @@ const Render = (renderers) => {
     });
   });
 
-  log.debug('Created:', { renderers: groups });
-
   return (element, result) => {
     let group;
 
@@ -40,13 +39,13 @@ const Render = (renderers) => {
     else if (isProduct(result)) group = groups.resolved;
     else group = groups.rejected;
 
-    const rendered = group.filter((renderer) => safeSync(
-      log,
-      'Renderer callback error:',
-      () => renderer(element, result),
-    ));
-    if (renderers.length) {
-      log.debug('Rendered:', { element, result, renderers: rendered });
+    if (group.length) {
+      group.forEach((renderer) => safeSync(
+        log,
+        'Renderer callback error:',
+        () => renderer(element, result),
+      ));
+      log.debug('Rendered:', { element, result, renderers: group });
     } else {
       log.debug('Not rendered:', { element, result });
     }

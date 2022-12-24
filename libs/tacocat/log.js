@@ -2,6 +2,9 @@ import { getConfig } from '../utils/utils.js';
 import { isFunction } from './utilities.js';
 
 const epoch = Date.now();
+/** @type {Map<string, number>} */
+const instances = new Map();
+
 const isProd = getConfig().env?.name === 'prod';
 export const Level = Object.freeze({
   debug: 'debug',
@@ -15,7 +18,8 @@ const writers = new Set();
 
 const isLog = (object) => object != null && object[Symbol.toStringTag] === tag;
 
-const createRecord = (level, message, namespace, params) => ({
+const createRecord = (instance, level, message, namespace, params) => ({
+  instance,
   level,
   message,
   namespace,
@@ -27,9 +31,16 @@ const debugFilter = { filter: ({ level }) => level !== Level.debug };
 const quietFilter = { filter: () => false };
 
 const consoleWriter = {
-  writer({ level, message, namespace, params, timestamp }) {
+  writer({
+    instance, level, message, namespace, params, timestamp,
+  }) {
     // eslint-disable-next-line no-console
-    console[level](`[${namespace}]`, message, ...params, `(+${timestamp}ms)`);
+    console[level](
+      `[${namespace}] #${instance}`,
+      message,
+      ...params,
+      `(+${timestamp}ms)`,
+    );
   },
 };
 
@@ -56,7 +67,7 @@ function commitRecord(record) {
       try {
         writer(record);
       } catch (error) {
-        commitError('Log eriter error:', { record, writer });
+        commitError('Log writer error:', { record, writer });
       }
     });
   }
@@ -65,25 +76,26 @@ function commitRecord(record) {
 /**
  * @type {Tacocat.Log.Factory}
  */
-const Log = (namespace) => ({
-  namespace,
-  module(name) {
-    return Log(`${namespace}/${name}`);
-  },
-  debug(message, ...params) {
-    commitRecord(createRecord(Level.debug, message, namespace, params));
-  },
-  error(message, ...params) {
-    commitRecord(createRecord(Level.error, message, namespace, params));
-  },
-  info(message, ...params) {
-    commitRecord(createRecord(Level.info, message, namespace, params));
-  },
-  warn(message, ...params) {
-    commitRecord(createRecord(Level.warn, message, namespace, params));
-  },
-  [Symbol.toStringTag]: tag,
-});
+function Log(namespace) {
+  const instance = (instances.get(namespace) ?? 0) + 1;
+  instances.set(namespace, instance);
+
+  const createPipeline = (level) => (message, ...params) => commitRecord(
+    createRecord(instance, level, message, namespace, params),
+  );
+
+  return {
+    namespace,
+    module(name) {
+      return Log(`${namespace}/${name}`);
+    },
+    debug: createPipeline(Level.debug),
+    error: createPipeline(Level.error),
+    info: createPipeline(Level.info),
+    warn: createPipeline(Level.warn),
+    [Symbol.toStringTag]: tag,
+  };
+}
 
 Log.level = Level;
 

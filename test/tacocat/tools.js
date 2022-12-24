@@ -1,3 +1,7 @@
+/// <reference path="../../libs/tacocat/types.d.ts" />
+/// <reference path="../../node_modules/@types/chai/index.d.ts" />
+/// <reference path="../../node_modules/@types/chai-as-promised/index.d.ts" />
+/// <reference path="../../node_modules/@types/sinon-chai/index.d.ts" />
 /* eslint-disable
     no-param-reassign,
     no-shadow,

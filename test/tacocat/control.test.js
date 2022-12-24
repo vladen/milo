@@ -16,17 +16,18 @@ describe('function "Control"', () => {
   });
 
   describe('object "control"', () => {
-    describe('method "dismiss"', () => {
+    describe('method "release"', () => {
       it('calls all disposer calbacks registered for the key', () => {
         const control = Control();
         const disposer1 = spy();
         const disposer2 = spy();
         const key = {};
+
         control.dispose(disposer1, key);
         expect(disposer1).not.to.have.been.called;
         control.dispose(disposer2, key);
         expect(disposer2).not.to.have.been.called;
-        control.dismiss(key);
+        control.release(key);
         expect(disposer1).to.have.been.called;
         expect(disposer2).to.have.been.called;
       });
@@ -38,6 +39,7 @@ describe('function "Control"', () => {
         const control = Control({ signal: controller.signal });
         const disposer1 = spy();
         const disposer2 = spy();
+
         control.dispose(disposer1);
         expect(disposer1).not.to.have.been.called;
         control.dispose(disposer2);
@@ -48,13 +50,16 @@ describe('function "Control"', () => {
       });
     });
 
-    describe('property "promise"', () => {
-      it('returns a promise rejecting after timeout', async () => {
+    describe('method "expire"', () => {
+      it('returns a promise resolving after timeout with fallback value', async () => {
         const control = Control({ timeout: 1 });
-        const { promise } = control;
-        expect(promise).not.to.be.fulfilled;
+        const fallback = spy(() => true);
+        const promise = control.expire(fallback);
+
+        expect(fallback).not.to.be.called;
         await delay(2);
-        expect(promise).to.be.rejectedWith('Expired');
+        expect(fallback).to.be.called;
+        await expect(promise).to.eventually.equal(true);
       });
     });
   });

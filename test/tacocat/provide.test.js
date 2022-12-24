@@ -1,15 +1,9 @@
-/// <reference path="../../libs/tacocat/types.d.ts" />
-
 import { expect, spy } from './tools.js';
 import Control from '../../libs/tacocat/control.js';
 import Log, { quietFilter } from '../../libs/tacocat/log.js';
 import Provide from '../../libs/tacocat/provide.js';
 import { delay } from '../../libs/tacocat/utilities.js';
 import { Failure, Product } from '../../libs/tacocat/product.js';
-
-// use(chaiAsPromised);
-
-const control = Control({ timeout: Infinity });
 
 describe('function "Provide"', () => {
   after(() => {
@@ -31,7 +25,7 @@ describe('function "Provide"', () => {
       const product2 = Product(context, 2);
       const failure2 = Failure(context, new Error('Error2'));
       const provide = Provide(
-        control,
+        Control({ timeout: Infinity }),
         () => Promise.resolve([
           Promise.resolve(product1),
           Promise.reject(failure1),
@@ -52,7 +46,7 @@ describe('function "Provide"', () => {
       const product1 = Product(context, 'one');
       const product2 = Product(context, 'two');
       const provide = Provide(
-        control,
+        Control({ timeout: Infinity }),
         () => [Promise.resolve(product1), Promise.resolve([product2])],
         [
           ({ value, ...rest }) => ({ ...rest, value: `${value} three` }),
@@ -72,7 +66,7 @@ describe('function "Provide"', () => {
       const transformer1 = spy((product) => product);
       const transformer2 = spy((product) => product);
       const provide = Provide(
-        control,
+        Control({ timeout: Infinity }),
         () => Promise.reject(failure),
         [
           transformer1,
@@ -90,16 +84,16 @@ describe('function "Provide"', () => {
       const failure = Failure(context, new Error('Error1'));
       const product2 = Product(context, 2);
       const consume = spy();
-      const provide = Provide(control, () => [
+      const provide = Provide(Control({ timeout: Infinity }), () => [
         Promise.resolve(product1),
         Promise.resolve([Promise.reject(failure)]),
         Promise.resolve([product2]),
       ], []);
       await provide([context], consume);
-      expect(consume.called).to.be.true;
-      expect(consume.firstCall.firstArg).to.equal(product1);
-      expect(consume.secondCall.firstArg).to.equal(product2);
-      expect(consume.thirdCall.firstArg).to.equal(failure);
+      expect(consume).to.have.been.calledThrice;
+      expect(consume).to.have.been.calledWith(product1);
+      expect(consume).to.have.been.calledWith(product2);
+      expect(consume).to.have.been.calledWith(failure);
     });
 
     it('returns a promise fulfiling on timeout', async () => {
