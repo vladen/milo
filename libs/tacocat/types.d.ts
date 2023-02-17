@@ -26,12 +26,14 @@ declare namespace Tacocat {
   type ResultEvent<T, U> = FailureEvent<T> | ProductEvent<T, U>;
 
   type Disposer = () => void;
+  type Disposers = Disposer | Disposer[] | Disposer[][];
 
   module Engine {
     // --- types ---
     type Configure<T extends object, U extends object, V> = (pipeline: {
       declare(declarer: Declarer<object, T>): void;
-      extract(extractor: Extractor<T, U>, options?: ObserveOptions): void;
+      extract(extractor: Extractor<T, U>, options?: Reactions): void;
+      compare(comparer: Comparer<T>): void;
       provide(provider: Provider<U, V>): void;
       present(presenters: Presenters<U, V>): void;
     }) => (target: {
@@ -39,8 +41,8 @@ declare namespace Tacocat {
       selector?: string
     }) => Instance<U, V>;
 
+    type Comparer<T> = (next: T, last: T) => boolean;
     type Declarer<T, U extends object> = (context: T) => U;
-
     type Extractor<T, U extends object> = (event: CustomEvent & { detail: Contextful<T> }) => Promise<U>;
 
     type Factory = (
@@ -81,24 +83,17 @@ declare namespace Tacocat {
     interface Declare<T extends object> {
       declare<U extends object>(declarer: Declarer<T, U>): Declare<T & U>;
       declare<U extends object>(context: U): Declare<T & U>;
-
-      extract<U extends object>(
-        extractor: Extractor<T, U>,
-        mutations?: Mutations
-      ): Extract<T & U>;
+      extract<U extends object>(extractor: Extractor<T, U>, reactions?: Reactions): Extract<T & U>;
     }
 
     interface Extract<T> {
-      extract<U extends object>(
-        extractor: Extractor<T, U>,
-        options?: ObserveOptions
-      ): Extract<T & U>;
-
+      compare(comparer: Comparer<T>): Provide<T>;
+      extract<U extends object>(extractor: Extractor<T, U>, reactions?: Reactions): Extract<T & U>;
       provide<U>(provider: Provider<T, U>): Transform<T, U>;
     }
 
     interface Instance<T, U> {
-      abort();
+      abort(): void;
       explore(scope: Element, selector?: string): Placeholder[];
       refresh(scope: Element, selector?: string): Promise<Placeholder[]>;
       resolve(context: T): Promise<Product<T, U>>;
@@ -108,7 +103,7 @@ declare namespace Tacocat {
       observe(scope: Element, selector?: string): Observe<T, U>;
     }
 
-    interface ObserveOptions {
+    interface Reactions {
       events?: string[];
       mutations?: Mutations,
       trigger?: Trigger
@@ -123,24 +118,22 @@ declare namespace Tacocat {
 
     interface Presenters<T, U> {
       pending?: PendingPresenter<T> | PendingPresenter<T>[];
-
       rejected?: RejectedPresenter<T> | RejectedPresenter<T>[];
-
       resolved?: ResolvedPresenter<T, U> | ResolvedPresenter<T, U>[];
     }
 
     interface Present<T, U> {
       observe(scope: Element, selector?: string): Observe<T, U>;
-
       present(presenters: Presenters<T, U>): Present<T, U>;
     }
 
-    interface Transform<T, U> {
-      transform<V extends U>(
-        transformer: Transformer<T, U, V>
-      ): Transform<T, V>;
+    interface Provide<T> {
+      provide<U>(provider: Provider<T, U>): Transform<T, U>;
+    }
 
+    interface Transform<T, U> {
       present(presenters: Presenters<T, U>): Present<T, U>;
+      transform<V extends U>(transformer: Transformer<T, U, V>): Transform<T, V>;
     }
   }
 
@@ -148,7 +141,7 @@ declare namespace Tacocat {
     // --- types ---
     type Consumer = (product: Product) => void;
     type Control = Tacocat.Engine.Control & {
-      dispose(disposer: Disposer, key: any): boolean;
+      dispose(disposers: Disposers, key: any): boolean;
       expire<T>(fallback: T): Promise<T>;
       release(key: any): void;
     };
@@ -172,7 +165,7 @@ declare namespace Tacocat {
       contexts: object[],
       consumer: Consumer,
     ) => Promise<Product[]>;
-    type SafePresenter = (element: Element) => Disposer;
+    type SafePresenter = (element: Element) => Disposers;
     type SelectorMatcher = (element: Element) => boolean;
     type Transformer = (product: Product) => Product;
 

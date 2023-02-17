@@ -14,11 +14,14 @@ function Control({
 } = defaults) {
   const log = Log.common.module('control');
 
-  function dispose(disposer) {
-    safeSync(log, 'Disposer callback error:', disposer);
+  /**
+   * @param {Tacocat.Disposer[]} disposers
+   */
+  function dispose(disposers) {
+    disposers.forEach((disposer) => safeSync(log, 'Disposer callback error:', disposer));
   }
 
-  /** @type {Map<any, (() => void)[]>} */
+  /** @type {Map<any, Tacocat.Disposer[]>} */
   const disposers = new Map();
 
   const onAbort = (listener) => signal?.addEventListener(
@@ -29,19 +32,21 @@ function Control({
 
   onAbort(() => {
     log.debug('Aborted:', signal.reason?.message ?? signal.reason);
-    [...disposers.values()].flat().forEach(dispose);
+    dispose([...disposers.values()].flat());
   });
 
   log.debug('Created:', { signal, timeout });
 
   return {
     dispose(disposer, key = null) {
+      /** @type {Tacocat.Disposer[]} */
+      const newDisposers = Array.isArray(disposer) ? disposer.flat(3) : [disposer];
       if (signal?.aborted) {
-        dispose(disposer);
+        dispose(newDisposers);
         return true;
       }
       if (!disposers.has(key)) disposers.set(key, []);
-      disposers.get(key).unshift(disposer);
+      disposers.set(key, [...newDisposers, ...disposers.get(key)]);
       return false;
     },
 

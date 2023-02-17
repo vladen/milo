@@ -99,7 +99,7 @@ const transform = (control, extractor, observer, provider, transformers = []) =>
  * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.SafeDeclarer} declarer
  * @param {Tacocat.Internal.Extractor[]} extractors
- * @param {Tacocat.Engine.ObserveOptions[]} options
+ * @param {Tacocat.Engine.Reactions[]} options
  */
 const extract = (control, declarer, extractors, options = []) => ({
   extract(nextExtractor, nextOptions) {

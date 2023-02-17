@@ -41,14 +41,14 @@ export const delay = (timeout, signal = null) => new Promise((resolve) => {
 
 /**
  *
- * @param {Tacocat.Engine.ObserveOptions[]} options
+ * @param {Tacocat.Engine.Reactions[]} reactions
  * @returns
  */
-export const mergeObserveOptions = (options) => ({
-  events: options
+export const mergeReactions = (reactions) => ({
+  events: reactions
     .flatMap(({ events }) => events)
     .filter((event) => event),
-  mutations: options
+  mutations: reactions
     .map(({ mutations }) => mutations)
     .filter((mutations) => isObject(mutations))
     .reduce(
@@ -70,7 +70,7 @@ export const mergeObserveOptions = (options) => ({
       },
       {},
     ),
-  triggers: options
+  triggers: reactions
     .map(({ trigger }) => trigger)
     .filter((trigger) => isFunction(trigger)),
 });

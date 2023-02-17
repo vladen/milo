@@ -37,8 +37,8 @@ const Present = (presenters) => {
   /**
    * @param {Tacocat.ResultEvent<any, any>} event
    */
-  const render = (event) => {
-    // Run renderers for stage defined of given event
+  const present = (event) => {
+    // Run presenters for stage defined for given event
     const stage = getStage(event.detail);
     if (!stage) return;
 
@@ -50,21 +50,17 @@ const Present = (presenters) => {
         () => presenter(event),
       ));
       log.debug('Presented:', { event, presenters: group });
-      Event.render.dispatch(event.target, event.detail);
+      Event.present.dispatch(event.target, event.detail);
     } else {
       log.debug('Not presented:', { event });
     }
   };
 
   // Return function adding event listeners to the provided element
-  return (element) => {
-    const disposer1 = Event.reject.listen(element, render);
-    const disposer2 = Event.resolve.listen(element, render);
-    return () => {
-      disposer1();
-      disposer2();
-    };
-  };
+  return (element) => [
+    Event.reject.listen(element, present),
+    Event.resolve.listen(element, present),
+  ];
 };
 
 export default Present;

@@ -1,17 +1,17 @@
 import Event from './event.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isFunction, mergeObserveOptions } from './utilities.js';
+import { isFunction, mergeReactions } from './utilities.js';
 
 const childListMutation = 'childList';
 const observableMutations = ['attributes', 'characterData', childListMutation];
 
 /**
- * @param {Tacocat.Engine.ObserveOptions[]} options
+ * @param {Tacocat.Engine.Reactions[]} options
  * @returns {Tacocat.Internal.SafeObserver}
  */
 function Observe(options) {
-  const { events, mutations, triggers } = mergeObserveOptions(options);
+  const { events, mutations, triggers } = mergeReactions(options);
   const log = Log.common.module('observer');
   log.debug('Created:', { events, mutations, triggers });
 

@@ -4,25 +4,13 @@ import { getStage } from './product.js';
 const { namespace } = Log.common;
 
 const Type = {
-  extract: `${namespace}:extract`,
   mount: `${namespace}:mount`,
   observe: `${namespace}:observe`,
+  extract: `${namespace}:extract`,
   reject: `${namespace}:reject`,
   resolve: `${namespace}:resolve`,
-  render: `${namespace}:render`,
+  present: `${namespace}:present`,
   unmount: `${namespace}:unmount`,
-};
-
-/**
- * @param {EventTarget} target
- * @param {string} type
- * @param {EventListenerOrEventListenerObject} listener
- * @param {AddEventListenerOptions} options
- * @returns {Tacocat.Disposer}
- */
-export const addEventListener = (target, type, listener, options) => {
-  target.addEventListener(type, listener, options);
-  return () => target.removeEventListener(type, listener);
 };
 
 /**
@@ -38,7 +26,8 @@ const Event = (type) => ({
     target.dispatchEvent(event ?? new CustomEvent(type, { bubbles: true, detail }));
   },
   listen(target, listener, options = {}) {
-    return addEventListener(target, type, listener, { ...options, capture: true });
+    target.addEventListener(type, listener, options);
+    return () => target.removeEventListener(type, listener);
   },
   type,
 });
@@ -53,7 +42,7 @@ export default {
   /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Failure<any>>} */
   reject: Event(Type.reject),
   /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Product<{}, any>>} */
-  render: Event(Type.render),
+  present: Event(Type.present),
   /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Product<{}, any>>} */
   resolve: Event(Type.resolve),
   /** @type {Tacocat.Internal.EventDispatcher<void>} */
