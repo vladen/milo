@@ -27,8 +27,8 @@ const createRecord = (instance, level, message, namespace, params) => ({
   timestamp: Date.now() - epoch,
 });
 
-const debugFilter = { filter: ({ level }) => level !== Level.debug };
-const quietFilter = { filter: () => false };
+const debugLogFilter = { filter: ({ level }) => level !== Level.debug };
+const quietLogFilter = { filter: () => false };
 
 const consoleWriter = {
   writer({
@@ -44,7 +44,7 @@ const consoleWriter = {
   },
 };
 
-function commitError(message, ...params) {
+function reportError(message, ...params) {
   consoleWriter.write(createRecord(
     Level.error,
     message,
@@ -54,20 +54,21 @@ function commitError(message, ...params) {
   ));
 }
 
-function commitRecord(record) {
-  if ([...filters].every((filter) => {
+function writeRecord(record) {
+  const committing = [...filters].every((filter) => {
     try {
       return filter(record);
     } catch (error) {
-      commitError('Log filter error:', { record, filter });
+      reportError('Log filter error:', { record, filter });
       return true;
     }
-  })) {
+  });
+  if (committing) {
     writers.forEach((writer) => {
       try {
         writer(record);
       } catch (error) {
-        commitError('Log writer error:', { record, writer });
+        reportError('Log writer error:', { record, writer });
       }
     });
   }
@@ -75,12 +76,13 @@ function commitRecord(record) {
 
 /**
  * @type {Tacocat.Log.Factory}
+ * @param {string} namespace
  */
 function Log(namespace) {
   const instance = (instances.get(namespace) ?? 0) + 1;
   instances.set(namespace, instance);
 
-  const createPipeline = (level) => (message, ...params) => commitRecord(
+  const createWriter = (level) => (message, ...params) => writeRecord(
     createRecord(instance, level, message, namespace, params),
   );
 
@@ -89,10 +91,10 @@ function Log(namespace) {
     module(name) {
       return Log(`${namespace}/${name}`);
     },
-    debug: createPipeline(Level.debug),
-    error: createPipeline(Level.error),
-    info: createPipeline(Level.info),
-    warn: createPipeline(Level.warn),
+    debug: createWriter(Level.debug),
+    error: createWriter(Level.error),
+    info: createWriter(Level.info),
+    warn: createWriter(Level.warn),
     [Symbol.toStringTag]: tag,
   };
 }
@@ -103,7 +105,7 @@ Log.reset = () => {
   filters.clear();
   writers.clear();
   if (isProd) {
-    Log.use(debugFilter);
+    Log.use(debugLogFilter);
   } else {
     Log.use(consoleWriter);
   }
@@ -131,4 +133,4 @@ Log.level = Level;
 Log.reset();
 
 export default Log;
-export { debugFilter, isLog, quietFilter };
+export { debugLogFilter as debugFilter, isLog, quietLogFilter as quietFilter };

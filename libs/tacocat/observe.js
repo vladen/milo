@@ -1,28 +1,33 @@
+import Event from './event.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isFunction } from './utilities.js';
+import { isFunction, mergeObserveOptions } from './utilities.js';
+
+const childListMutation = 'childList';
+const observableMutations = ['attributes', 'characterData', childListMutation];
 
 /**
- * @param {Tacocat.Internal.Control} control
- * @param {Tacocat.Internal.Listener[]} listeners
- * @param {Tacocat.Internal.Mutations} mutations
+ * @param {Tacocat.Engine.ObserveOptions[]} options
  * @returns {Tacocat.Internal.SafeObserver}
  */
-function Observe(control, listeners, mutations) {
+function Observe(options) {
+  const { events, mutations, triggers } = mergeObserveOptions(options);
   const log = Log.common.module('observer');
-  log.debug('Created:', { control, listeners, mutations });
+  log.debug('Created:', { events, mutations, triggers });
 
-  return (consumer, { matcher, scope, selector }) => {
+  return (control, { matcher, scope, selector }) => (subscribe) => {
     if (control.dispose(() => log.debug('Disposed'))) return;
 
     /** @type {Set<Element>} */
-    const listening = new Set();
-    /** @type {Set<Element>} */
+    const mounted = new Set();
+    /** @type {Set<{ element: Element }>} */
     const removed = new Set();
-    /** @type {Set<Element>} */
+    /** @type {Set<{ element: Element, event?: Event }>} */
     const updated = new Set();
     let timer;
+
     /**
+     * Returns given element if it matches obsdervation conditions.
      * @param {Node} node
      * @returns {Element | undefined}
      */
@@ -42,61 +47,82 @@ function Observe(control, listeners, mutations) {
       return undefined;
     }
 
-    function produce() {
-      if (!timer) {
-        timer = setTimeout(() => {
-          timer = 0;
-          if (removed.size || updated.size) {
-            const placeholders = [
-              ...[...removed].map((element) => ({ context: null, element })),
-              ...[...updated].map((element) => ({ context: {}, element })),
-            ];
-            if (removed.size) {
-              log.debug('Removed:', { elements: [...removed] });
-              removed.clear();
-            }
-            if (updated.size) {
-              log.debug('Updated:', { elements: [...updated] });
-              updated.clear();
-            }
-            consumer(placeholders);
+    /**
+     * Mounts new element to the observation session
+     * by subscribing event listeners and initialising triggers.
+     * @param {Element} element
+     * @param {(event: Event) => void} listener
+     */
+    function mount(element, listener) {
+      if (mounted.has(element)) return false;
+      if (events.length || triggers.length) {
+        events.forEach((type) => {
+          element.addEventListener(type, listener, { signal: control.signal });
+        });
+
+        triggers.forEach((trigger) => {
+          const disposer = safeSync(log, 'Trigger callback error:', () => trigger(element, listener, control.signal));
+          if (isFunction(disposer)) {
+            control.dispose(disposer, element);
+          } else if (disposer != null) {
+            log.warn('Trigger callback must return a function:', { trigger });
           }
-        }, 0);
+        });
+
+        log.debug('Mounted:', { element, events, triggers });
+        mounted.add(element);
       }
+      return true;
+    }
+
+    /**
+     * Schedules async dispatch of observation results.
+     */
+    function schedule() {
+      if (timer) return;
+      function dispatch() {
+        timer = 0;
+        // Dispatch `unmount` events
+        removed.forEach(({ element }) => {
+          control.release(element);
+          log.debug('Unmounted:', { element, events, triggers });
+          Event.unmount.dispatch(element);
+        });
+        // Dispatch `mount` and `observe` events
+        updated.forEach(({ element, event }) => {
+          if (mount(element, (nextEvent) => {
+            updated.add({ element, event: nextEvent });
+            schedule();
+          })) {
+            log.debug('Mounted:', { element });
+            control.dispose(subscribe(control, element), element);
+            Event.mount.dispatch(element);
+          } else {
+            log.debug('Observed:', { element, event });
+          }
+          Event.observe.dispatch(element, { context: {} }, event);
+        });
+      }
+      timer = setTimeout(dispatch, 0);
     }
 
     function remove(element) {
-      if (!element) return;
-
-      control.release(element);
-      removed.add(element);
-      updated.delete(element);
+      if (element) {
+        removed.add({ element });
+        updated.delete(element);
+      }
+      schedule();
     }
 
     function update(element) {
-      if (!element) return;
-
-      removed.delete(element);
-      updated.add(element);
-
-      if (listeners.length && !listening.has(element)) {
-        const listen = () => {
-          updated.add(element);
-          produce();
-        };
-        listeners.forEach((listener) => {
-          const disposer = safeSync(log, 'Listener callback error:', () => listener(element, listen));
-          if (isFunction(disposer)) {
-            control.dispose(disposer, element);
-          } else {
-            log.error('Listener callback must return a function:', { listener });
-          }
-        });
-        log.debug('Listening:', { element, listeners });
-        listening.add(element);
+      if (element) {
+        removed.delete(element);
+        updated.add({ element });
       }
+      schedule();
     }
 
+    // Scan current DOM tree for matching elements
     const elements = [scope];
     let index = 0;
     while (index < elements.length) {
@@ -105,30 +131,22 @@ function Observe(control, listeners, mutations) {
       update(match(element));
       index += 1;
     }
-    produce();
 
-    if (['attributes', 'characterData', 'childList'].some((key) => mutations[key])) {
+    // Setup mutation observer
+    if (observableMutations.some((key) => mutations[key])) {
       const observer = new MutationObserver((records) => records.forEach((record) => {
-        const { type } = record;
-        if (type === 'attributes' || type === 'characterData') {
-          const element = match(record.target);
-          if (element) updated.add(element);
-        } else if (type === 'childList') {
+        if (record.type === childListMutation) {
           const { addedNodes, removedNodes } = record;
-          [...removedNodes].forEach((node) => {
-            remove(match(node));
-          });
-          [...addedNodes].forEach((node) => {
-            update(match(node));
-          });
+          removedNodes.forEach((node) => remove(match(node)));
+          addedNodes.forEach((node) => update(match(node)));
+        } else {
+          update(match(record.target));
         }
-
-        produce();
       }));
 
       observer.observe(scope, mutations);
       control.dispose(() => observer.disconnect());
-      log.debug('Observing:', { scope, selector });
+      log.debug('Observing:', { options, scope, selector });
     }
   };
 }

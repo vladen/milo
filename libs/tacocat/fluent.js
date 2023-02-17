@@ -4,16 +4,15 @@ import Engine from './engine.js';
 import Extract from './extract.js';
 import Observe from './observe.js';
 import Provide from './provide.js';
-import Render from './render.js';
+import Present from './present.js';
 import Subtree from './subtree.js';
-import { mergeMutations } from './utilities.js';
 
 /**
  * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.SafeExtractor} extractor
  * @param {Tacocat.Internal.SafeObserver} observer
  * @param {Tacocat.Internal.SafeProvider} provider
- * @param {Tacocat.Internal.SafeRenderer} renderer
+ * @param {Tacocat.Internal.SafePresenter} renderer
  * @param {Tacocat.Internal.Subtree} subtree
  * @returns
  */
@@ -43,7 +42,7 @@ const observe = (control, extractor, observer, provider, renderer, subtree) => (
  * @param {Tacocat.Internal.SafeExtractor} extractor
  * @param {Tacocat.Internal.SafeObserver} observer
  * @param {Tacocat.Internal.SafeProvider} provider
- * @param {Tacocat.Internal.Renderers[]} renderers
+ * @param {Tacocat.Internal.Presenters[]} renderers
  * @returns
  */
 const render = (control, extractor, observer, provider, renderers = []) => ({
@@ -53,17 +52,17 @@ const render = (control, extractor, observer, provider, renderers = []) => ({
       extractor,
       observer,
       provider,
-      Render(renderers),
+      Present(renderers),
       Subtree(scope, selector),
     );
   },
-  render(newRenderers) {
+  render(nextRenderers) {
     return render(
       control,
       extractor,
       observer,
       provider,
-      [...renderers, newRenderers],
+      [...renderers, nextRenderers],
     );
   },
 });
@@ -100,24 +99,22 @@ const transform = (control, extractor, observer, provider, transformers = []) =>
  * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.SafeDeclarer} declarer
  * @param {Tacocat.Internal.Extractor[]} extractors
- * @param {MutationObserverInit[]} mutations
- * @param {Tacocat.Internal.Listener[]} listeners
+ * @param {Tacocat.Engine.ObserveOptions[]} options
  */
-const extract = (control, declarer, extractors, mutations, listeners = []) => ({
-  extract(extractor, newMutations, listener) {
+const extract = (control, declarer, extractors, options = []) => ({
+  extract(nextExtractor, nextOptions) {
     return extract(
       control,
       declarer,
-      [...extractors, extractor],
-      [...mutations, newMutations],
-      [...listeners, listener],
+      [...extractors, nextExtractor],
+      [...options, nextOptions],
     );
   },
   provide(provider) {
     return transform(
       control,
       Extract(declarer, extractors),
-      Observe(control, listeners, mergeMutations(mutations)),
+      Observe(control, options),
       provider,
     );
   },
@@ -134,12 +131,12 @@ const declare = (control, declarers) => ({
       [...declarers, declarer],
     );
   },
-  extract(extractor, mutations) {
+  extract(extractor, options) {
     return extract(
       control,
       Declare(declarers),
       [extractor],
-      [mutations],
+      [options],
     );
   },
 });

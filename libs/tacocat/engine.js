@@ -9,7 +9,7 @@ import { isNil } from './utilities.js';
  * @param {Tacocat.Internal.SafeExtractor} extractor
  * @param {Tacocat.Internal.SafeObserver} observer
  * @param {Tacocat.Internal.SafeProvider} provider
- * @param {Tacocat.Internal.SafeRenderer} renderer
+ * @param {Tacocat.Internal.SafePresenter} renderer
  * @param {Tacocat.Internal.Subtree} subtree
  * @returns {Tacocat.Internal.Engine}
  */

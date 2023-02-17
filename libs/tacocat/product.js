@@ -2,21 +2,28 @@ import { getContextKey } from './context.js';
 import { isObject, isUndefined } from './utilities.js';
 
 /** @type {Tacocat.hasContext}} */
-const hasContext = (result, key = '') => isObject(result)
+const hasContext = (result) => isObject(result)
   // @ts-ignore
-  && isObject(result.context)
-  // @ts-ignore
-  && (!key || key === getContextKey(result.context));
+  && getContextKey(result.context) !== '';
 
 /** @type {Tacocat.isFailure}} */
-const isFailure = (result, key = '') => hasContext(result, key)
+const isFailure = (result) => hasContext(result)
   // @ts-ignore
   && result instanceof Error;
 
 /** @type {Tacocat.isProduct}} */
-const isProduct = (result, key = '') => hasContext(result, key)
+const isProduct = (result) => hasContext(result)
   // @ts-ignore
   && !isUndefined(result.value);
+
+function getStage(result) {
+  if (hasContext(result)) {
+    if (result instanceof Error) return 'rejected';
+    if (!isUndefined(result.value)) return 'resolved';
+    return 'pending';
+  }
+  return undefined;
+}
 
 /**
  * @template T
@@ -34,4 +41,6 @@ const Failure = (context, error = {}) => Object.assign(error, { context });
  */
 const Product = (context, value) => ({ context, value });
 
-export { Failure, hasContext, isFailure, isProduct, Product };
+export {
+  Failure, hasContext, getStage, isFailure, isProduct, Product,
+};

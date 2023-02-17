@@ -1,6 +1,7 @@
+import Event from './event.js';
 import Log from './log.js';
-import { safeSync } from './safe.js';
-import { isNil, isObject } from './utilities.js';
+import { safeAsyncPipe } from './safe.js';
+import { isFunction, isNil, isObject } from './utilities.js';
 
 /**
  * @param {Tacocat.Internal.SafeDeclarer} declarer
@@ -11,27 +12,34 @@ function Extract(declarer, extractors) {
   const log = Log.common.module('extract');
   log.debug('Created:', { declarer, extractors });
 
-  return (context, element) => {
-    if (declarer(context) && extractors.every((extractor) => {
-      const extracted = safeSync(
-        log,
-        'Extractor callback error:',
-        () => extractor(context, element),
-      );
-      if (isObject(extracted)) {
-        Object.assign(context, extracted);
+  return (control, element) => Event.observe.listen(element, (event) => {
+    const { context = {} } = event.detail ?? {};
+
+    declarer(control, context)
+      .then((result) => {
+        if (!result) return false;
+        return safeAsyncPipe(log, 'Extractor callback error:', extractors, (extractor) => {
+          let extraction;
+          if (isFunction(result)) {
+            extraction = extractor(event);
+            if (isObject(result)) {
+              Object.assign(context, result);
+              return true;
+            }
+          }
+          if (!isNil(result)) {
+            log.error('Unexpected extraction:', { extraction, extractor });
+          }
+          return false;
+        });
+      })
+      .then((result) => {
+        if (!result) return false;
+        log.debug('Extracted:', { context, extractors });
+        Event.extract.dispatch(event.target, { context });
         return true;
-      }
-      if (!isNil(extracted)) {
-        log.warn('Unexpected extracted type:', { extracted, extractor });
-      }
-      return false;
-    })) {
-      log.debug('Extracted:', { context, extractors });
-      return true;
-    }
-    return false;
-  };
+      });
+  });
 }
 
 export default Extract;

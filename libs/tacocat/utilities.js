@@ -40,24 +40,37 @@ export const delay = (timeout, signal = null) => new Promise((resolve) => {
 });
 
 /**
- * @param {MutationObserverInit[]} mutations
+ *
+ * @param {Tacocat.Engine.ObserveOptions[]} options
+ * @returns
  */
-export const mergeMutations = (mutations) => mutations.reduce(
-  (options, {
-    attributeFilter,
-    attributes,
-    characterData,
-    childList,
-    subtree,
-  } = {}) => {
-    if (attributeFilter) {
-      options.attributeFilter = (options.attributeFilter ?? []).concat(attributeFilter);
-    }
-    options.attributes = combineFlags(options.attributes, attributes);
-    options.characterData = combineFlags(options.characterData, characterData);
-    options.childList = combineFlags(options.childList, childList);
-    options.subtree = combineFlags(options.subtree, subtree);
-    return options;
-  },
-  {},
-);
+export const mergeObserveOptions = (options) => ({
+  events: options
+    .flatMap(({ events }) => events)
+    .filter((event) => event),
+  mutations: options
+    .map(({ mutations }) => mutations)
+    .filter((mutations) => isObject(mutations))
+    .reduce(
+      (merged, {
+        attributeFilter,
+        attributes,
+        characterData,
+        childList,
+        subtree,
+      } = {}) => {
+        if (attributeFilter) {
+          merged.attributeFilter = (merged.attributeFilter ?? []).concat(attributeFilter);
+        }
+        merged.attributes = combineFlags(merged.attributes, attributes);
+        merged.characterData = combineFlags(merged.characterData, characterData);
+        merged.childList = combineFlags(merged.childList, childList);
+        merged.subtree = combineFlags(merged.subtree, subtree);
+        return merged;
+      },
+      {},
+    ),
+  triggers: options
+    .map(({ trigger }) => trigger)
+    .filter((trigger) => isFunction(trigger)),
+});

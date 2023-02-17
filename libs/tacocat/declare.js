@@ -1,6 +1,6 @@
 import { projectObject } from './context.js';
 import Log from './log.js';
-import { safeSync } from './safe.js';
+import { safeAsyncPipe } from './safe.js';
 import { isFunction, isNil, isObject } from './utilities.js';
 
 /**
@@ -11,35 +11,32 @@ function Declare(declarers) {
   const log = Log.common.module('declare');
   log.debug('Created:', { declarers });
 
-  return (context) => {
-    if (!isNil(context) && declarers.every((declarer, index) => {
-      let declared;
+  return (control, context) => {
+    if (isNil(context)) return Promise.resolve(false);
+    return safeAsyncPipe(log, 'Declarer callback error:', declarers, (declarer, index) => {
+      if (control.signal?.aborted) return false;
+      let declaration;
       if (isFunction(declarer)) {
-        declared = safeSync(
-          log,
-          'Declarer callback error:',
-          () => declarer(context),
-        );
-        if (isObject(declared)) {
-          Object.assign(context, declared);
+        declaration = declarer(context);
+        if (isObject(declaration)) {
+          Object.assign(context, declaration);
           return true;
         }
+      } else if (isObject(declarer)) {
+        declaration = declarer;
+        if (index === 0) projectObject(context, declaration);
+        else Object.assign(context, declaration);
       }
-      if (isObject(declarer)) {
-        declared = declarer;
-        if (index === 0) projectObject(context, declared);
-        else Object.assign(context, declared);
-        return true;
-      }
-      if (!isNil(declared)) {
-        log.warn('Unexpected declared type:', { declared, declarer });
+
+      if (!isNil(declaration)) {
+        log.warn('Unexpected declaration:', { declaration, declarer });
       }
       return false;
-    })) {
+    }).then((result) => {
+      if (!result) return false;
       log.debug('Declared:', { context, declarers });
       return true;
-    }
-    return false;
+    });
   };
 }
 
