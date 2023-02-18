@@ -1,6 +1,7 @@
 import Event from './event.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
+import { setPlaceholderState } from './state.js';
 import { isFunction, mergeReactions } from './utilities.js';
 
 const childListMutation = 'childList';
@@ -69,6 +70,7 @@ function Observe(options) {
           }
         });
 
+        setPlaceholderState(element, {});
         log.debug('Mounted:', { element, events, triggers });
         mounted.add(element);
       }

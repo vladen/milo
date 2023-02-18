@@ -1,5 +1,4 @@
 import Log, { isLog } from './log.js';
-import { isFunction } from './utilities.js';
 
 const getLog = (log) => (isLog(log) ? log : Log.common ?? console);
 
@@ -7,13 +6,13 @@ const getLog = (log) => (isLog(log) ? log : Log.common ?? console);
  * @template T
  * @param {Tacocat.Log.Instance} log
  * @param {string} message
- * @param {() => T | Promise<T>} operation
- * @returns {Promise<T>}
+ * @param {() => Promise<T>} operation
+ * @returns {Promise<T | undefined>}
  */
 function safeAsync(log, message, operation) {
   const reportError = (error) => {
     getLog(log).error(message, error);
-    return Promise.reject(error);
+    return Promise.resolve(undefined);
   };
   try {
     return Promise.resolve(operation()).catch(reportError);
@@ -27,21 +26,21 @@ function safeAsync(log, message, operation) {
  * @param {Tacocat.Log.Instance} log
  * @param {string} message
  * @param {T[]} array
- * @param {(item: T, index: number) => boolean} operation
+ * @param {(item: T, index: number) => Promise<boolean>} operation
  * @returns {Promise<boolean>}
  */
-function safeAsyncPipe(log, message, array, operation) {
-  const safePipeStep = (index) => {
-    if (index < array.length) {
-      return safeAsync(log, message, () => operation(array[index], index)).then(
-        () => safePipeStep(index + 1),
-        () => Promise.resolve(false),
-      );
+function safeAsyncEvery(log, message, array, operation) {
+  const safeAsyncStep = (index, result) => {
+    if (!result || index >= array.length) {
+      return Promise.resolve(!!result);
     }
-    return Promise.resolve(true);
+    return safeAsync(log, message, () => operation(array[index], index)).then(
+      (nextResult) => safeAsyncStep(index + 1, nextResult),
+      () => Promise.resolve(false),
+    );
   };
 
-  return safePipeStep(0);
+  return safeAsyncStep(0, true);
 }
 
 /**
@@ -49,7 +48,7 @@ function safeAsyncPipe(log, message, array, operation) {
  * @param {Tacocat.Log.Instance} log
  * @param {string} message
  * @param {() => T} operation
- * @returns {T}
+ * @returns {T | undefined}
  */
 function safeSync(log, message, operation) {
   try {
@@ -60,4 +59,4 @@ function safeSync(log, message, operation) {
   }
 }
 
-export { safeAsync, safeAsyncPipe, safeSync };
+export { safeAsync, safeAsyncEvery, safeSync };

@@ -1,3 +1,5 @@
+/** @type {Tacocat.isError} */
+export const isError = (value) => value instanceof Error;
 /** @type {Tacocat.isFunction} */
 export const isFunction = (value) => typeof value === 'function';
 /** @type {Tacocat.isNil} */

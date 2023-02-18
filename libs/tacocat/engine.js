@@ -1,6 +1,6 @@
 import { getContextKey } from './context.js';
 import Log from './log.js';
-import { Failure, isFailure, isProduct } from './product.js';
+import { Failure, isFailure, isProduct } from './result.js';
 import Subtree from './subtree.js';
 import { isNil } from './utilities.js';
 

@@ -1,103 +1,90 @@
+import { getContextKey } from './context.js';
+import Event from './event.js';
 import Log from './log.js';
-import { Failure, isFailure, isProduct } from './product.js';
+import { hasContext, isFailure, isProduct } from './result.js';
 import { safeAsync } from './safe.js';
-import { isFunction, isPromise } from './utilities.js';
+import { isNil, isPromise } from './utilities.js';
 
 /**
- * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.Provider} provider
- * @param {Tacocat.Internal.Transformer[]} transformers
+ * @param {Tacocat.Internal.SafeTransformer} transformer
  * @returns {Tacocat.Internal.SafeProvider}
  */
-function Provide(control, provider, transformers) {
+function Provide(provider, transformer) {
   const log = Log.common.module('provide');
-  log.debug('Created:', { control, provider, transformers });
+  log.debug('Created:', { provider, transformer });
 
-  return (contexts, consumer) => {
-    if (control.dispose(() => log.debug('Disposed'))) {
-      return Promise.reject(contexts.map((context) => Failure(context, new Error('Disposed'))));
-    }
+  return (control, element) => {
+    /** @type {Map<string, Tacocat.Internal.ContextEvent[]>} */
+    const pending = new Map();
+    /** @type {Map<string, { context: object, events: Tacocat.Internal.ContextEvent[]}>} */
+    const waiting = new Map();
+    let timer;
 
-    let pending = 0;
-    const results = [];
-    log.debug('Providing:', { contexts });
+    control.dispose(() => clearTimeout(timer), element);
 
-    /**
-     * @param {number} index
-     * @param {(results: any[]) => void} resolve
-     * @param {any} value
-     */
-    function processProducts(index, resolve, value) {
-      if (control.signal?.aborted || value == null) return;
+    async function traverse(result) {
+      if (isNil(result)) return;
+      if (Array.isArray(result)) result.forEach(traverse);
+      else if (isPromise(result)) traverse(await result);
+      else if (hasContext(result)) {
+        if (isProduct(result)) await transformer(control, result);
 
-      let promise;
-      if (isProduct(value)) {
-        if (index < transformers.length) {
-          promise = safeAsync(
-            log,
-            'Transformer callback error:',
-            () => transformers[index](value),
-          ).then((result) => {
-            processProducts(index + 1, resolve, result);
-          });
-        } else {
-          log.debug('Provided:', value);
-          results.push(value);
-          consumer(value);
-        }
-      } else if (isFailure(value)) {
-        results.push(value);
-        consumer(value);
-      } else if (Array.isArray(value)) {
-        value.forEach((result) => {
-          processProducts(index, resolve, result);
-        });
-      } else if (isFunction(value)) {
-        promise = safeAsync(
-          log,
-          'Provided function error:',
-          // @ts-ignore
-          value,
-        ).then((result) => {
-          processProducts(index, resolve, result);
-        });
-      } else if (isPromise(value)) {
-        promise = value.then((result) => {
-          processProducts(index, resolve, result);
-        });
-      }
-
-      function tryResolve() {
-        if (!pending && !control.signal?.aborted) {
-          log.debug('Resolved:', results);
-          resolve(results);
-        }
-      }
-
-      if (isPromise(promise)) {
-        pending += 1;
-        promise.catch((error) => {
-          if (!control.signal?.aborted) {
-            results.push(error);
-            consumer(error);
+        let events = [];
+        if (hasContext(result)) {
+          const key = getContextKey(context);
+          if (key && pending.has(key)) {
+            events = pending.get(key);
+            pending.delete(key);
+          } else {
+            log.warn('Unexpected providing, ignored:', result);
           }
-        }).finally(() => {
-          pending -= 1;
-          tryResolve();
-        });
-      } else tryResolve();
+        }
+
+        if (isProduct(result)) {
+          log.debug('Resolved:', result);
+          events.forEach((event) => Event.resolve.dispatch(event.target, result));
+        } else if (isFailure(result)) {
+          log.debug('Rejected:', result);
+          events.forEach((event) => Event.reject.dispatch(event.target, result));
+        } else {
+          log.error('Unexpected type of result:', result);
+        }
+      }
     }
 
-    return Promise.race([
-      control.expire([]),
-      new Promise((resolve) => {
-        processProducts(0, resolve, safeAsync(
-          log,
-          'Provider callback error:',
-          () => provider(control, contexts),
-        ));
-      }),
-    ]);
+    async function provide() {
+      if (control.signal?.aborted) return;
+      timer = 0;
+
+      const contexts = [];
+      waiting.forEach(({ context, events }, key) => {
+        if (pending.has(key)) {
+          contexts.push(context);
+          pending.set(key, events);
+        } else pending.get(key).push(...events);
+      });
+      waiting.clear();
+
+      traverse(await safeAsync(
+        log,
+        'Provider callback error:',
+        () => provider(contexts, control.signal),
+      ));
+    }
+
+    control.dispose(Event.extract.listen(element, (event) => {
+      const { context } = event?.detail ?? {};
+      const key = getContextKey(context);
+      if (key) {
+        if (waiting.has(key)) {
+          waiting.set(key, { context: { ...context }, events: [event] });
+        } else waiting.get(key).events.push(event);
+        if (!timer) timer = setTimeout(provide, 0);
+      } else {
+        log.warn('Event context is missing, ignored:', event);
+      }
+    }));
   };
 }
 

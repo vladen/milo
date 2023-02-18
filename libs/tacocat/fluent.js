@@ -142,7 +142,7 @@ const declare = (control, declarers) => ({
 });
 
 /**
- * @type {Tacocat.Engine.Factory}
+ * @type {Tacocat.Engine.Builder}
  */
 const Tacocat = (signal, timeout) => ({
   declare(declarer) {

@@ -1,5 +1,5 @@
 import Log from './log.js';
-import { Failure, Product } from './product.js';
+import { Failure, Product } from './result.js';
 import { safeAsync, safeSync } from './safe.js';
 import Tacocat from './fluent.js';
 

@@ -15,13 +15,13 @@ function Control({
   const log = Log.common.module('control');
 
   /**
-   * @param {Tacocat.Disposer[]} disposers
+   * @param {Tacocat.Engine.Disposer[]} disposers
    */
   function dispose(disposers) {
-    disposers.forEach((disposer) => safeSync(log, 'Disposer callback error:', disposer));
+    disposers?.forEach((disposer) => safeSync(log, 'Disposer callback error:', disposer));
   }
 
-  /** @type {Map<any, Tacocat.Disposer[]>} */
+  /** @type {Map<any, Tacocat.Engine.Disposer[]>} */
   const disposers = new Map();
 
   const onAbort = (listener) => signal?.addEventListener(
@@ -39,7 +39,7 @@ function Control({
 
   return {
     dispose(disposer, key = null) {
-      /** @type {Tacocat.Disposer[]} */
+      /** @type {Tacocat.Engine.Disposer[]} */
       const newDisposers = Array.isArray(disposer) ? disposer.flat(3) : [disposer];
       if (signal?.aborted) {
         dispose(newDisposers);
@@ -65,7 +65,7 @@ function Control({
     },
 
     release(key) {
-      if (!isNil(key)) disposers.get(key)?.forEach(dispose);
+      if (!isNil(key)) dispose(disposers.get(key));
     },
 
     signal,

@@ -18,6 +18,8 @@ function getContextKey(context) {
   return key;
 }
 
+const compareContexts = (one, two) => getContextKey(one) === getContextKey(two);
+
 /**
  * @template T, U
  * @param {U | object} target
@@ -48,4 +50,4 @@ const projectObject = (target, source) => defineProperties(
   ),
 );
 
-export { getContextKey, projectObject };
+export { compareContexts, getContextKey, projectObject };

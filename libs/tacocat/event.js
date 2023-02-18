@@ -1,5 +1,5 @@
 import Log from './log.js';
-import { getStage } from './product.js';
+import { getStage } from './result.js';
 
 const { namespace } = Log.common;
 
@@ -19,8 +19,8 @@ const Type = {
  * @returns {Tacocat.Internal.EventDispatcher<T>}
  */
 const Event = (type) => ({
-  dispatch(target, product, event) {
-    const detail = product ? { ...product, stage: getStage(product) } : null;
+  dispatch(target, result, event) {
+    const detail = result ? { ...result, stage: getStage(result) } : null;
     // @ts-ignore
     if (event) event.detail = detail;
     target.dispatchEvent(event ?? new CustomEvent(type, { bubbles: true, detail }));
@@ -33,11 +33,11 @@ const Event = (type) => ({
 });
 
 export default {
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Contextful<{}>>} */
+  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Context<{}>>} */
   extract: Event(Type.extract),
   /** @type {Tacocat.Internal.EventDispatcher<void>} */
   mount: Event(Type.mount),
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Contextful<{}>>} */
+  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Context<{}>>} */
   observe: Event(Type.observe),
   /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Failure<any>>} */
   reject: Event(Type.reject),
