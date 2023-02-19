@@ -18,6 +18,7 @@ declare namespace Tacocat {
 
     // --- interfaces ---
     interface Instance {
+      readonly instance: number;
       readonly namespace: string;
       debug(message: string, ...params: any[]): void;
       error(message: string, ...params: any[]): void;

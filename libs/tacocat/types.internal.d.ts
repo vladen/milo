@@ -2,6 +2,7 @@ declare namespace Tacocat {
   module Internal {
     // --- aliases ---
     type Comparer = Tacocat.Engine.Comparer<any>;
+    type Context = Tacocat.Context<any>;
     type Declarer = Tacocat.Engine.Declarer<any, any>;
     type Engine = Tacocat.Engine.Instance<any, any>;
     type Extractor = Tacocat.Engine.Extractor<any, any>;
@@ -16,7 +17,6 @@ declare namespace Tacocat {
     type ResolvedPresenter = Tacocat.Engine.ResolvedPresenter<any, any>;
     type Result = Tacocat.Result<any, any>;
     type State = Tacocat.State<any, any>;
-    type Transformer = Tacocat.Engine.Transformer<any, any, any>;
 
     type ContextEvent = Tacocat.ContextEvent<any>;
     type FailureEvent = Tacocat.FailureEvent<any>;
@@ -25,22 +25,20 @@ declare namespace Tacocat {
 
     // --- types ---
 
+    type Subscriber = (control: Control, depot: Depot, element: Element) => void;
+
     type SafeDeclarer = (control: Control, context: object) => Promise<boolean>;
 
     type SafeExtractor = (control: Control, element: Element) => void;
 
     type SafeObserver = (
       control: Control,
-      subtree: Subtree
-    ) => (
-      observe: (control: Control, element: Element) => Tacocat.Engine.Disposer
-    ) => void;
+      subtree: Subtree,
+    ) => Tacocat.Internal.Engine;
 
     type SafeProvider = (control: Control, element: Element) => void;
 
     type SafePresenter = (control: Control, element: Element) => void;
-
-    type SafeTransformer = (control: Control, product: any) => Promise<boolean>;
 
     type SelectorMatcher = (element: Element) => boolean;
 
@@ -51,8 +49,14 @@ declare namespace Tacocat {
       release(key: any): void;
     }
 
+    interface Depot {
+      delete(): void;
+      get state(): State;
+      set state(state: State);
+    }
+
     interface EventDispatcher<T> {
-      dispatch(target: EventTarget, result?: T, event?: Event): void;
+      dispatch(target: EventTarget, detail?: T, event?: Event): void;
       listen: (
         target: EventTarget,
         listener: (event: CustomEvent & { detail: T }) => void,

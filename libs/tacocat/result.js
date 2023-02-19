@@ -29,6 +29,9 @@ const isResult = (result) => hasContext(result) && (
   )
 );
 
+/**
+ * @param {Tacocat.Internal.Result} result
+ */
 function getStage(result) {
   if (hasContext(result)) {
     if (isError(
@@ -44,15 +47,13 @@ function getStage(result) {
   return undefined;
 }
 
-const Context = (context) => ({ context });
-
 /**
  * @template T
  * @param {T} context
  * @param {(Error | object)?} error
  * @returns {Tacocat.Failure<T>}
  */
-const Failure = (context, error = {}) => ({ error, context });
+const Failure = (context, error = {}) => ({ context, error });
 
 /**
  * @template T, U
@@ -63,5 +64,5 @@ const Failure = (context, error = {}) => ({ error, context });
 const Product = (context, value) => ({ context, value });
 
 export {
-  Context, Failure, Product, hasContext, getStage, isFailure, isProduct, isResult,
+  Failure, Product, hasContext, getStage, isFailure, isProduct, isResult,
 };

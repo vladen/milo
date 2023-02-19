@@ -50,10 +50,6 @@ declare namespace Tacocat {
       state: Product<T, U>
     ) => void;
 
-    type Transformer<T, U, V extends U> = (
-      product: Product<T, U>
-    ) => Promise<Result<T, V>>;
-
     type Trigger = (
       element: Element,
       listener: (event?: Event) => void,
@@ -81,13 +77,12 @@ declare namespace Tacocat {
         extractor: Extractor<T, U>,
         reactions?: Reactions
       ): Extract<T & U>;
-      provide<U>(provider: Provider<T, U>): Transform<T, U>;
+      provide<U>(provider: Provider<T, U>): Present<T, U>;
     }
 
     interface Instance<T, U> {
-      abort(): void;
-      explore(scope: Element, selector?: string): Placeholder[];
-      refresh(scope: Element, selector?: string): Promise<Placeholder[]>;
+      explore(scope: Element, selector?: string): Placeholder<T, U>[];
+      refresh(scope: Element, selector?: string): Promise<Placeholder<T, U>[]>;
       resolve(context: T): Promise<Product<T, U>>;
     }
 
@@ -95,17 +90,9 @@ declare namespace Tacocat {
       observe(scope: Element, selector?: string): Observe<T, U>;
     }
 
-    interface Reactions {
-      events?: string[];
-      mutations?: Mutations;
-      trigger?: Trigger;
-    }
-
-    interface Placeholder {
-      context: object;
+    interface Placeholder<T, U> {
       element: Element;
-      stage?: Stage;
-      value?: any;
+      state: State<T, U>
     }
 
     interface Presenters<T, U> {
@@ -120,14 +107,13 @@ declare namespace Tacocat {
     }
 
     interface Provide<T> {
-      provide<U>(provider: Provider<T, U>): Transform<T, U>;
+      provide<U>(provider: Provider<T, U>): Present<T, U>;
     }
 
-    interface Transform<T, U> {
-      present(presenters: Presenters<T, U>): Present<T, U>;
-      transform<V extends U>(
-        transformer: Transformer<T, U, V>
-      ): Transform<T, V>;
+    interface Reactions {
+      events?: string[];
+      mutations?: Mutations;
+      trigger?: Trigger;
     }
   }
 }

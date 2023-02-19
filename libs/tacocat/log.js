@@ -1,4 +1,5 @@
 import { getConfig } from '../utils/utils.js';
+import constants from './constants.js';
 import { isFunction } from './utilities.js';
 
 const epoch = Date.now();
@@ -87,6 +88,7 @@ function Log(namespace) {
   );
 
   return {
+    instance,
     namespace,
     module(name) {
       return Log(`${namespace}/${name}`);
@@ -128,7 +130,7 @@ Log.use = (...modules) => {
   return Log;
 };
 
-Log.common = Log('tacocat');
+Log.common = Log(constants.namespace);
 Log.level = Level;
 Log.reset();
 

@@ -1,7 +1,6 @@
-import Log from './log.js';
-import { getStage } from './result.js';
+import constants from './constants.js';
 
-const { namespace } = Log.common;
+const { namespace } = constants;
 
 const Type = {
   mount: `${namespace}:mount`,
@@ -19,10 +18,11 @@ const Type = {
  * @returns {Tacocat.Internal.EventDispatcher<T>}
  */
 const Event = (type) => ({
-  dispatch(target, result, event) {
-    const detail = result ? { ...result, stage: getStage(result) } : null;
-    // @ts-ignore
-    if (event) event.detail = detail;
+  dispatch(target, detail, event) {
+    if (event) {
+      // @ts-ignore
+      event.detail = detail;
+    }
     target.dispatchEvent(event ?? new CustomEvent(type, { bubbles: true, detail }));
   },
   listen(target, listener, options = {}) {
@@ -35,16 +35,22 @@ const Event = (type) => ({
 export default {
   /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Context<{}>>} */
   extract: Event(Type.extract),
+
   /** @type {Tacocat.Internal.EventDispatcher<void>} */
   mount: Event(Type.mount),
+
   /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Context<{}>>} */
   observe: Event(Type.observe),
+
   /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Failure<any>>} */
   reject: Event(Type.reject),
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Product<{}, any>>} */
+
+  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Result<{}, any>>} */
   present: Event(Type.present),
+
   /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Product<{}, any>>} */
   resolve: Event(Type.resolve),
+
   /** @type {Tacocat.Internal.EventDispatcher<void>} */
   unmount: Event(Type.unmount),
 };
