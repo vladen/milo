@@ -1,17 +1,12 @@
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { delay, isFunction, isNil } from './utilities.js';
-
-const defaults = { signal: undefined, timeout: 30000 };
+import { isNil } from './utilities.js';
 
 /**
- * @param {Tacocat.Engine.Control} control
+ * @param {AbortSignal?} signal
  * @returns {Tacocat.Internal.Control}
  */
-function Control({
-  signal,
-  timeout = defaults.timeout,
-} = defaults) {
+function Control(signal) {
   const log = Log.common.module('control');
 
   /**
@@ -35,7 +30,7 @@ function Control({
     dispose([...disposers.values()].flat());
   });
 
-  log.debug('Created:', { signal, timeout });
+  log.debug('Created:', { signal });
 
   return {
     dispose(disposer, key = null) {
@@ -50,26 +45,11 @@ function Control({
       return false;
     },
 
-    async expire(fallback) {
-      await Promise.race([
-        new Promise(onAbort),
-        delay(timeout, signal).then(() => {
-          log.debug('Expired:', timeout);
-        }),
-      ]);
-
-      return isFunction(fallback)
-        // @ts-ignore
-        ? safeSync(log, 'Fallback error:', fallback)
-        : fallback;
-    },
-
     release(key) {
       if (!isNil(key)) dispose(disposers.get(key));
     },
 
     signal,
-    timeout,
   };
 }
 

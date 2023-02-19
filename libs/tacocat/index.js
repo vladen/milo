@@ -1,10 +1,20 @@
 import Log from './log.js';
-import { Failure, Product } from './result.js';
 import { safeAsync, safeSync } from './safe.js';
-import Tacocat from './fluent.js';
 
-export { Log, safeAsync, safeSync, Tacocat };
+export { Log, safeAsync, safeSync };
 
+/**
+ * @template T
+ * @param {object} context
+ * @type {Tacocat.Engine.Builder<T>}
+ */
+function Tacocat(context) {
+
+}
+
+export default Tacocat;
+
+/*
 const controller = new AbortController();
 const tacocat = Tacocat(controller.signal)
   // defines initial context of placeholders
@@ -76,3 +86,4 @@ tacocat.resolve({
 
 // stops observation of DOM, processing of placeholders and other pending operations
 controller.abort();
+*/

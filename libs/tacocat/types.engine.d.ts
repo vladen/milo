@@ -1,20 +1,7 @@
 declare namespace Tacocat {
   module Engine {
     // --- types ---
-    type Builder<T extends object> = (context?: T) => Declare<T>;
-
-    type Constructor<T extends object, U extends object, V> = (pipeline: {
-      declare(declarer: Declarer<object, T>): void;
-      extract(extractor: Extractor<T, U>, options?: Reactions): void;
-      compare(comparer: Comparer<T>): void;
-      provide(provider: Provider<U, V>): void;
-      present(presenters: Presenters<U, V>): void;
-    }) => (activation: {
-      scope: Element;
-      selector?: string;
-      signal?: AbortSignal;
-      timeout?: number;
-    }) => Instance<U, V>;
+    type Builder<T extends object> = (context?: T) => Extract<T>;
 
     type Comparer<T> = (one: T, two: T) => boolean;
 
@@ -57,22 +44,9 @@ declare namespace Tacocat {
     ) => Disposer;
 
     // --- interfaces ---
-    interface Control {
-      signal?: AbortSignal;
-      timeout?: number;
-    }
-
-    interface Declare<T extends object> {
-      declare<U extends object>(declarer: Declarer<T, U>): Declare<T & U>;
-      declare<U extends object>(context: U): Declare<T & U>;
-      extract<U extends object>(
-        extractor: Extractor<T, U>,
-        reactions?: Reactions
-      ): Extract<T & U>;
-    }
-
     interface Extract<T> {
       compare(comparer: Comparer<T>): Provide<T>;
+      extract<U extends object>(context: U): Extract<T & U>;
       extract<U extends object>(
         extractor: Extractor<T, U>,
         reactions?: Reactions
@@ -82,17 +56,20 @@ declare namespace Tacocat {
 
     interface Instance<T, U> {
       explore(scope: Element, selector?: string): Placeholder<T, U>[];
-      refresh(scope: Element, selector?: string): Promise<Placeholder<T, U>[]>;
-      resolve(context: T): Promise<Product<T, U>>;
+      refresh(scope: Element, selector?: string): Placeholder<T, U>[];
     }
 
     interface Observe<T, U> extends Instance<T, U> {
-      observe(scope: Element, selector?: string): Observe<T, U>;
+      observe(
+        scope: Element,
+        selector?: string,
+        signal?: AbortSignal
+      ): Instance<T, U>;
     }
 
     interface Placeholder<T, U> {
       element: Element;
-      state: State<T, U>
+      state: State<T, U>;
     }
 
     interface Presenters<T, U> {

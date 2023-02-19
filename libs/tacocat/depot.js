@@ -40,11 +40,7 @@ const Depot = (index, element) => {
       defineProperty(element, namespace, {
         configurable: true,
         enumerable: true,
-        value: Object.seal(
-          hasOwnProperty(element[namespace], index)
-            ? ({ ...element[namespace][index], ...state })
-            : { ...state },
-        ),
+        value: Object.seal(state),
       });
     },
   };

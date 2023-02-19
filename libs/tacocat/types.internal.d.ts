@@ -27,8 +27,6 @@ declare namespace Tacocat {
 
     type Subscriber = (control: Control, depot: Depot, element: Element) => void;
 
-    type SafeDeclarer = (control: Control, context: object) => Promise<boolean>;
-
     type SafeExtractor = (control: Control, element: Element) => void;
 
     type SafeObserver = (
@@ -43,10 +41,10 @@ declare namespace Tacocat {
     type SelectorMatcher = (element: Element) => boolean;
 
     // --- interfaces ---
-    interface Control extends Tacocat.Engine.Control {
+    interface Control {
       dispose(disposers: Tacocat.Engine.Disposers, key: any): boolean;
-      expire<T>(fallback: T): Promise<T>;
       release(key: any): void;
+      signal?: AbortSignal;
     }
 
     interface Depot {

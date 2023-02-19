@@ -1,13 +1,14 @@
-/** @type {Tacocat.isError} */
-export const isError = (value) => value instanceof Error;
-/** @type {Tacocat.isFunction} */
-export const isFunction = (value) => typeof value === 'function';
 /** @type {Tacocat.isNil} */
 export const isNil = (value) => value == null;
+
+/** @type {Tacocat.isError} */
+export const isError = (value) => !isNil(value) && value instanceof Error;
+/** @type {Tacocat.isFunction} */
+export const isFunction = (value) => typeof value === 'function';
 /** @type {Tacocat.isObject} */
-export const isObject = (value) => value != null && typeof value === 'object';
+export const isObject = (value) => !isNil(value) && typeof value === 'object';
 /** @type {Tacocat.isPromise} */
-export const isPromise = (value) => value != null && value instanceof Promise;
+export const isPromise = (value) => !isNil(value) && value instanceof Promise;
 /** @type {Tacocat.isUndefined} */
 export const isUndefined = (value) => value === undefined;
 

@@ -1,58 +1,26 @@
 import Depot from './depot.js';
+import Engine from './engine.js';
 import Event from './event.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import Subtree from './subtree.js';
-import { isFunction, mergeReactions } from './utilities.js';
+import { isFunction, isNil, mergeReactions } from './utilities.js';
 
 const childListMutation = 'childList';
 const observableMutations = ['attributes', 'characterData', childListMutation];
 
 /**
- * @param {WeakMap<Element, Tacocat.Internal.Depot>} mounted
- * @param {Tacocat.Internal.Subtree} subtree
- * @returns {Tacocat.Engine.Placeholder[]}
- */
-function exploreScope(mounted, { matcher, scope }) {
-  const elements = [scope, ...scope.children];
-  const results = [];
-  elements.forEach((element) => {
-    if (matcher(element)) {
-      const depot = mounted.get(element);
-      if (depot) results.push({ element, state: depot.state });
-    }
-    elements.push(...element.children);
-  });
-  return results;
-}
-
-/**
- * @param {WeakMap<Element, Tacocat.Internal.Depot>} mounted
- * @returns {Tacocat.Internal.Engine}
- */
-const Engine = (mounted) => ({
-  explore(scope, selector) {
-    return exploreScope(mounted, Subtree(scope, selector));
-  },
-  refresh(scope, selector) {
-    exploreScope(mounted, Subtree(scope, selector));
-  },
-  resolve(context) {
-    return resolveContext(context);
-  },
-});
-
-/**
- * @param {object} context
  * @param {Tacocat.Engine.Reactions[]} reactions
  * @param {Tacocat.Internal.Subscriber[]} subscribers
  * @returns {Tacocat.Internal.SafeObserver}
  */
-function Observe(context, reactions, subscribers) {
+function Observe(reactions, subscribers) {
   const { events, mutations, triggers } = mergeReactions(reactions);
   const log = Log.common.module('observer');
-  log.debug('Created:', { events, mutations, triggers });
+  log.debug('Created:', { events, mutations, triggers, subscribers });
 
+  // TODO: move context arg to extractor, allow object args to extractor (like was define)
+  // TODO: dispatch 'refresh' event on placeholder element from engine
+  // TODO: extractor listens to 'refresh' event
   return (control, subtree) => {
     /** @type {WeakMap<Element, Tacocat.Internal.Depot>} */
     const mounted = new WeakMap();
@@ -90,7 +58,7 @@ function Observe(context, reactions, subscribers) {
      * @param {(event: Event) => void} listener
      */
     function mount(element, listener) {
-      if (mounted.has(element)) return mounted.get(element);
+      if (mounted.has(element)) return false;
 
       if (events.length || triggers.length) {
         events.forEach((type) => {
@@ -98,11 +66,15 @@ function Observe(context, reactions, subscribers) {
         });
 
         triggers.forEach((trigger) => {
-          const disposer = safeSync(log, 'Trigger callback error:', () => trigger(element, listener, control.signal));
+          const disposer = safeSync(
+            log,
+            'Trigger callback error:',
+            () => trigger(element, listener, control.signal),
+          );
           if (isFunction(disposer)) {
             control.dispose(disposer, element);
-          } else if (disposer != null) {
-            log.warn('Trigger callback must return a function:', { trigger });
+          } else if (!isNil(disposer)) {
+            log.warn('Trigger callback must return a function:', { result: disposer, trigger });
           }
         });
       }
@@ -113,9 +85,9 @@ function Observe(context, reactions, subscribers) {
       subscribers.forEach((subscriber) => {
         subscriber(control, depot, element);
       });
-      log.debug('Mounted:', { element, events, triggers });
+      log.debug('Mounted:', { element });
       Event.mount.dispatch(element);
-      return depot;
+      return true;
     }
 
     /**
@@ -125,7 +97,7 @@ function Observe(context, reactions, subscribers) {
       mounted.get(element)?.delete();
       mounted.delete(element);
       control.release(element);
-      log.debug('Unmounted:', { element, events, triggers });
+      log.debug('Unmounted:', { element });
       Event.unmount.dispatch(element);
     }
 
@@ -134,22 +106,24 @@ function Observe(context, reactions, subscribers) {
      */
     function schedule() {
       if (timer) return;
+
       function dispatch() {
         timer = 0;
-        // Dispatch `unmount` events
         removed.forEach(({ element }) => {
           unmount(element);
         });
-        // Dispatch `mount` and `observe` events
+
         updated.forEach(({ element, event }) => {
-          const depot = mount(element, (nextEvent) => {
+          if (!mount(element, (nextEvent) => {
             updated.add({ element, event: nextEvent });
             schedule();
-          });
-          log.debug('Observed:', { context, element, event, subtree });
-          Event.observe.dispatch(element, depot.state, event);
+          })) {
+            log.debug('Observed:', { element, event });
+            Event.observe.dispatch(element, undefined, event);
+          }
         });
       }
+
       timer = setTimeout(dispatch, 0);
     }
 
@@ -193,7 +167,7 @@ function Observe(context, reactions, subscribers) {
 
       observer.observe(subtree.scope, mutations);
       control.dispose(() => observer.disconnect());
-      log.debug('Observing:', { context, reactions, subtree });
+      log.debug('Observing:', { subtree });
     }
 
     return Engine(mounted);

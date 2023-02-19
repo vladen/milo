@@ -5,6 +5,7 @@ const { namespace } = constants;
 const Type = {
   mount: `${namespace}:mount`,
   observe: `${namespace}:observe`,
+  refresh: `${namespace}:refresh`,
   extract: `${namespace}:extract`,
   reject: `${namespace}:reject`,
   resolve: `${namespace}:resolve`,
@@ -33,22 +34,25 @@ const Event = (type) => ({
 });
 
 export default {
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Context<{}>>} */
+  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Internal.Context>} */
   extract: Event(Type.extract),
 
-  /** @type {Tacocat.Internal.EventDispatcher<void>} */
+  /** @type {Tacocat.Internal.EventDispatcher<undefined>} */
   mount: Event(Type.mount),
 
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Context<{}>>} */
+  /** @type {Tacocat.Internal.EventDispatcher<undefined>} */
+  refresh: Event(Type.refresh),
+
+  /** @type {Tacocat.Internal.EventDispatcher<undefined>} */
   observe: Event(Type.observe),
 
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Failure<any>>} */
+  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Internal.Failure>} */
   reject: Event(Type.reject),
 
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Result<{}, any>>} */
+  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Internal.Result>} */
   present: Event(Type.present),
 
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Product<{}, any>>} */
+  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Internal.Product>} */
   resolve: Event(Type.resolve),
 
   /** @type {Tacocat.Internal.EventDispatcher<void>} */
