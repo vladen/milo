@@ -15,6 +15,14 @@ describe('function "isLog"', () => {
 
 describe.skip('function "Log"', () => {
   describe('returned object', () => {
+    describe('property "id"', () => {
+      it('returns namespace concatenated with index of this Log instance', () => {
+        expect(Log('foo').namespace).to.contain('foo-1');
+        expect(Log('foo').namespace).to.contain('foo-2');
+        expect(Log('bar').namespace).to.contain('bar-1');
+      });
+    });
+
     describe('method "module"', () => {
       it('returns new Log instance with module name added to namespace', () => {
         expect(Log('test').module('module').namespace).to.contain('module');

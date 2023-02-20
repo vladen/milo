@@ -42,15 +42,20 @@ export const delay = (timeout, signal = null) => new Promise((resolve) => {
   }
 });
 
+export const hasOwnProperty = (object, property) => !isNil(object)
+  && Object.prototype.hasOwnProperty.call(object, property);
+
 /**
  *
- * @param {Tacocat.Engine.Reactions[]} reactions
+ * @param {Tacocat.Internal.Reactions[]} reactions
  * @returns
  */
 export const mergeReactions = (reactions) => ({
-  events: reactions
-    .flatMap(({ events }) => events)
-    .filter((event) => event),
+  events: [...new Set(
+    reactions
+      .flatMap(({ events }) => events)
+      .filter((event) => event),
+  )],
   mutations: reactions
     .map(({ mutations }) => mutations)
     .filter((mutations) => isObject(mutations))

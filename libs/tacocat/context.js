@@ -1,6 +1,4 @@
-import { isFunction, isObject, isUndefined } from './utilities.js';
-
-const { defineProperties, entries, fromEntries, getOwnPropertyDescriptors } = Object;
+import { isObject, isUndefined } from './utilities.js';
 
 const contextKeys = new WeakMap();
 
@@ -20,34 +18,9 @@ function getContextKey(context) {
 
 const compareContexts = (one, two) => getContextKey(one) === getContextKey(two);
 
-/**
- * @template T, U
- * @param {U | object} target
- * @param {T | object} source
- * @returns {T & U}
- */
-const projectObject = (target, source) => defineProperties(
-  target,
-  fromEntries(
-    entries(getOwnPropertyDescriptors(source))
-      .map(
-        ([key, { configurable, enumerable, value, writable }]) => [
-          key,
-          !isFunction(value) && writable
-            ? {
-              configurable: false,
-              enumerable,
-              get() {
-                return Reflect.get(source, key);
-              },
-              set(newValue) {
-                return Reflect.set(source, key, newValue);
-              },
-            }
-            : { configurable, enumerable, value, writable },
-        ],
-      ),
-  ),
-);
+/** @type {Tacocat.hasContext}} */
+const hasContext = (object) => isObject(object)
+  // @ts-ignore
+  && getContextKey(object.context) !== '';
 
-export { compareContexts, getContextKey, projectObject };
+export { compareContexts, getContextKey, hasContext };

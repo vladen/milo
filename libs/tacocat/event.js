@@ -1,6 +1,4 @@
-import constants from './constants.js';
-
-const { namespace } = constants;
+import { namespace } from './constants.js';
 
 const Type = {
   mount: `${namespace}:mount`,
@@ -16,7 +14,7 @@ const Type = {
 /**
  * @template T
  * @param {string} type
- * @returns {Tacocat.Internal.EventDispatcher<T>}
+ * @returns {Tacocat.Engine.Channel<T>}
  */
 const Event = (type) => ({
   dispatch(target, detail, event) {
@@ -34,27 +32,33 @@ const Event = (type) => ({
 });
 
 export default {
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Internal.Context>} */
+  /**
+   * @type {Tacocat.Engine.Channel<Tacocat.Contextful<{ [key: string]: any }>>}
+   */
   extract: Event(Type.extract),
 
-  /** @type {Tacocat.Internal.EventDispatcher<undefined>} */
+  /**
+   * @type {Tacocat.Engine.Channel<void>}
+   */
   mount: Event(Type.mount),
 
-  /** @type {Tacocat.Internal.EventDispatcher<undefined>} */
+  /** @type {Tacocat.Engine.Channel<void>} */
   refresh: Event(Type.refresh),
 
-  /** @type {Tacocat.Internal.EventDispatcher<undefined>} */
+  /** @type {Tacocat.Engine.Channel<void>} */
   observe: Event(Type.observe),
 
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Internal.Failure>} */
+  /** @type {Tacocat.Engine.Channel<Tacocat.Contextful<{ [key: string]: any }>>} */
   reject: Event(Type.reject),
 
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Internal.Result>} */
+  /** @type {Tacocat.Engine.Channel<Tacocat.Contextful<{ [key: string]: any }>>} */
   present: Event(Type.present),
 
-  /** @type {Tacocat.Internal.EventDispatcher<Tacocat.Internal.Product>} */
+  /** @type {Tacocat.Engine.Channel<Tacocat.Contextful<{ [key: string]: any }>>} */
   resolve: Event(Type.resolve),
 
-  /** @type {Tacocat.Internal.EventDispatcher<void>} */
+  /** @type {Tacocat.Engine.Channel<void>} */
   unmount: Event(Type.unmount),
+
+  Type,
 };

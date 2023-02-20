@@ -2,7 +2,7 @@ import Event from './event.js';
 import Subtree from './subtree.js';
 
 /**
- * @param {WeakMap<Element, Tacocat.Internal.Depot>} mounted
+ * @param {WeakMap<Element, Tacocat.Internal.Storage>} mounted
  * @param {Tacocat.Internal.Subtree} subtree
  * @returns {Tacocat.Engine.Placeholder[]}
  */
@@ -12,7 +12,12 @@ function exploreScope(mounted, { matcher, scope }) {
   elements.forEach((element) => {
     if (matcher(element)) {
       const depot = mounted.get(element);
-      if (depot) placeholders.push({ element, state: depot.state });
+      if (depot) {
+        placeholders.push({
+          element,
+          state: depot.getState(element),
+        });
+      }
     }
     elements.push(...element.children);
   });
@@ -28,7 +33,7 @@ function refreshScope(mounted, subtree) {
 }
 
 /**
- * @param {WeakMap<Element, Tacocat.Internal.Depot>} mounted
+ * @param {WeakMap<Element, Tacocat.Internal.Storage>} mounted
  * @returns {Tacocat.Internal.Engine}
  */
 const Engine = (mounted) => ({

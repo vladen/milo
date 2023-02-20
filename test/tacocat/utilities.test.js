@@ -1,5 +1,5 @@
 import { expect } from './tools.js';
-import { createSelectorMatcher, mergeMutations } from '../../libs/tacocat/utilities.js';
+import { createSelectorMatcher, mergeReactions } from '../../libs/tacocat/utilities.js';
 
 describe('function "createSelectorMatcher"', () => {
   it('returns a function', () => {
@@ -7,18 +7,34 @@ describe('function "createSelectorMatcher"', () => {
   });
 });
 
-describe('function "mergeMutations"', () => {
+describe('function "mergeReactions"', () => {
   it('merges several mutation observer settings into one object', () => {
-    expect(mergeMutations([
-      { attributes: true, attributeFilter: ['class'] },
-      { attributeFilter: ['id', 'type'], childList: true },
-      { subtree: true },
+    const trigger1 = () => {};
+    const trigger2 = () => {};
+    expect(mergeReactions([
+      {
+        events: ['test1'],
+        mutations: { attributes: true, attributeFilter: ['class'] },
+      },
+      {
+        mutations: { attributeFilter: ['id', 'type'], childList: true },
+        trigger: trigger1,
+      },
+      {
+        events: ['test1', 'test2'],
+        mutations: { subtree: true },
+        trigger: trigger2,
+      },
     ])).to.deep.equal({
-      attributeFilter: ['class', 'id', 'type'],
-      attributes: true,
-      characterData: false,
-      childList: true,
-      subtree: true,
+      events: ['test1', 'test2'],
+      mutations: {
+        attributeFilter: ['class', 'id', 'type'],
+        attributes: true,
+        characterData: false,
+        childList: true,
+        subtree: true,
+      },
+      triggers: [trigger1, trigger2],
     });
   });
 });

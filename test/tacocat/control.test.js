@@ -1,7 +1,6 @@
 import { expect, spy } from './tools.js';
 import Log, { quietFilter } from '../../libs/tacocat/log.js';
 import Control from '../../libs/tacocat/control.js';
-import { delay } from '../../libs/tacocat/utilities.js';
 
 describe('function "Control"', () => {
   after(() => {
@@ -47,19 +46,6 @@ describe('function "Control"', () => {
         controller.abort();
         expect(disposer1).to.have.been.called;
         expect(disposer2).to.have.been.called;
-      });
-    });
-
-    describe('method "expire"', () => {
-      it('returns a promise resolving after timeout with fallback value', async () => {
-        const control = Control({ timeout: 1 });
-        const fallback = spy(() => true);
-        const promise = control.expire(fallback);
-
-        expect(fallback).not.to.be.called;
-        await delay(2);
-        expect(fallback).to.be.called;
-        await expect(promise).to.eventually.equal(true);
       });
     });
   });

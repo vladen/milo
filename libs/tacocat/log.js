@@ -4,7 +4,7 @@ import { isFunction } from './utilities.js';
 
 const epoch = Date.now();
 /** @type {Map<string, number>} */
-const instances = new Map();
+const indexes = new Map();
 
 const isProd = getConfig().env?.name === 'prod';
 export const Level = Object.freeze({
@@ -80,15 +80,16 @@ function writeRecord(record) {
  * @param {string} namespace
  */
 function Log(namespace) {
-  const instance = (instances.get(namespace) ?? 0) + 1;
-  instances.set(namespace, instance);
+  const index = (indexes.get(namespace) ?? 0);
+  indexes.set(namespace, index);
+  const id = `${namespace}-${index}`;
 
   const createWriter = (level) => (message, ...params) => writeRecord(
-    createRecord(instance, level, message, namespace, params),
+    createRecord(index, level, message, namespace, params),
   );
 
-  return {
-    instance,
+  return Object.seal({
+    id,
     namespace,
     module(name) {
       return Log(`${namespace}/${name}`);
@@ -98,7 +99,7 @@ function Log(namespace) {
     info: createWriter(Level.info),
     warn: createWriter(Level.warn),
     [Symbol.toStringTag]: tag,
-  };
+  });
 }
 
 Log.level = Level;
