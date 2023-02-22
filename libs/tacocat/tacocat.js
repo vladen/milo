@@ -1,7 +1,6 @@
 import Channel from './channel.js';
-import Compare from './compare.js';
 import { Stage } from './constants.js';
-import { assignContext, compareContexts } from './context.js';
+import { assignContext } from './context.js';
 import Control from './control.js';
 import Extract from './extract.js';
 import Log from './log.js';
@@ -21,7 +20,7 @@ export { Log, safeAsync, safeSync };
  * @param {Tacocat.Internal.Presenters} presenters
  * @returns {Tacocat.Engine.Present<T, U>}
  */
-const present = (subscribers, reactions, presenters = {
+const Step2 = (subscribers, reactions, presenters = {
   pending: [],
   rejected: [],
   resolved: [],
@@ -36,13 +35,13 @@ const present = (subscribers, reactions, presenters = {
   },
   present(stage, ...nextPresenters) {
     if (isFunction(stage)) {
-      return present(subscribers, reactions, {
+      return Step2(subscribers, reactions, {
         [Stage.pending]: [...presenters[Stage.pending], stage],
         [Stage.rejected]: [...presenters[Stage.rejected], stage],
         [Stage.resolved]: [...presenters[Stage.resolved], stage],
       });
     }
-    return present(subscribers, reactions, {
+    return Step2(subscribers, reactions, {
       ...presenters,
       [stage]: [...[presenters[stage] ?? []], ...nextPresenters],
     });
@@ -52,16 +51,14 @@ const present = (subscribers, reactions, presenters = {
 /**
  * @template T, U
  * @param {object} context
- * @param {Tacocat.Internal.Comparer} comparer
  * @param {Tacocat.Internal.Extractor[]} extractors
  * @param {Tacocat.Internal.Reactions[]} reactions
  * @returns {Tacocat.Engine.Extract<T, U>}
  */
-const extract = (context, comparer, extractors = [], reactions = []) => ({
+const Step1 = (context, extractors = [], reactions = []) => ({
   extract(extractor, nextReactions) {
-    return extract(
+    return Step1(
       context,
-      Compare(comparer),
       [...extractors, extractor],
       [...reactions, nextReactions],
     );
@@ -72,8 +69,8 @@ const extract = (context, comparer, extractors = [], reactions = []) => ({
       rejected: [],
       resolved: [],
     };
-    return present(
-      [Extract(context, comparer, extractors), Provide(provider)],
+    return Step2(
+      [Extract(context, extractors), Provide(provider)],
       reactions,
       presenters,
     );
@@ -85,8 +82,8 @@ const extract = (context, comparer, extractors = [], reactions = []) => ({
  */
 const tacocat = {
   assign: assignContext,
-  define(context, comparer = compareContexts) {
-    return extract(context, comparer);
+  define(context) {
+    return Step1(context);
   },
   channel: Channel,
   stage: Stage,

@@ -1,17 +1,17 @@
 import Channel from './channel.js';
+import { getContextKey } from './context.js';
 import Log from './log.js';
 import { safeAsyncEvery } from './safe.js';
 import { isFunction, isNil, isObject } from './utilities.js';
 
 /**
  * @param {object} base
- * @param {Tacocat.Internal.Comparer} comparer
  * @param {Tacocat.Internal.Extractor[]} extractors
  * @returns {Tacocat.Internal.Subscriber}
  */
-const Extract = (base, comparer, extractors) => (control, element, storage) => {
+const Extract = (base, extractors) => (control, element, storage) => {
   const log = Log.common.module('extract');
-  log.debug('Activating:', { base, comparer, element, extractors });
+  log.debug('Activating:', { base, element, extractors });
 
   control.dispose(Channel.observe.listen(element, async (event) => {
     const context = { ...base };
@@ -39,7 +39,7 @@ const Extract = (base, comparer, extractors) => (control, element, storage) => {
       },
     );
 
-    if (success && !comparer(context, storage.getState(element)?.context)) {
+    if (success && getContextKey(context) !== getContextKey(storage.getState(element)?.context)) {
       const state = { context };
       storage.setState(element, state);
       log.debug('Extracted:', state);

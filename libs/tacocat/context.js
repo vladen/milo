@@ -32,11 +32,9 @@ function getContextKey(context) {
   return key;
 }
 
-const compareContexts = (one, two) => getContextKey(one) === getContextKey(two);
-
 /** @type {Tacocat.hasContext}} */
 const hasContext = (object) => isObject(object)
   // @ts-ignore
   && getContextKey(object.context) !== '';
 
-export { assignContext, compareContexts, getContextKey, hasContext };
+export { assignContext, getContextKey, hasContext };

@@ -23,12 +23,10 @@ declare namespace Tacocat {
 
   type SomeContext = { [key: string]: any };
   type SomeRejection = Rejection<SomeContext>;
-  type SomeResolution = Resolution<SomeContext, any>;
+  type SomeResolution = Resolution<SomeContext, SomeContext>;
 
   module Engine {
     // --- types ---
-    type Comparer<T> = (one: T, two: T) => boolean;
-
     type Disposer = () => void;
     type Disposers = Disposer | Disposer[] | Disposer[][];
 
@@ -107,11 +105,8 @@ declare namespace Tacocat {
        * Starts definintion of tacocat pipeline.
        * @param base
        * Base context to be clones by all further pipelinesd.
-       * @param comparer
-       * Optional function returning true if two context objects are equal.
-       * If not provided, then default comparer (JSON.stringify) will be used.
        */
-      define<T extends object>(base?: T, comparer?: Comparer<T>): Extract<T>;
+      define<T extends object>(base?: T): Extract<T>;
       channel: {
         pending: Channel<SomeContext>;
         rejected: Channel<SomeRejection>;
@@ -155,7 +150,6 @@ declare namespace Tacocat {
 
   module Internal {
     // --- aliases ---
-    type Comparer = Tacocat.Engine.Comparer<any>;
     type Contextful = Tacocat.Contextful<any>;
     type ContextfulEvent = Tacocat.ContextfulEvent<any>;
     type Engine = Tacocat.Engine.Instance<any, any>;

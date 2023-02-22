@@ -21,11 +21,8 @@ function Provide(provider) {
   const waiting = new Map();
   let timer;
 
-  const log = Log.common.module('provide');
-  log.debug('Created:', { provider });
-
   return (control, element, storage) => {
-    log.debug('Activating:', { element });
+    const log = Log.common.module('provide');
 
     /**
      * @param {Pending} pending
@@ -49,17 +46,24 @@ function Provide(provider) {
       if (hasContext(result)) {
         const key = getContextKey(result?.context);
         if (pending.has(key)) {
-          const stage = isError(result)
-            ? Stage.Rejected
-            : Stage.resolved;
-          storage.setState(element, result);
-          log.debug(stage === Stage.rejected ? 'Rejected:' : 'Resolved:', result);
           const { events } = pending.get(key);
           pending.delete(key);
+          storage.setState(element, result);
+          let dispatch;
+          let stage;
+          if (isError(result)) {
+            log.debug('Rejected:', result);
+            dispatch = () => Channel.rejected.dispatch(element, result);
+            stage = Stage.rejected;
+          } else {
+            log.debug('Resolved:', result);
+            dispatch = () => Channel.resolved.dispatch(element, result);
+            stage = Stage.resolved;
+          }
           events.forEach((event) => {
-            event.detail.stage = Stage.resolved;
+            event.detail.stage = stage;
             Channel.provide.dispatch(element, result, event);
-            Channel.resolved.dispatch(element, result);
+            dispatch();
           });
         } else {
           log.warn('Contextless result, ignored:', result);
@@ -124,7 +128,7 @@ function Provide(provider) {
     );
 
     control.dispose(() => log.debug('Disposed'));
-    log.debug('Activated');
+    log.debug('Activated:', { provider, element });
   };
 }
 
