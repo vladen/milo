@@ -1,5 +1,4 @@
-import { Stage } from './constants.js';
-import Event from './event.js';
+import Channel from './channel.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
 
@@ -12,25 +11,22 @@ const Present = (presenters) => (control, element) => {
   log.debug('Activating:', { element, presenters });
 
   /**
-   * @param {Tacocat.Stage} stage
-   * @return {(event: Tacocat.ContextEvent<any>) => void}
+   * @param {Tacocat.Internal.ContextfulEvent} event
    */
-  const present = (stage) => (event) => {
-    const group = presenters[stage];
-    if (group.length) {
+  const present = (event) => {
+    const group = presenters[event.detail.stage];
+    if (group?.length) {
       group.forEach((presenter) => {
-        safeSync(log, 'Presenter callback error:', () => presenter(element, event.detail));
+        safeSync(log, 'Presenter callback error:', () => presenter(element, event.detail, event));
       });
       log.debug('Presented:', { element, event, presenters: group });
-      Event.present.dispatch(element, event.detail, event);
+      Channel.present.dispatch(element, event.detail, event);
     } else {
       log.debug('Not presented:', { element, event });
     }
   };
 
-  control.dispose(Event.extract.listen(element, present(Stage.pending)), element);
-  control.dispose(Event.reject.listen(element, present(Stage.rejected)), element);
-  control.dispose(Event.resolve.listen(element, present(Stage.resolved)), element);
+  control.dispose(Channel.provide.listen(element, present), element);
   control.dispose(() => log.debug('Disposed'));
   log.debug('Activated');
 };

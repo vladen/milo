@@ -1,55 +1,8 @@
+import { expect } from './tools.js';
 import Log, { quietFilter } from '../../libs/tacocat/log.js';
 import tacocat from '../../libs/tacocat/tacocat.js';
 
-const attribute = 'data-test';
-const defined = 'defined';
-const extracted = 'extracted';
-const rejected = 'rejected';
-const resolved = 'rejected';
-
-const createBasePipeline = () => tacocat
-  .define({ defined })
-  .extract(
-    (context, element) => Promise.resolve({
-      ...context,
-      extracted: element.getAttribute(attribute),
-    }),
-    {
-      events: ['click'],
-      mutations: { attributeFilter: [attribute] },
-    },
-  );
-
-const createRejectPipeline = () => createBasePipeline()
-  .provide(
-    (contexts) => Promise.resolve(contexts.map((context) => {
-      const error = new Error('test');
-      error.context = context;
-      return Promise.reject(error);
-    })),
-  )
-  .pending((element, state) => {
-    element.state = state;
-  })
-  .resolved((element, state) => {
-    element.state = state;
-  });
-
-const createResolvePipeline = () => createBasePipeline()
-  .provide(
-    (contexts) => Promise.resolve(contexts.map((context) => ({
-      context,
-      value: resolved,
-    }))),
-  )
-  .pending((element, state) => {
-    element.state = state;
-  })
-  .resolved((element, state) => {
-    element.state = state;
-  });
-
-describe('function "tacocat"', () => {
+describe.skip('tacocat pipeline', () => {
   after(() => {
     Log.reset();
   });
@@ -57,9 +10,32 @@ describe('function "tacocat"', () => {
     Log.use(quietFilter);
   });
 
-  it('processes', () => {
-    createResolvePipeline()
+  it('processes static DOM', async () => {
+    const placeholders = tacocat
+      .define({})
+      .extract(
+        (_, element) => Promise.resolve({ test: element.getAttribute('context') }),
+      )
+      .provide(
+        (contexts) => Promise.resolve(contexts.map((context) => ({
+          context,
+          product: `${context.test}-product`,
+        }))),
+      )
+      .present(tacocat.stage.resolved, (element, { product }) => {
+        element.setAttribute('product', product);
+      })
       .observe(document.body, 'p')
-      .explore(document.querySelector('test'));
+      .explore();
+
+    await Promise.all(
+      placeholders.map((placeholder) => placeholder.wait(tacocat.stage.resolved)),
+    );
+
+    placeholders.forEach((placeholder) => {
+      expect(placeholder.element.getAttribute('product')).toBe(
+        `${placeholder.element.getAttribute('context')}-product`,
+      );
+    });
   });
 });

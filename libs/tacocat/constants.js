@@ -1,5 +1,7 @@
 export const namespace = 'tacocat';
 
+export const ErrorMessage = { notProvided: 'Not provided' };
+
 export const Stage = {
   /** @type {Tacocat.Pending} */
   pending: 'pending',
@@ -9,4 +11,4 @@ export const Stage = {
   resolved: 'resolved',
 };
 
-export default { namespace };
+export default { namespace, Stage };

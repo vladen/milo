@@ -8,9 +8,9 @@ declare namespace Tacocat {
   type isUndefined = (value: any) => value is undefined;
 
   type Contextful<T extends object> = { context?: T };
-  type ContextfulError<T extends object> = Contextful<T> & Error;
-  type ContextfulObject<T extends object, U extends object> = Contextful<T> & U;
-  type State<T extends object, U extends object> = Contextful<T> | ContextfulError<T> | ContextfulObject<T, U>;
+  type Rejection<T extends object> = Contextful<T> & Error;
+  type Resolution<T extends object, U extends object> = Contextful<T> & U;
+  type State<T extends object, U extends object> = Contextful<T> | Rejection<T> | Resolution<T, U>;
 
   type hasContext = (candidate: any) => candidate is Contextful<any>;
 
@@ -19,12 +19,12 @@ declare namespace Tacocat {
   type Resolved = 'resolved';
   type Stage = Pending | Rejected | Resolved;
 
-  type ContextEvent<T extends object> = CustomEvent & {
-    detail: Contextful<T> & { stage: Pending };
-  };
-}
+  type ContextfulEvent<T extends object> = CustomEvent<Contextful<T> & { stage: Stage }>;
 
-declare namespace Tacocat {
+  type SomeContext = { [key: string]: any };
+  type SomeRejection = Rejection<SomeContext>;
+  type SomeResolution = Resolution<SomeContext, any>;
+
   module Engine {
     // --- types ---
     type Comparer<T> = (one: T, two: T) => boolean;
@@ -35,7 +35,7 @@ declare namespace Tacocat {
     type Extractor<T extends object, U extends object> = (
       context: T,
       element: Element,
-      event: ContextEvent<T>,
+      event: ContextfulEvent<T>,
       signal?: AbortSignal
     ) => U | Promise<U>;
 
@@ -46,22 +46,25 @@ declare namespace Tacocat {
 
     type PendingPresenter<T extends object> = (
       element: Element,
-      state: Contextful<T>
+      state: Contextful<T>,
+      event: CustomEvent<Contextful<T>>,
     ) => void;
 
     type Provider<T extends object, U extends object> = (
       contexts: T[],
       signal?: AbortSignal
-    ) => Promise<ContextfulObject<T, U>[]> | Promise<Promise<ContextfulObject<T, U>[]>[]>;
+    ) => Promise<Resolution<T, U>[]>;
 
     type RejectedPresenter<T extends object> = (
       element: Element,
-      state: ContextfulError<T>
+      state: Rejection<T>,
+      event: CustomEvent<Rejection<T>>,
     ) => void;
 
     type ResolvedPresenter<T extends object, U extends object> = (
       element: Element,
-      state: ContextfulObject<T, U>
+      state: Resolution<T, U>,
+      event: CustomEvent<Resolution<T, U>>,
     ) => void;
 
     type Trigger = (
@@ -78,7 +81,7 @@ declare namespace Tacocat {
         listener: (event: CustomEvent & { detail: T }) => void,
         options?: AddEventListenerOptions
       ) => Tacocat.Engine.Disposer;
-      type: string;
+      promise(target: EventTarget): Promise<T>
     }
 
     interface Extract<T extends object> {
@@ -99,6 +102,7 @@ declare namespace Tacocat {
     }
 
     interface Factory {
+      assign<T extends object, U extends object>(result: T, context: U): T & Contextful<U>
       /**
        * Starts definintion of tacocat pipeline.
        * @param base
@@ -108,26 +112,27 @@ declare namespace Tacocat {
        * If not provided, then default comparer (JSON.stringify) will be used.
        */
       define<T extends object>(base?: T, comparer?: Comparer<T>): Extract<T>;
-      event: {
-        mount: string;
-        observe: string;
-        refresh: string;
-        extract: string;
-        reject: string;
-        resolve: string;
-        present: string;
-        unmount: string;
+      channel: {
+        pending: Channel<SomeContext>;
+        rejected: Channel<SomeRejection>;
+        resolved: Channel<SomeResolution>;
       };
+      stage: {
+        pending: Pending;
+        rejected: Rejected;
+        resolved: Resolved;
+      }
     }
 
     interface Instance<T extends object, U extends object> {
-      explore(scope: Element, selector?: string): Placeholder<T, U>[];
-      refresh(scope: Element, selector?: string): Placeholder<T, U>[];
+      explore(scope?: Element, selector?: string): Placeholder<T, U>[];
+      refresh(scope?: Element, selector?: string): Placeholder<T, U>[];
     }
 
     interface Placeholder<T extends object, U extends object> {
       element: Element;
       state: State<T, U>;
+      wait(stage: Stage): Promise<Placeholder<T, U>>;
     }
 
     interface Present<T extends object, U extends object> {
@@ -136,9 +141,9 @@ declare namespace Tacocat {
         selector?: string,
         signal?: AbortSignal
       ): Instance<T, U>;
-      pending(...presenters: PendingPresenter<T>[]): Present<T, U>;
-      rejected(...presenters: RejectedPresenter<T>[]): Present<T, U>;
-      resolved(...presenters: ResolvedPresenter<T, U>[]): Present<T, U>;
+      present(stage: Pending, ...presenters: PendingPresenter<T>[]): Present<T, U>;
+      present(stage: Rejected, ...presenters: RejectedPresenter<T>[]): Present<T, U>;
+      present(stage: Resolved, ...presenters: ResolvedPresenter<T, U>[]): Present<T, U>;
     }
 
     interface Reactions {
@@ -147,20 +152,18 @@ declare namespace Tacocat {
       trigger?: Trigger;
     }
   }
-}
 
-declare namespace Tacocat {
   module Internal {
     // --- aliases ---
     type Comparer = Tacocat.Engine.Comparer<any>;
     type Contextful = Tacocat.Contextful<any>;
-    type ContextfulError = Tacocat.ContextfulError<any>;
-    type ContextfulObject = Tacocat.ContextfulObject<any, any>;
+    type ContextfulEvent = Tacocat.ContextfulEvent<any>;
     type Engine = Tacocat.Engine.Instance<any, any>;
     type Extractor = Tacocat.Engine.Extractor<any, any>;
     type Listener = Tacocat.Engine.Trigger;
     type Mutations = Tacocat.Engine.Mutations;
     type PendingPresenter = Tacocat.Engine.PendingPresenter<any>;
+    type Placeholder = Tacocat.Engine.Placeholder<any, any>
     type Presenters = {
       pending: PendingPresenter[];
       rejected: RejectedPresenter[];
@@ -170,9 +173,7 @@ declare namespace Tacocat {
     type Reactions = Tacocat.Engine.Reactions;
     type RejectedPresenter = Tacocat.Engine.RejectedPresenter<any>;
     type ResolvedPresenter = Tacocat.Engine.ResolvedPresenter<any, any>;
-    type State = Contextful | ContextfulError | ContextfulObject;
-
-    type ContextfulEvent = Tacocat.ContextEvent<any>;
+    type State = SomeContext | SomeRejection | SomeResolution;
 
     // --- types ---
 
@@ -203,9 +204,7 @@ declare namespace Tacocat {
       selector?: string;
     }
   }
-}
 
-declare namespace Tacocat {
   module Log {
     // --- types ---
     type Factory = {

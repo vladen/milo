@@ -1,4 +1,4 @@
-import Event from './event.js';
+import Channel from './channel.js';
 import Subtree from './subtree.js';
 
 /**
@@ -13,10 +13,15 @@ function exploreScope(mounted, { matcher, scope }) {
     if (matcher(element)) {
       const depot = mounted.get(element);
       if (depot) {
-        placeholders.push({
+        /** @type {Tacocat.Internal.Placeholder} */
+        const placeholder = {
           element,
           state: depot.getState(element),
-        });
+          wait: (stage) => new Promise((resolve) => {
+            Channel[stage]?.listen(element, () => resolve(placeholder), { once: true });
+          }),
+        };
+        placeholders.push(placeholder);
       }
     }
     elements.push(...element.children);
@@ -27,21 +32,22 @@ function exploreScope(mounted, { matcher, scope }) {
 function refreshScope(mounted, subtree) {
   const placeholders = exploreScope(mounted, subtree);
   placeholders.forEach(({ element }) => {
-    Event.refresh.dispatch(element);
+    Channel.refresh.dispatch(element);
   });
   return placeholders;
 }
 
 /**
  * @param {WeakMap<Element, Tacocat.Internal.Storage>} mounted
+ * @param {Tacocat.Internal.Subtree} subtree
  * @returns {Tacocat.Internal.Engine}
  */
-const Engine = (mounted) => ({
+const Engine = (mounted, subtree) => ({
   explore(scope, selector) {
-    return exploreScope(mounted, Subtree(scope, selector));
+    return exploreScope(mounted, Subtree(scope ?? subtree.scope, selector ?? subtree.selector));
   },
   refresh(scope, selector) {
-    return refreshScope(mounted, Subtree(scope, selector));
+    return refreshScope(mounted, Subtree(scope ?? subtree.scope, selector ?? subtree.selector));
   },
 });
 

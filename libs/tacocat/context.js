@@ -3,6 +3,22 @@ import { isObject, isUndefined } from './utilities.js';
 const contextKeys = new WeakMap();
 
 /**
+ * @template T, U
+ * @param {T} result
+ * @param {U} context
+ * @returns {T & Tacocat.Contextful<U>}
+ */
+// @ts-ignore
+const assignContext = (result, context) => Object.defineProperty(
+  isObject(result) ? result : {},
+  'context',
+  {
+    enumerable: true,
+    value: context,
+  },
+);
+
+/**
  * @param {object} context
  * @returns {string}
  */
@@ -23,4 +39,4 @@ const hasContext = (object) => isObject(object)
   // @ts-ignore
   && getContextKey(object.context) !== '';
 
-export { compareContexts, getContextKey, hasContext };
+export { assignContext, compareContexts, getContextKey, hasContext };

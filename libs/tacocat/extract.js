@@ -1,4 +1,4 @@
-import Event from './event.js';
+import Channel from './channel.js';
 import Log from './log.js';
 import { safeAsyncEvery } from './safe.js';
 import { isFunction, isNil, isObject } from './utilities.js';
@@ -11,9 +11,9 @@ import { isFunction, isNil, isObject } from './utilities.js';
  */
 const Extract = (base, comparer, extractors) => (control, element, storage) => {
   const log = Log.common.module('extract');
-  log.debug('Activating:', { context: base, comparer, element, extractors });
+  log.debug('Activating:', { base, comparer, element, extractors });
 
-  control.dispose(Event.observe.listen(element, async (event) => {
+  control.dispose(Channel.observe.listen(element, async (event) => {
     const context = { ...base };
 
     const success = await safeAsyncEvery(
@@ -43,7 +43,7 @@ const Extract = (base, comparer, extractors) => (control, element, storage) => {
       const state = { context };
       storage.setState(element, state);
       log.debug('Extracted:', state);
-      Event.extract.dispatch(event.target, state);
+      Channel.extract.dispatch(element, state);
     }
   }));
 

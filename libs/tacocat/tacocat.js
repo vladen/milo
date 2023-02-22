@@ -1,14 +1,16 @@
+import Channel from './channel.js';
 import Compare from './compare.js';
-import { compareContexts } from './context.js';
+import { Stage } from './constants.js';
+import { assignContext, compareContexts } from './context.js';
 import Control from './control.js';
 import Extract from './extract.js';
-import Event from './event.js';
 import Log from './log.js';
 import Observe from './observe.js';
 import Present from './present.js';
 import Provide from './provide.js';
 import { safeAsync, safeSync } from './safe.js';
 import Subtree from './subtree.js';
+import { isFunction } from './utilities.js';
 
 export { Log, safeAsync, safeSync };
 
@@ -32,22 +34,17 @@ const present = (subscribers, reactions, presenters = {
       Subtree(scope, selector),
     );
   },
-  pending(presenter) {
+  present(stage, ...nextPresenters) {
+    if (isFunction(stage)) {
+      return present(subscribers, reactions, {
+        [Stage.pending]: [...presenters[Stage.pending], stage],
+        [Stage.rejected]: [...presenters[Stage.rejected], stage],
+        [Stage.resolved]: [...presenters[Stage.resolved], stage],
+      });
+    }
     return present(subscribers, reactions, {
       ...presenters,
-      pending: [...presenters.pending, presenter],
-    });
-  },
-  rejected(presenter) {
-    return present(subscribers, reactions, {
-      ...presenters,
-      rejected: [...presenters.rejected, presenter],
-    });
-  },
-  resolved(presenter) {
-    return present(subscribers, reactions, {
-      ...presenters,
-      resolved: [...presenters.resolved, presenter],
+      [stage]: [...[presenters[stage] ?? []], ...nextPresenters],
     });
   },
 });
@@ -87,10 +84,69 @@ const extract = (context, comparer, extractors = [], reactions = []) => ({
  * @type {Tacocat.Engine.Factory}
  */
 const tacocat = {
+  assign: assignContext,
   define(context, comparer = compareContexts) {
     return extract(context, comparer);
   },
-  event: Event.Type,
+  channel: Channel,
+  stage: Stage,
 };
+
+const attribute = 'data-value';
+const rejected = 'rejected';
+const resolved = 'resolved';
+
+const placeholders = tacocat
+  .define({})
+  .extract(
+    (_, element) => Promise.resolve({ test: element.getAttribute('context') }),
+  )
+  .provide(
+    (contexts) => Promise.resolve(contexts.map((context) => ({
+      context,
+      product: `${context.test}-product`,
+    }))),
+  )
+  .present(tacocat.stage.resolved, (element, { _, product }) => {
+    element.setAttribute('product', product);
+  })
+  .observe(document.body, 'p')
+  .explore();
+await Promise.all(
+  placeholders.map((placeholder) => placeholder.wait(tacocat.stage.resolved)),
+);
+placeholders.forEach((placeholder) => {
+  placeholder.element.getAttribute('context');
+  placeholder.element.getAttribute('product');
+});
+
+const pipeline = tacocat
+  .define({ reject: false })
+  .extract(
+    (context, element) => Promise.resolve({
+      ...context,
+      extracted: element.getAttribute(attribute),
+    }),
+    {
+      events: ['click'],
+      mutations: { attributeFilter: [attribute] },
+    },
+  )
+  .provide(
+    (contexts) => Promise.resolve(contexts.map((context) => {
+      if (context.reject) {
+        throw assignContext(new Error(rejected), context);
+      }
+      return assignContext({ resolved }, context);
+    })),
+  )
+  .present(Stage.pending, (element, state) => {
+    // @ts-ignore
+    element.state = state;
+  });
+
+pipeline
+  .observe(document.body, 'p')
+  .refresh(document.body);
 
 export default tacocat;

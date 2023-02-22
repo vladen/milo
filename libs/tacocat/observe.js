@@ -1,5 +1,5 @@
+import Channel from './channel.js';
 import Engine from './engine.js';
-import Event from './event.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
 import Storage from './storage.js';
@@ -91,7 +91,7 @@ function Observe(control, reactions, subscribers, subtree) {
       subscriber(control, element, storage);
     });
     log.debug('Mounted:', { element });
-    Event.mount.dispatch(element);
+    Channel.mount.dispatch(element);
     return true;
   }
 
@@ -103,7 +103,7 @@ function Observe(control, reactions, subscribers, subtree) {
     mounted.delete(element);
     control.release(element);
     log.debug('Unmounted:', { element });
-    Event.unmount.dispatch(element);
+    Channel.unmount.dispatch(element);
   }
 
   /**
@@ -124,7 +124,7 @@ function Observe(control, reactions, subscribers, subtree) {
           schedule();
         })) {
           log.debug('Observed:', { element, event });
-          Event.observe.dispatch(element, undefined, event);
+          Channel.observe.dispatch(element, undefined, event);
         }
       });
     }
@@ -177,7 +177,7 @@ function Observe(control, reactions, subscribers, subtree) {
 
   log.debug('Activated');
   control.dispose(() => log.debug('Disposed'));
-  return Engine(mounted);
+  return Engine(mounted, subtree);
 }
 
 export default Observe;
