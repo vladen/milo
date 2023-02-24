@@ -22,7 +22,7 @@ function exploreScope(mounted, { scope, selector }) {
           });
         },
         update(context) {
-          Channel.refresh.dispatch(element, { context }, Stage.pending);
+          Channel.update.dispatch(element, { context }, Stage.pending);
           return placeholder;
         },
       };

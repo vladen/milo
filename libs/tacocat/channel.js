@@ -61,9 +61,6 @@ export default {
   /** @type {Tacocat.Engine.Channel<Tacocat.SomeRejection | Tacocat.SomeResolution>} */
   provide: Channel(getEventType('provide')),
 
-  /** @type {Tacocat.Engine.Channel<Tacocat.SomeContext>} */
-  refresh: Channel(getEventType('refresh')),
-
   /** @type {Tacocat.Engine.Channel<Tacocat.SomeRejection>} */
   rejected: Channel(getEventType(Stage.rejected)),
 
@@ -75,4 +72,7 @@ export default {
 
   /** @type {Tacocat.Engine.Channel<void>} */
   unmount: Channel(getEventType('unmount')),
+
+  /** @type {Tacocat.Engine.Channel<Tacocat.SomeContext>} */
+  update: Channel(getEventType('update')),
 };
