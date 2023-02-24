@@ -17,7 +17,6 @@ function Provide(provider) {
 
   return (control, element, storage) => {
     const log = Log.common.module('provide');
-    log.debug('Activating:', { element, provider });
 
     /**
      * @param {Map<string, { context: Tacocat.SomeContext; events: Event[]; }>} pending
@@ -115,8 +114,8 @@ function Provide(provider) {
       }),
     );
 
-    control.dispose(() => log.debug('Disposed'));
-    log.debug('Activated');
+    control.dispose(() => log.debug('Aborted'));
+    log.debug('Activated:', { element, provider });
   };
 }
 

@@ -17,9 +17,13 @@ import tacocat from '../../libs/tacocat/tacocat.js';
 */
 
 describe('tacocat pipeline', () => {
+  /** @type {Element} */
   let container;
+  /** @type {AbortController} */
+  let controller;
 
   after(() => {
+    controller.abort();
     Log.reset();
   });
   afterEach(() => {
@@ -28,6 +32,7 @@ describe('tacocat pipeline', () => {
   });
   before(() => {
     Log.use(consoleLogWriter);
+    controller = new AbortController();
     container = document.createElement('div');
     document.body.append(container);
   });
@@ -44,21 +49,18 @@ describe('tacocat pipeline', () => {
         (context, element) => Promise.resolve({ test: element.getAttribute('context') }),
       )
       .provide(
-        (contexts) => [],
-        /*
-        Promise.resolve(contexts.map((context) => ({
+        (contexts) => Promise.resolve(contexts.map((context) => ({
           context,
           product: `${context.test}-product`,
         }))),
-        */
       )
       .present(tacocat.stage.rejected, (element, error) => {
         element.textContent = error.message;
       })
-      .present(tacocat.stage.resolved, (element, value) => {
-        element.textContent = `${value.test}`;
+      .present(tacocat.stage.resolved, (element, { context, product }) => {
+        element.textContent = `${context.test} ${product}`;
       })
-      .observe(container, 'p')
+      .observe(container, 'p', controller.signal)
       .explore();
 
     await Promise.all(

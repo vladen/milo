@@ -17,18 +17,13 @@ const observableMutations = ['attributes', 'characterData', childListMutation];
  * @returns {Tacocat.Internal.Engine}
  */
 function Observe(control, reactions, subscribers, subtree) {
-  const log = Log.common.module('observer');
+  const log = Log.common.module('observe');
 
   if (control.signal?.aborted) {
-    return {
-      explore: () => [],
-      refresh: () => [],
-    };
+    return { explore: () => [] };
   }
 
   const tacoReactions = mergeReactions(reactions);
-  log.debug('Activating:', { reactions: tacoReactions, subtree });
-
   /** @type {WeakMap<Element, Tacocat.Internal.Storage>} */
   const mounted = new WeakMap();
   /** @type {Set<{ element: Element }>} */
@@ -111,6 +106,7 @@ function Observe(control, reactions, subscribers, subtree) {
     if (timer) return;
 
     function dispatch() {
+      if (control.signal?.aborted) return;
       timer = 0;
       removed.forEach(({ element }) => {
         unmount(element);
@@ -167,8 +163,8 @@ function Observe(control, reactions, subscribers, subtree) {
     log.debug('Observing:', { subtree });
   }
 
-  control.dispose(() => log.debug('Disposed'));
-  log.debug('Activated');
+  control.dispose(() => log.debug('Aborted'));
+  log.debug('Activated:', { reactions: tacoReactions, subtree });
   return Engine(mounted, subtree);
 }
 

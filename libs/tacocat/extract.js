@@ -12,7 +12,6 @@ import { isFunction, isNil, isObject } from './utilities.js';
  */
 const Extract = (base, extractors) => (control, element, storage) => {
   const log = Log.common.module('extract');
-  log.debug('Activating:', { base, element, extractors });
 
   control.dispose(
     Channel.observe.listen(element, async (state, stage, event) => {
@@ -54,7 +53,7 @@ const Extract = (base, extractors) => (control, element, storage) => {
   );
 
   control.dispose(() => log.debug('Aborted'));
-  log.debug('Activated');
+  log.debug('Activated:', { base, element, extractors });
 };
 
 export default Extract;

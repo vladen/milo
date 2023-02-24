@@ -78,7 +78,7 @@ function writeRecord(record) {
  * @param {string} namespace
  */
 function Log(namespace) {
-  const index = (indexes.get(namespace) ?? 0);
+  const index = (indexes.get(namespace) ?? 0) + 1;
   indexes.set(namespace, index);
   const id = `${namespace}-${index}`;
 
