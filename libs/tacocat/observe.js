@@ -26,8 +26,8 @@ function Observe(control, reactions, subscribers, subtree) {
     };
   }
 
-  const { events, mutations, triggers } = mergeReactions(reactions);
-  log.debug('Activating:', { events, mutations, triggers, subscribers, subtree });
+  const tacoReactions = mergeReactions(reactions);
+  log.debug('Activating:', { reactions: tacoReactions, subtree });
 
   /** @type {WeakMap<Element, Tacocat.Internal.Storage>} */
   const mounted = new WeakMap();
@@ -68,11 +68,11 @@ function Observe(control, reactions, subscribers, subtree) {
     if (mounted.has(element)) return;
     log.debug('Mounting:', { element });
 
-    events.forEach((type) => {
+    tacoReactions.events.forEach((type) => {
       element.addEventListener(type, listener, { signal: control.signal });
     });
 
-    triggers.forEach((trigger) => {
+    tacoReactions.triggers.forEach((trigger) => {
       const result = safeSync(
         log,
         'Trigger callback error:',
@@ -151,7 +151,7 @@ function Observe(control, reactions, subscribers, subtree) {
   });
 
   // Setup mutation observer
-  if (observableMutations.some((mutation) => mutations[mutation])) {
+  if (observableMutations.some((mutation) => tacoReactions.mutations[mutation])) {
     const observer = new MutationObserver((records) => records.forEach((record) => {
       if (record.type === childListMutation) {
         const { addedNodes, removedNodes } = record;
@@ -162,13 +162,13 @@ function Observe(control, reactions, subscribers, subtree) {
       }
     }));
 
-    observer.observe(subtree.scope, mutations);
+    observer.observe(subtree.scope, tacoReactions.mutations);
     control.dispose(() => observer.disconnect());
     log.debug('Observing:', { subtree });
   }
 
-  log.debug('Activated');
   control.dispose(() => log.debug('Disposed'));
+  log.debug('Activated');
   return Engine(mounted, subtree);
 }
 

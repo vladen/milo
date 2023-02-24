@@ -23,7 +23,7 @@ describe('tacocat pipeline', () => {
     Log.reset();
   });
   afterEach(() => {
-    document.body.remove(container);
+    // document.body.remove(container);
     container = null;
   });
   before(() => {
@@ -34,8 +34,8 @@ describe('tacocat pipeline', () => {
 
   it('processes placeholders present in DOM', async () => {
     container.innerHTML = `
-      <p context="1"></p>
-      <p context="2"></p>
+      <p class="1" context="1"></p>
+      <p class="2" context="2"></p>
     `;
 
     const placeholders = tacocat
@@ -52,8 +52,11 @@ describe('tacocat pipeline', () => {
         }))),
         */
       )
-      .present(tacocat.stage.resolved, (element, { product }) => {
-        element.setAttribute('product', product);
+      .present(tacocat.stage.rejected, (element, error) => {
+        element.textContent = error.message;
+      })
+      .present(tacocat.stage.resolved, (element, value) => {
+        element.textContent = `${value.test}`;
       })
       .observe(container, 'p')
       .explore();

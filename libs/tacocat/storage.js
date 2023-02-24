@@ -1,11 +1,11 @@
 import { namespace } from './constants.js';
 import { hasOwnProperty } from './utilities.js';
 
-const { defineProperty } = Object;
+const state$ = Symbol(`${namespace}:state`);
 
 function initState(element) {
-  if (!hasOwnProperty(element, namespace)) {
-    defineProperty(element, namespace, {
+  if (!hasOwnProperty(element, state$)) {
+    Object.defineProperty(element, state$, {
       enumerable: true,
       value: {},
     });
@@ -18,24 +18,24 @@ function initState(element) {
  */
 const Storage = (key) => ({
   deleteState(element) {
-    delete element[namespace][key];
+    if (hasOwnProperty(element, state$)) delete element[state$][key];
   },
   getState(element) {
     initState(element);
-    if (hasOwnProperty(element[namespace], key)) {
-      return element[namespace][key];
+    if (hasOwnProperty(element[state$], key)) {
+      return element[state$][key];
     }
-    return null;
+    return undefined;
   },
   setState(element, value) {
     initState(element);
-    if (!hasOwnProperty(element, namespace)) {
-      defineProperty(element, namespace, {
+    if (!hasOwnProperty(element, state$)) {
+      Object.defineProperty(element, state$, {
         enumerable: true,
         value: {},
       });
     }
-    defineProperty(element[namespace], key, {
+    Object.defineProperty(element[state$], key, {
       configurable: true,
       enumerable: true,
       value,

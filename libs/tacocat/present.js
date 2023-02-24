@@ -8,6 +8,7 @@ import { safeSync } from './safe.js';
  */
 const Present = (presenters) => (control, element) => {
   const log = Log.common.module('present');
+  log.debug('Activating:', { element, presenters });
 
   control.dispose(
     Channel.provide.listen(element, (state, stage, event) => {
@@ -22,16 +23,16 @@ const Present = (presenters) => (control, element) => {
             control.signal,
           ));
         });
-        log.debug('Presented:', { element, event, presenters: group });
+        log.debug('Presented:', { state, stage, element, event });
         Channel.present.dispatch(element, state, stage, event);
       } else {
-        log.debug('Not presented:', { element, event });
+        log.debug('Not presented:', { state, stage, element, event });
       }
     }),
     element,
   );
   control.dispose(() => log.debug('Disposed'));
-  log.debug('Activated:', { element, presenters });
+  log.debug('Activated');
 };
 
 export default Present;

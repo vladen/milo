@@ -30,7 +30,7 @@ function Control(signal) {
     dispose([...disposers.values()].flat());
   });
 
-  log.debug('Created:', { signal });
+  log.debug('Activated:', { signal });
 
   return {
     dispose(disposer, key = null) {

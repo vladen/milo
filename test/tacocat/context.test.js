@@ -1,5 +1,5 @@
 import { expect } from './tools.js';
-import Log, { quietFilter } from '../../libs/tacocat/log.js';
+import Log, { quietLogFilter } from '../../libs/tacocat/log.js';
 import { getContextKey } from '../../libs/tacocat/context.js';
 
 describe('module "context"', () => {
@@ -7,7 +7,7 @@ describe('module "context"', () => {
     Log.reset();
   });
   before(() => {
-    Log.use(quietFilter);
+    Log.use(quietLogFilter);
   });
 
   describe('function "getContextKey"', () => {

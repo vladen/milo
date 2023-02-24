@@ -47,13 +47,13 @@ const Extract = (base, extractors) => (control, element, storage) => {
       ) {
         const nextState = { context };
         storage.setState(element, nextState);
-        log.debug('Extracted:', { state: nextState });
+        log.debug('Extracted:', { state: nextState, element, event });
         Channel.extract.dispatch(element, nextState, Stage.pending, event);
       }
     }),
   );
 
-  control.dispose(() => log.debug('Disposed'));
+  control.dispose(() => log.debug('Aborted'));
   log.debug('Activated');
 };
 

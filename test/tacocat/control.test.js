@@ -1,5 +1,5 @@
 import { expect, spy } from './tools.js';
-import Log, { quietFilter } from '../../libs/tacocat/log.js';
+import Log, { quietLogFilter } from '../../libs/tacocat/log.js';
 import Control from '../../libs/tacocat/control.js';
 
 describe('function "Control"', () => {
@@ -7,7 +7,7 @@ describe('function "Control"', () => {
     Log.reset();
   });
   before(() => {
-    Log.use(quietFilter);
+    Log.use(quietLogFilter);
   });
 
   it('returns an object', () => {

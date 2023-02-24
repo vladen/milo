@@ -149,13 +149,13 @@ declare namespace Tacocat {
 
     interface Instance<T extends object, U extends object> {
       explore(scope?: Element, selector?: string): Placeholder<T, U>[];
-      refresh(scope?: Element, selector?: string): Placeholder<T, U>[];
     }
 
     interface Placeholder<T extends object, U extends object> {
       element: Element;
       state: State<T, U>;
-      wait(stage: Stage): Promise<Placeholder<T, U>>;
+      expect(stage: Stage): Promise<Placeholder<T, U>>;
+      update(context: T): Placeholder<T, U>;
     }
 
     interface Present<T extends object, U extends object> {

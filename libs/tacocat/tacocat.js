@@ -30,7 +30,7 @@ const Step2 = (subscribers, reactions, presenters = {
       Control(signal),
       reactions,
       [...subscribers, Present(presenters)],
-      Subtree(scope, selector),
+      Subtree(scope, selector ?? '*'),
     );
   },
   present(stage, ...nextPresenters) {
@@ -43,7 +43,7 @@ const Step2 = (subscribers, reactions, presenters = {
     }
     return Step2(subscribers, reactions, {
       ...presenters,
-      [stage]: [...[presenters[stage] ?? []], ...nextPresenters],
+      [stage]: [...(presenters[stage] ?? []), ...nextPresenters],
     });
   },
 });
@@ -77,9 +77,7 @@ const Step1 = (context, extractors = [], reactions = []) => ({
   },
 });
 
-/**
- * @type {Tacocat.Engine.Factory}
- */
+/** @type {Tacocat.Engine.Factory} */
 const tacocat = {
   assign: assignContext,
   define(context) {
@@ -90,62 +88,3 @@ const tacocat = {
 };
 
 export default tacocat;
-
-/*
-const attribute = 'data-value';
-const rejected = 'rejected';
-const resolved = 'resolved';
-
-const placeholders = tacocat
-  .define({})
-  .extract(
-    (_, element) => Promise.resolve({ test: element.getAttribute('context') }),
-  )
-  .provide(
-    (contexts) => Promise.resolve(contexts.map((context) => ({
-      context,
-      product: `${context.test}-product`,
-    }))),
-  )
-  .present(tacocat.stage.resolved, (element, { _, product }) => {
-    element.setAttribute('product', product);
-  })
-  .observe(document.body, 'p')
-  .explore();
-await Promise.all(
-  placeholders.map((placeholder) => placeholder.wait(tacocat.stage.resolved)),
-);
-placeholders.forEach((placeholder) => {
-  placeholder.element.getAttribute('context');
-  placeholder.element.getAttribute('product');
-});
-
-const pipeline = tacocat
-  .define({ reject: false })
-  .extract(
-    (context, element) => Promise.resolve({
-      ...context,
-      extracted: element.getAttribute(attribute),
-    }),
-    {
-      events: ['click'],
-      mutations: { attributeFilter: [attribute] },
-    },
-  )
-  .provide(
-    (contexts) => Promise.resolve(contexts.map((context) => {
-      if (context.reject) {
-        throw assignContext(new Error(rejected), context);
-      }
-      return assignContext({ resolved }, context);
-    })),
-  )
-  .present(Stage.pending, (element, state) => {
-    // @ts-ignore
-    element.state = state;
-  });
-
-pipeline
-  .observe(document.body, 'p')
-  .refresh(document.body);
-*/
