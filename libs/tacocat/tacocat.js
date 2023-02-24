@@ -89,6 +89,9 @@ const tacocat = {
   stage: Stage,
 };
 
+export default tacocat;
+
+/*
 const attribute = 'data-value';
 const rejected = 'rejected';
 const resolved = 'resolved';
@@ -145,5 +148,4 @@ const pipeline = tacocat
 pipeline
   .observe(document.body, 'p')
   .refresh(document.body);
-
-export default tacocat;
+*/

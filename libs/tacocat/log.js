@@ -1,4 +1,3 @@
-import { getConfig } from '../utils/utils.js';
 import constants from './constants.js';
 import { isFunction } from './utilities.js';
 
@@ -6,7 +5,6 @@ const epoch = Date.now();
 /** @type {Map<string, number>} */
 const indexes = new Map();
 
-const isProd = getConfig().env?.name === 'prod';
 export const Level = Object.freeze({
   debug: 'debug',
   error: 'error',
@@ -31,7 +29,7 @@ const createRecord = (instance, level, message, namespace, params) => ({
 const debugLogFilter = { filter: ({ level }) => level !== Level.debug };
 const quietLogFilter = { filter: () => false };
 
-const consoleWriter = {
+const consoleLogWriter = {
   writer({
     instance, level, message, namespace, params, timestamp,
   }) {
@@ -46,7 +44,7 @@ const consoleWriter = {
 };
 
 function reportError(message, ...params) {
-  consoleWriter.write(createRecord(
+  consoleLogWriter.write(createRecord(
     Level.error,
     message,
     // eslint-disable-next-line no-use-before-define
@@ -104,13 +102,13 @@ function Log(namespace) {
 
 Log.level = Level;
 
-Log.reset = () => {
+Log.reset = (env) => {
   filters.clear();
   writers.clear();
-  if (isProd) {
-    Log.use(debugLogFilter);
+  if (true || env?.startsWith('dev')) {
+    Log.use(consoleLogWriter);
   } else {
-    Log.use(consoleWriter);
+    Log.use(debugLogFilter);
   }
 };
 
@@ -131,9 +129,10 @@ Log.use = (...modules) => {
   return Log;
 };
 
+// eslint-disable-next-line import/no-named-as-default-member
 Log.common = Log(constants.namespace);
 Log.level = Level;
 Log.reset();
 
 export default Log;
-export { debugLogFilter as debugFilter, isLog, quietLogFilter as quietFilter };
+export { consoleLogWriter, debugLogFilter, isLog, quietLogFilter };

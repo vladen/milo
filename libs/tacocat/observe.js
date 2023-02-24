@@ -1,4 +1,5 @@
 import Channel from './channel.js';
+import { Stage } from './constants.js';
 import Engine from './engine.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
@@ -41,13 +42,13 @@ function Observe(control, reactions, subscribers, subtree) {
      * @param {Node} node
      * @returns {Element | undefined}
      */
-  function match(node) {
+  function match(node, ancestors = false) {
     const element = node instanceof Element
       ? node
       : node.parentElement;
     if (element) {
       if (subtree.matcher(element)) return element;
-      if (mutations.subtree) {
+      if (ancestors) {
         const closest = element.closest(subtree.selector);
         if (closest?.compareDocumentPosition(subtree.scope) === Node.DOCUMENT_POSITION_CONTAINS) {
           return closest;
@@ -64,35 +65,32 @@ function Observe(control, reactions, subscribers, subtree) {
      * @param {(event: Event) => void} listener
      */
   function mount(element, listener) {
-    if (mounted.has(element)) return false;
+    if (mounted.has(element)) return;
+    log.debug('Mounting:', { element });
 
-    if (events.length || triggers.length) {
-      events.forEach((type) => {
-        element.addEventListener(type, listener, { signal: control.signal });
-      });
+    events.forEach((type) => {
+      element.addEventListener(type, listener, { signal: control.signal });
+    });
 
-      triggers.forEach((trigger) => {
-        const disposer = safeSync(
-          log,
-          'Trigger callback error:',
-          () => trigger(element, listener, control.signal),
-        );
-        if (isFunction(disposer)) {
-          control.dispose(disposer, element);
-        } else if (!isNil(disposer)) {
-          log.warn('Trigger callback must return a function:', { result: disposer, trigger });
-        }
-      });
-    }
+    triggers.forEach((trigger) => {
+      const result = safeSync(
+        log,
+        'Trigger callback error:',
+        () => trigger(element, listener, control.signal),
+      );
+      if (isFunction(result)) {
+        control.dispose(result, element);
+      } else if (!isNil(result)) {
+        log.warn('Trigger callback must return a function:', { result, trigger });
+      }
+    });
 
     const storage = Storage(log.id);
     mounted.set(element, storage);
     subscribers.forEach((subscriber) => {
       subscriber(control, element, storage);
     });
-    log.debug('Mounted:', { element });
     Channel.mount.dispatch(element);
-    return true;
   }
 
   /**
@@ -119,13 +117,12 @@ function Observe(control, reactions, subscribers, subtree) {
       });
 
       updated.forEach(({ element, event }) => {
-        if (!mount(element, (nextEvent) => {
+        mount(element, (nextEvent) => {
           updated.add({ element, event: nextEvent });
           schedule();
-        })) {
-          log.debug('Observed:', { element, event });
-          Channel.observe.dispatch(element, undefined, event);
-        }
+        });
+        log.debug('Observed:', { element, event });
+        Channel.observe.dispatch(element, undefined, Stage.pending, event);
       });
     }
 
@@ -149,14 +146,9 @@ function Observe(control, reactions, subscribers, subtree) {
   }
 
   // Scan current DOM tree for matching elements
-  const elements = [subtree.scope];
-  let index = 0;
-  while (index < elements.length) {
-    const element = elements[index];
-    if (mutations.childList) elements.push(...element.children);
+  subtree.scope.querySelectorAll(subtree.selector).forEach((element) => {
     update(match(element));
-    index += 1;
-  }
+  });
 
   // Setup mutation observer
   if (observableMutations.some((mutation) => mutations[mutation])) {

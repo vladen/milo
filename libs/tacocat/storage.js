@@ -27,7 +27,7 @@ const Storage = (key) => ({
     }
     return null;
   },
-  setState(element, state) {
+  setState(element, value) {
     initState(element);
     if (!hasOwnProperty(element, namespace)) {
       defineProperty(element, namespace, {
@@ -35,10 +35,10 @@ const Storage = (key) => ({
         value: {},
       });
     }
-    defineProperty(element, namespace, {
+    defineProperty(element[namespace], key, {
       configurable: true,
       enumerable: true,
-      value: Object.seal(state),
+      value,
     });
   },
 });

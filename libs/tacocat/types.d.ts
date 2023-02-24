@@ -10,7 +10,10 @@ declare namespace Tacocat {
   type Contextful<T extends object> = { context?: T };
   type Rejection<T extends object> = Contextful<T> & Error;
   type Resolution<T extends object, U extends object> = Contextful<T> & U;
-  type State<T extends object, U extends object> = Contextful<T> | Rejection<T> | Resolution<T, U>;
+  type State<T extends object, U extends object> =
+    | Contextful<T>
+    | Rejection<T>
+    | Resolution<T, U>;
 
   type hasContext = (candidate: any) => candidate is Contextful<any>;
 
@@ -19,11 +22,25 @@ declare namespace Tacocat {
   type Resolved = 'resolved';
   type Stage = Pending | Rejected | Resolved;
 
-  type ContextfulEvent<T extends object> = CustomEvent<Contextful<T> & { stage: Stage }>;
+  type ContextfulEvent<T extends object> = Event & {
+    state: Contextful<T>;
+    stage: Stage;
+  };
+
+  type ContextfulError<T extends object> = Contextful<T> & Error;
 
   type SomeContext = { [key: string]: any };
   type SomeRejection = Rejection<SomeContext>;
   type SomeResolution = Resolution<SomeContext, SomeContext>;
+  type SomeState =
+    | Contextful<SomeContext>
+    | SomeRejection
+    | SomeResolution;
+
+  type StateEvent = Event & {
+    stage: Stage;
+    state: SomeState
+}
 
   module Engine {
     // --- types ---
@@ -33,7 +50,7 @@ declare namespace Tacocat {
     type Extractor<T extends object, U extends object> = (
       context: T,
       element: Element,
-      event: ContextfulEvent<T>,
+      event: Event,
       signal?: AbortSignal
     ) => U | Promise<U>;
 
@@ -45,7 +62,8 @@ declare namespace Tacocat {
     type PendingPresenter<T extends object> = (
       element: Element,
       state: Contextful<T>,
-      event: CustomEvent<Contextful<T>>,
+      event?: Event,
+      signal?: AbortSignal
     ) => void;
 
     type Provider<T extends object, U extends object> = (
@@ -56,13 +74,15 @@ declare namespace Tacocat {
     type RejectedPresenter<T extends object> = (
       element: Element,
       state: Rejection<T>,
-      event: CustomEvent<Rejection<T>>,
+      event?: Event,
+      signal?: AbortSignal
     ) => void;
 
     type ResolvedPresenter<T extends object, U extends object> = (
       element: Element,
       state: Resolution<T, U>,
-      event: CustomEvent<Resolution<T, U>>,
+      event?: Event,
+      signal?: AbortSignal
     ) => void;
 
     type Trigger = (
@@ -72,14 +92,19 @@ declare namespace Tacocat {
     ) => Disposer;
 
     // --- interfaces ---
-    interface Channel<T> {
-      dispatch(target: EventTarget, detail?: T, event?: Event): void;
+    interface Channel<T extends object> {
+      dispatch(
+        target: EventTarget,
+        state?: Contextful<T>,
+        stage?: Stage,
+        event?: Event
+      ): void;
       listen: (
         target: EventTarget,
-        listener: (event: CustomEvent & { detail: T }) => void,
+        listener: (state?: Contextful<T>, stage?: Stage, event?: Event) => void,
         options?: AddEventListenerOptions
       ) => Tacocat.Engine.Disposer;
-      promise(target: EventTarget): Promise<T>
+      promise(target: EventTarget): Promise<T>;
     }
 
     interface Extract<T extends object> {
@@ -100,7 +125,10 @@ declare namespace Tacocat {
     }
 
     interface Factory {
-      assign<T extends object, U extends object>(result: T, context: U): T & Contextful<U>
+      assign<T extends object, U extends object>(
+        result: T,
+        context: U
+      ): T & Contextful<U>;
       /**
        * Starts definintion of tacocat pipeline.
        * @param base
@@ -116,7 +144,7 @@ declare namespace Tacocat {
         pending: Pending;
         rejected: Rejected;
         resolved: Resolved;
-      }
+      };
     }
 
     interface Instance<T extends object, U extends object> {
@@ -133,12 +161,21 @@ declare namespace Tacocat {
     interface Present<T extends object, U extends object> {
       observe(
         scope: Element,
-        selector?: string,
+        selector: string,
         signal?: AbortSignal
       ): Instance<T, U>;
-      present(stage: Pending, ...presenters: PendingPresenter<T>[]): Present<T, U>;
-      present(stage: Rejected, ...presenters: RejectedPresenter<T>[]): Present<T, U>;
-      present(stage: Resolved, ...presenters: ResolvedPresenter<T, U>[]): Present<T, U>;
+      present(
+        stage: Pending,
+        ...presenters: PendingPresenter<T>[]
+      ): Present<T, U>;
+      present(
+        stage: Rejected,
+        ...presenters: RejectedPresenter<T>[]
+      ): Present<T, U>;
+      present(
+        stage: Resolved,
+        ...presenters: ResolvedPresenter<T, U>[]
+      ): Present<T, U>;
     }
 
     interface Reactions {
@@ -157,7 +194,7 @@ declare namespace Tacocat {
     type Listener = Tacocat.Engine.Trigger;
     type Mutations = Tacocat.Engine.Mutations;
     type PendingPresenter = Tacocat.Engine.PendingPresenter<any>;
-    type Placeholder = Tacocat.Engine.Placeholder<any, any>
+    type Placeholder = Tacocat.Engine.Placeholder<any, any>;
     type Presenters = {
       pending: PendingPresenter[];
       rejected: RejectedPresenter[];
@@ -205,7 +242,7 @@ declare namespace Tacocat {
       (namespace: string): Instance;
       common: Instance;
       level: Level;
-      reset(): void;
+      reset(environment?: string): void;
       use(...modules: Module[]): Factory;
     };
 

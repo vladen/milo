@@ -53,11 +53,11 @@ export const hasOwnProperty = (object, property) => !isNil(object)
 export const mergeReactions = (reactions) => ({
   events: [...new Set(
     reactions
-      .flatMap(({ events }) => events)
+      .flatMap(({ events } = {}) => events)
       .filter((event) => event),
   )],
   mutations: reactions
-    .map(({ mutations }) => mutations)
+    .map(({ mutations } = {}) => mutations)
     .filter((mutations) => isObject(mutations))
     .reduce(
       (merged, {
@@ -79,6 +79,6 @@ export const mergeReactions = (reactions) => ({
       {},
     ),
   triggers: reactions
-    .map(({ trigger }) => trigger)
+    .map(({ trigger } = {}) => trigger)
     .filter((trigger) => isFunction(trigger)),
 });

@@ -1,4 +1,5 @@
 import Channel from './channel.js';
+import { Stage } from './constants.js';
 import Subtree from './subtree.js';
 
 /**
@@ -32,7 +33,7 @@ function exploreScope(mounted, { matcher, scope }) {
 function refreshScope(mounted, subtree) {
   const placeholders = exploreScope(mounted, subtree);
   placeholders.forEach(({ element }) => {
-    Channel.refresh.dispatch(element);
+    Channel.refresh.dispatch(element, Stage.pending);
   });
   return placeholders;
 }

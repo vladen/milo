@@ -1,5 +1,5 @@
 import { expect } from './tools.js';
-import Log, { quietFilter } from '../../libs/tacocat/log.js';
+import Log, { consoleLogWriter } from '../../libs/tacocat/log.js';
 import tacocat from '../../libs/tacocat/tacocat.js';
 
 /*
@@ -16,17 +16,24 @@ import tacocat from '../../libs/tacocat/tacocat.js';
     - does not throw if extractor/provider/presenter throw
 */
 
-describe.skip('tacocat pipeline', () => {
+describe('tacocat pipeline', () => {
+  let container;
+
   after(() => {
-    document.body.innerHTML = '';
     Log.reset();
   });
+  afterEach(() => {
+    document.body.remove(container);
+    container = null;
+  });
   before(() => {
-    // Log.use(quietFilter);
+    Log.use(consoleLogWriter);
+    container = document.createElement('div');
+    document.body.append(container);
   });
 
   it('processes placeholders present in DOM', async () => {
-    document.body.innerHTML = `
+    container.innerHTML = `
       <p context="1"></p>
       <p context="2"></p>
     `;
@@ -37,15 +44,18 @@ describe.skip('tacocat pipeline', () => {
         (context, element) => Promise.resolve({ test: element.getAttribute('context') }),
       )
       .provide(
-        (contexts) => Promise.resolve(contexts.map((context) => ({
+        (contexts) => [],
+        /*
+        Promise.resolve(contexts.map((context) => ({
           context,
           product: `${context.test}-product`,
         }))),
+        */
       )
       .present(tacocat.stage.resolved, (element, { product }) => {
         element.setAttribute('product', product);
       })
-      .observe(document.body, 'p')
+      .observe(container, 'p')
       .explore();
 
     await Promise.all(

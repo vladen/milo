@@ -1,23 +1,17 @@
 import Channel from './channel.js';
-import { ErrorMessage, Stage } from './constants.js';
-import { assignContext, getContextKey, hasContext } from './context.js';
+import { Stage } from './constants.js';
+import { getContextKey, hasContext } from './context.js';
+import { NotProvidedError } from './errors.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
 import { isError, isNil, isPromise } from './utilities.js';
-
-/**
- * @typedef {Map<string, {
- *    context: Tacocat.Internal.Contextful;
- *    events: Tacocat.Internal.ContextfulEvent[];
- * }>} Pending
- */
 
 /**
  * @param {Tacocat.Internal.Provider} provider
  * @returns {Tacocat.Internal.Subscriber}
  */
 function Provide(provider) {
-  /** @type {Map<string, { context: object, events: Tacocat.Internal.ContextfulEvent[]}>} */
+  /** @type {Map<string, { context: object; events: Event[]; }>} */
   const waiting = new Map();
   let timer;
 
@@ -25,7 +19,7 @@ function Provide(provider) {
     const log = Log.common.module('provide');
 
     /**
-     * @param {Pending} pending
+     * @param {Map<string, { context: Tacocat.SomeContext; events: Event[]; }>} pending
      * @param {Promise<any>[]} promises
      */
     function traverse(pending, promises, result) {
@@ -49,21 +43,19 @@ function Provide(provider) {
           const { events } = pending.get(key);
           pending.delete(key);
           storage.setState(element, result);
-          let dispatch;
           let stage;
           if (isError(result)) {
             log.debug('Rejected:', result);
-            dispatch = () => Channel.rejected.dispatch(element, result);
             stage = Stage.rejected;
           } else {
             log.debug('Resolved:', result);
-            dispatch = () => Channel.resolved.dispatch(element, result);
             stage = Stage.resolved;
           }
           events.forEach((event) => {
-            event.detail.stage = stage;
-            Channel.provide.dispatch(element, result, event);
-            dispatch();
+            Channel.provide.dispatch(element, result, stage, event);
+            (
+              stage === Stage.resolved ? Channel.resolved : Channel.rejected
+            ).dispatch(element, result, stage);
           });
         } else {
           log.warn('Contextless result, ignored:', result);
@@ -75,7 +67,7 @@ function Provide(provider) {
       if (control.signal?.aborted) return;
       timer = 0;
 
-      /** @type {Pending} */
+      /** @type {Map<string, { context: Tacocat.Internal.Contextful; events: Event[]; }>} */
       const pending = new Map();
       waiting.forEach(({ context, events }, key) => {
         if (pending.has(key)) pending.get(key).events.push(...events);
@@ -99,28 +91,23 @@ function Provide(provider) {
         await promises[i].catch(() => {});
       }
 
-      traverse(pending, [], [...pending.values()].map(({ context }) => assignContext(
-        new Error(ErrorMessage.notProvided),
-        context,
-      )));
+      traverse(pending, [], [...pending.values()].map(
+        ({ context }) => NotProvidedError(context),
+      ));
     }
 
     control.dispose(
-      Channel.extract.listen(element, (event) => {
-        const { context } = event?.detail ?? {};
+      Channel.extract.listen(element, (state, stage, event) => {
+        const { context } = state ?? {};
         const key = getContextKey(context);
         if (key) {
-          event.detail.stage = Stage.pending;
           if (waiting.has(key)) {
             waiting.get(key).events.push(event);
           } else {
-            waiting.set(key, {
-              context: { ...context },
-              events: [event],
-            });
-            Channel.pending.dispatch(element, context);
+            waiting.set(key, { context: { ...context }, events: [event] });
+            Channel.pending.dispatch(element, context, Stage.pending);
           }
-          if (!timer) timer = setTimeout(provide, 0);
+          if (!timer) timer = setTimeout(provide, 1);
         } else {
           log.warn('Context is missing, ignored:', event);
         }

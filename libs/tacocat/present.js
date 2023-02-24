@@ -7,22 +7,23 @@ import { safeSync } from './safe.js';
  * @returns {Tacocat.Internal.Subscriber}
  */
 const Present = (presenters) => (control, element) => {
-  const log = Log.common.module('provide');
+  const log = Log.common.module('present');
 
   control.dispose(
-    Channel.provide.listen(element, (event) => {
-      const group = presenters[event.detail.stage];
+    Channel.provide.listen(element, (state, stage, event) => {
+      const group = presenters[stage];
       if (group?.length) {
         group.forEach((presenter) => {
           safeSync(log, 'Presenter callback error:', () => presenter(
             element,
             // @ts-ignore
-            event.detail,
+            state,
             event,
+            control.signal,
           ));
         });
         log.debug('Presented:', { element, event, presenters: group });
-        Channel.present.dispatch(element, event.detail, event);
+        Channel.present.dispatch(element, state, stage, event);
       } else {
         log.debug('Not presented:', { element, event });
       }
