@@ -23,11 +23,6 @@ function calculateExcelDate(date) {
   return new Date(Math.round((date - (1 + 25567 + 1)) * 86400 * 1000));
 }
 
-// Safari won't accept '-' as a date separator
-function replaceSeparator(date) {
-  date.replace(/-/g, '/');
-}
-
 /**
  * For the given list of topics, returns the corresponding computed taxonomy:
  * - category: main topic
@@ -120,58 +115,55 @@ export function getTaxonomyModule() {
 }
 
 export async function loadTaxonomy() {
-  taxonomyLibrary.default(getConfig(), '/topics').then((_taxonomyModule) => {
-    taxonomyModule = _taxonomyModule;
-    if (taxonomyModule) {
-      // taxonomy loaded, post loading adjustments
-      // fix the links which have been created before the taxonomy has been loaded
-      // (pre lcp or in lcp block).
-      document.querySelectorAll('[data-topic-link]').forEach((a) => {
-        const topic = a.dataset.topicLink;
-        const tax = taxonomyModule.get(topic);
-        if (tax) {
-          a.href = tax.link;
-        } else {
-          // eslint-disable-next-line no-console
-          console.warn(`Trying to get a link for an unknown topic: ${topic} (current page)`);
-          a.href = '#';
+  taxonomyModule = await taxonomyLibrary.default(getConfig(), '/topics')
+  // taxonomyModule = _taxonomyModule;
+  if (taxonomyModule) {
+    // taxonomy loaded, post loading adjustments
+    // fix the links which have been created before the taxonomy has been loaded
+    // (pre lcp or in lcp block).
+    document.querySelectorAll('[data-topic-link]').forEach((a) => {
+      const topic = a.dataset.topicLink;
+      const tax = taxonomyModule.get(topic);
+      if (tax) {
+        a.href = tax.link;
+      } else {
+        // eslint-disable-next-line no-console
+        window.lana.log(`Trying to get a link for an unknown topic: ${topic} (current page)`);
+        a.href = '#';
+      }
+      delete a.dataset.topicLink;
+    });
+
+    const currentTags = getMetadata('article:tag') || [];
+    const articleTax = computeTaxonomyFromTopics(currentTags);
+
+    const allTopics = articleTax.allTopics || [];
+    allTopics.forEach((topic) => {
+      if (!currentTags.includes(topic)) {
+        // computed topic (parent...) is not in meta -> add it
+        const newMetaTag = document.createElement('meta');
+        newMetaTag.setAttribute('property', 'article:tag');
+        newMetaTag.setAttribute('content', topic);
+        document.head.append(newMetaTag);
+      }
+    });
+
+    currentTags.forEach((tag) => {
+      const tax = taxonomyModule.get(tag);
+      if (tax && tax.skipMeta) {
+        // if skipMeta, remove from meta "article:tag"
+        const meta = document.querySelector(`[property="article:tag"][content="${tag}"]`);
+        if (meta) {
+          meta.remove();
         }
-        delete a.dataset.topicLink;
-      });
-
-      // adjust meta article:tag
-
-      const currentTags = getMetadata('article:tag', true) || [];
-      const articleTax = computeTaxonomyFromTopics(currentTags);
-
-      const allTopics = articleTax.allTopics || [];
-      allTopics.forEach((topic) => {
-        if (!currentTags.includes(topic)) {
-          // computed topic (parent...) is not in meta -> add it
-          const newMetaTag = document.createElement('meta');
-          newMetaTag.setAttribute('property', 'article:tag');
-          newMetaTag.setAttribute('content', topic);
-          document.head.append(newMetaTag);
-        }
-      });
-
-      currentTags.forEach((tag) => {
-        const tax = taxonomyModule.get(tag);
-        if (tax && tax.skipMeta) {
-          // if skipMeta, remove from meta "article:tag"
-          const meta = document.querySelector(`[property="article:tag"][content="${tag}"]`);
-          if (meta) {
-            meta.remove();
-          }
-          // but add as meta with name
-          const newMetaTag = document.createElement('meta');
-          newMetaTag.setAttribute('name', tag);
-          newMetaTag.setAttribute('content', 'true');
-          document.head.append(newMetaTag);
-        }
-      });
-    }
-  });
+        // but add as meta with name
+        const newMetaTag = document.createElement('meta');
+        newMetaTag.setAttribute('name', tag);
+        newMetaTag.setAttribute('content', 'true');
+        document.head.append(newMetaTag);
+      }
+    });
+  }
 }
 
 /**
@@ -181,7 +173,9 @@ export async function loadTaxonomy() {
  * @returns {string} The formatted card date
  */
 export function formatCardLocaleDate(date) {
-  const jsDate = !date.includes('-') ? calculateExcelDate(date) : replaceSeparator(date);
+  if (!date) return '';
+  const jsDate = !date.includes('-') ? calculateExcelDate(date) : date.replace(/-/g, '/');
+
   const dateLocale = getConfig().locale?.ietf;
 
   let dateString = new Date(jsDate).toLocaleDateString(dateLocale, {
@@ -270,7 +264,7 @@ export function getArticleTaxonomy(article) {
 function getLinkForTopic(topic, path) {
   const titleSubs = { 'Transformation digitale': 'Transformation numérique' };
 
-  const catLink = [getTaxonomyModule().get(topic)].map((tax) => tax?.link ?? '#');
+  const catLink = [getTaxonomyModule()?.get(topic)].map((tax) => tax?.link ?? '#');
 
   if (catLink === '#') {
     // eslint-disable-next-line no-console

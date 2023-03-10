@@ -13,8 +13,9 @@
 /*
  * Marquee - v6.0
  */
-import { decorateButtons, getBlockSize } from '../../utils/decorate.js';
+import { decorateActionArea, getBlockSize } from '../../utils/decorate.js';
 import { decorateBlockAnalytics, decorateLinkAnalytics } from '../../martech/attributes.js';
+import { createTag } from '../../utils/utils.js';
 
 const decorateVideo = (container) => {
   const link = container.querySelector('a[href$=".mp4"]');
@@ -65,13 +66,13 @@ function decorateText(el, size) {
       sib.previousElementSibling?.classList.add('icon-area');
     }
   };
-  size === 'large' ? decorate(heading, 'XXL', 'XL', 'L') : decorate(heading, 'XL', 'M', 'M');
+  size === 'large' ? decorate(heading, 'xxl', 'xl', 'l') : decorate(heading, 'xl', 'm', 'm');
 }
 
 function extendButtonsClass(text) {
   const buttons = text.querySelectorAll('.con-button');
   if (buttons.length === 0) return;
-  buttons.forEach((button) => { button.classList.add('button-justified-mobile') });
+  buttons.forEach((button) => { button.classList.add('button-justified-mobile'); });
 }
 
 export default function init(el) {
@@ -97,8 +98,17 @@ export default function init(el) {
     media?.classList.add('image');
   }
 
+  const firstDivInForeground = foreground.querySelector(':scope > div');
+  if (firstDivInForeground.classList.contains('media')) el.classList.add('row-reversed');
+
   const size = getBlockSize(el);
-  decorateButtons(text, size === 'large' ? 'button-XL' : 'button-L');
+  decorateActionArea(el);
+  // without this authors must review marquees in all projects to stop buttons having wrong size
+  const buttons = el.querySelectorAll('a.con-button');
+  buttons?.forEach((b) => {
+    b.classList.remove(...[size ?? '', 'button-l', 'button-xl']);
+    b.classList.add(size === 'large' ? 'button-xl' : 'button-l');
+  });
   const headings = text.querySelectorAll('h1, h2, h3, h4, h5, h6');
   decorateLinkAnalytics(text, headings);
   decorateText(text, size);
@@ -107,6 +117,13 @@ export default function init(el) {
     if (foreground && media) {
       media.classList.add('bleed');
       foreground.insertAdjacentElement('beforebegin', media);
+    }
+    if (media?.lastChild.textContent.trim()) {
+      const mediaCreditInner = createTag('p', { class: 'body-s' }, media.lastChild.textContent);
+      const mediaCredit = createTag('div', { class: 'media-credit container' }, mediaCreditInner);
+      el.appendChild(mediaCredit);
+      el.classList.add('has-credit');
+      media.lastChild.remove();
     }
   }
 }

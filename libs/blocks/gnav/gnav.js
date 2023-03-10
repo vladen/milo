@@ -1,10 +1,11 @@
 import {
   createTag,
   decorateSVG,
+  decorateLinks,
   getConfig,
   getMetadata,
   loadScript,
-  makeRelative,
+  localizeLink,
 } from '../../utils/utils.js';
 
 import {
@@ -49,7 +50,7 @@ class Gnav {
     this.desktop = window.matchMedia('(min-width: 1200px)');
   }
 
-  init = () => {
+  init = async () => {
     this.state = {};
     this.curtain = createTag('div', { class: 'gnav-curtain' });
     const nav = createTag('nav', { class: 'gnav', 'aria-label': 'Main' });
@@ -66,10 +67,6 @@ class Gnav {
 
     const mainNav = this.decorateMainNav();
     if (mainNav) {
-      const cta = this.decorateCta();
-      if (cta) {
-        mainNav.append(cta);
-      }
       scrollWrapper.append(mainNav);
     }
 
@@ -99,7 +96,7 @@ class Gnav {
     if (breadcrumbs) {
       wrapper.append(breadcrumbs);
     }
-
+    await decorateLinks(wrapper);
     this.el.append(this.curtain, wrapper);
   };
 
@@ -144,7 +141,7 @@ class Gnav {
     if (brand.classList.contains('logo')) {
       if (brandLinks.length > 0) {
         decorateSVG(brandLinks[0]);
-        brand.insertAdjacentElement('afterbegin', brandLinks[0].querySelector('img'));
+        brand.insertAdjacentElement('afterbegin', brandBlock.querySelector('img'));
       } else {
         brand.insertAdjacentHTML('afterbegin', BRAND_IMG);
       }
@@ -155,7 +152,7 @@ class Gnav {
 
   decorateLogo = () => {
     const logo = this.body.querySelector('.adobe-logo a');
-    logo.href = makeRelative(logo.href, true);
+    if (!logo) return null;
     logo.classList.add('gnav-logo');
     logo.setAttribute('aria-label', logo.textContent);
     logo.setAttribute('daa-ll', 'Logo');
@@ -166,7 +163,7 @@ class Gnav {
 
   decorateMainNav = () => {
     const mainNav = createTag('div', { class: 'gnav-mainnav' });
-    const mainLinks = this.body.querySelectorAll('h2 > a');
+    const mainLinks = this.body.querySelectorAll('h2 > a, strong a');
     if (mainLinks.length > 0) {
       this.buildMainNav(mainNav, mainLinks);
     }
@@ -175,7 +172,12 @@ class Gnav {
 
   buildMainNav = (mainNav, navLinks) => {
     navLinks.forEach((navLink, idx) => {
-      navLink.href = makeRelative(navLink.href, true);
+      if (navLink.parentElement.nodeName === 'STRONG') {
+        const cta = this.decorateCta(navLink);
+        mainNav.append(cta);
+        return;
+      }
+      navLink.href = localizeLink(navLink.href);
       const navItem = createTag('div', { class: 'gnav-navitem' });
       const navBlock = navLink.closest('.large-menu');
       const menu = navLink.closest('div');
@@ -225,7 +227,7 @@ class Gnav {
       const subtitle = linkGroup.querySelector('p:last-of-type') || '';
       const titleWrapper = createTag('div');
       titleWrapper.className = 'link-group-title';
-      anchor.href = makeRelative(anchor.href, true);
+      anchor.href = localizeLink(anchor.href);
       const link = createTag('a', { class: 'link-block', href: anchor.href });
 
       linkGroup.replaceChildren();
@@ -265,13 +267,6 @@ class Gnav {
 
   decorateAnalytics = (menu) => [...menu.children].forEach((child) => this.setMenuAnalytics(child));
 
-  decorateButtons = (menu) => {
-    const buttons = menu.querySelectorAll('strong a');
-    buttons.forEach((btn) => {
-      btn.classList.add('con-button', 'filled', 'blue', 'button-M');
-    });
-  };
-
   decorateMenu = (navItem, navLink, menu) => {
     menu.className = 'gnav-navitem-menu';
     menu.setAttribute('daa-lh', `header|${navLink.textContent}`);
@@ -284,6 +279,7 @@ class Gnav {
       menu.classList.add('large-Variant');
       const container = createTag('div', { class: 'gnav-menu-container' });
       container.append(...Array.from(menu.children));
+      decorateLinks(container);
       menu.append(container);
     }
     this.decorateLinkGroups(menu);
@@ -299,13 +295,12 @@ class Gnav {
       e.stopPropagation();
       this.toggleMenu(navItem);
     });
-    this.decorateButtons(menu);
     return menu;
   };
 
   decorateLargeMenu = (navLink, navItem, menu) => {
     let path = navLink.href;
-    path = makeRelative(path, true);
+    path = localizeLink(path);
     const promise = fetch(`${path}.plain.html`);
     promise.then(async (resp) => {
       if (resp.status === 200) {
@@ -328,14 +323,13 @@ class Gnav {
     });
   };
 
-  decorateCta = () => {
-    const cta = this.body.querySelector('strong a');
+  decorateCta = (cta) => {
     if (cta) {
       const { origin } = new URL(cta.href);
       if (origin !== window.location.origin) {
         cta.target = '_blank';
       }
-      cta.classList.add('con-button', 'blue', 'button-M');
+      cta.classList.add('con-button', 'blue', 'button-m');
       cta.setAttribute('daa-ll', analyticsGetLabel(cta.textContent));
       cta.parentElement.classList.add('gnav-cta');
       return cta.parentElement;
@@ -406,23 +400,27 @@ class Gnav {
     const { default: appLauncher } = await import('./gnav-appLauncher.js');
     appLauncher(profileEl, appLauncherBlock, this.toggleMenu);
   };
-  
+
   decorateProfile = () => {
     const blockEl = this.body.querySelector('.profile');
     if (!blockEl) return null;
     const profileEl = createTag('div', { class: 'gnav-profile' });
     if (blockEl.children.length > 1) profileEl.classList.add('has-menu');
 
-    const { locale, imsClientId, env } = getConfig();
+    const defaultOnReady = () => {
+      this.imsReady(blockEl, profileEl);
+    };
+
+    const { locale, imsClientId, env, onReady } = getConfig();
     if (!imsClientId) return null;
     window.adobeid = {
       client_id: imsClientId,
       scope: 'AdobeID,openid,gnav',
-      locale: locale || 'en-US',
+      locale: locale?.ietf?.replace('-', '_') || 'en_US',
       autoValidateToken: true,
       environment: env.ims,
       useLocalStorage: false,
-      onReady: () => { this.imsReady(blockEl, profileEl); },
+      onReady: onReady || defaultOnReady,
     };
     loadScript('https://auth.services.adobe.com/imslib/imslib.min.js');
     return profileEl;
@@ -448,6 +446,7 @@ class Gnav {
 
   decorateSignIn = (blockEl, profileEl) => {
     const dropDown = blockEl.querySelector(':scope > div:nth-child(2)');
+    decorateLinks(blockEl);
     const signIn = blockEl.querySelector('a');
 
     signIn.classList.add('gnav-signin');
@@ -620,7 +619,7 @@ export default async function init(header) {
     const parser = new DOMParser();
     const gnavDoc = parser.parseFromString(html, 'text/html');
     const gnav = new Gnav(gnavDoc.body, header);
-    gnav.init();
+    await gnav.init();
     header.dispatchEvent(initEvent);
     header.setAttribute('daa-im', 'true');
     header.setAttribute('daa-lh', `gnav${name}`);
