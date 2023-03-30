@@ -1,0 +1,8 @@
+.commerce {
+  width: 80%;
+  height: 80%;
+  overflow: scroll;
+  background-color: #303030;
+  color: #fff;
+  font-size: 0.875rem;
+}
