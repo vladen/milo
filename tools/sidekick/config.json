@@ -85,7 +85,7 @@
       "isPalette": true,
       "passConfig": true,
       "passReferrer": true,
-      "paletteRect": "top: 10%; bottom: 10%; left: 10%; right: 10%;",
+      "paletteRect": "top: 10%; left: 10%; height: 90%; width: 90%;",
       "url": "/tools/commerce",
       "includePaths": [ "**.docx**" ]
     }
