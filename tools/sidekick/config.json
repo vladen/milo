@@ -76,6 +76,18 @@
       "paletteRect": "top: auto; bottom: 25px; left: 75px; height: 388px; width: 360px;",
       "url": "/tools/locale-nav",
       "includePaths": [ "**.docx**" ]
+    },
+    {
+      "containerId": "tools",
+      "id": "commerce",
+      "title": "Commerce",
+      "environments": [ "edit" ],
+      "isPalette": true,
+      "passConfig": true,
+      "passReferrer": true,
+      "paletteRect": "top: 10%; bottom: 10%; left: 10%; right: 10%;",
+      "url": "/tools/commerce",
+      "includePaths": [ "**.docx**" ]
     }
   ]
 }
