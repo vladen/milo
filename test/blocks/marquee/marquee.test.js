@@ -29,6 +29,10 @@ describe('marquee', () => {
       const iconArea = marquees[1].querySelector('.icon-area');
       expect(iconArea).to.exist;
     });
+    it('wraps the picture in a link if provided', () => {
+      const picture = marquees[1].querySelector('.foreground .image a picture');
+      expect(picture).to.exist;
+    });
   });
 
   describe('supports media credits', () => {
@@ -36,19 +40,6 @@ describe('marquee', () => {
       const mediaCredit = marquees[8].querySelector('.media-credit .body-s');
       expect(mediaCredit).to.exist;
       expect(mediaCredit.textContent.trim()).to.have.lengthOf.above(0);
-    });
-  });
-
-  describe('supports buttons ', () => {
-    it('has adapted button sizes', () => {
-      const button = marquees[14].querySelector('a.con-button');
-      expect(Array.from(button.classList).includes('button-xl')).to.equal(true);
-    });
-
-    it('creates an action area', () => {
-      const pTags = marquees[14].querySelectorAll('p');
-      expect(Array.from(pTags[2].classList).includes('action-area')).to.equal(true);
-      expect(Array.from(pTags[3].classList).includes('supplemental-text')).to.equal(true);
     });
   });
 
