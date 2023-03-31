@@ -1,10 +1,11 @@
 import {
   createTag,
   decorateSVG,
+  decorateLinks,
   getConfig,
   getMetadata,
   loadScript,
-  makeRelative,
+  localizeLink,
 } from '../../utils/utils.js';
 
 import {
@@ -17,6 +18,7 @@ const BRAND_IMG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 234"
 const SEARCH_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" focusable="false"><path d="M14 2A8 8 0 0 0 7.4 14.5L2.4 19.4a1.5 1.5 0 0 0 2.1 2.1L9.5 16.6A8 8 0 1 0 14 2Zm0 14.1A6.1 6.1 0 1 1 20.1 10 6.1 6.1 0 0 1 14 16.1Z"></path></svg>';
 const SEARCH_DEBOUNCE_MS = 300;
 export const IS_OPEN = 'is-open';
+const SEARCH_TYPE_CONTEXTUAL = 'contextual';
 
 const getLocale = () => document.documentElement.getAttribute('lang') || 'en-US';
 const getCountry = () => getLocale()?.split('-').pop() || 'US';
@@ -66,10 +68,6 @@ class Gnav {
 
     const mainNav = this.decorateMainNav();
     if (mainNav) {
-      const cta = this.decorateCta();
-      if (cta) {
-        mainNav.append(cta);
-      }
       scrollWrapper.append(mainNav);
     }
 
@@ -99,31 +97,51 @@ class Gnav {
     if (breadcrumbs) {
       wrapper.append(breadcrumbs);
     }
-
+    decorateLinks(wrapper);
     this.el.append(this.curtain, wrapper);
   };
 
   loadSearch = async () => {
     if (this.onSearchInput) return;
+
     const { onSearchInput, getHelpxLink } = await import('./gnav-search.js');
-    this.onSearchInput = debounce(onSearchInput, SEARCH_DEBOUNCE_MS);
     this.getHelpxLink = getHelpxLink;
+
+    if (this.searchType === SEARCH_TYPE_CONTEXTUAL) {
+      const { default: onContextualSearchInput } = await import('./gnav-contextual-search.js');
+      this.onSearchInput = debounce(onContextualSearchInput, SEARCH_DEBOUNCE_MS);
+    } else {
+      this.onSearchInput = debounce(onSearchInput, SEARCH_DEBOUNCE_MS);
+    }
   };
 
   decorateToggle = () => {
     const toggle = createTag('button', { class: 'gnav-toggle', 'aria-label': 'Navigation menu', 'aria-expanded': false });
+    const closeToggleOnDocClick = ({ target }) => {
+      if (target !== toggle && !target.closest('.mainnav-wrapper')) {
+        this.el.classList.remove(IS_OPEN);
+        this.desktop.removeEventListener('change', onMediaChange);
+        document.removeEventListener('click', closeToggleOnDocClick);
+      }
+    };
     const onMediaChange = (e) => {
       if (e.matches) {
         this.el.classList.remove(IS_OPEN);
+        document.removeEventListener('click', closeToggleOnDocClick);
       }
     };
     toggle.addEventListener('click', async () => {
       if (this.el.classList.contains(IS_OPEN)) {
         this.el.classList.remove(IS_OPEN);
         this.desktop.removeEventListener('change', onMediaChange);
+        document.removeEventListener('click', closeToggleOnDocClick);
       } else {
+        if (this.state.openMenu) {
+          this.closeMenu();
+        }
         this.el.classList.add(IS_OPEN);
         this.desktop.addEventListener('change', onMediaChange);
+        document.addEventListener('click', closeToggleOnDocClick);
         this.loadSearch();
       }
     });
@@ -144,7 +162,7 @@ class Gnav {
     if (brand.classList.contains('logo')) {
       if (brandLinks.length > 0) {
         decorateSVG(brandLinks[0]);
-        brand.insertAdjacentElement('afterbegin', brandLinks[0].querySelector('img'));
+        brand.insertAdjacentElement('afterbegin', brandBlock.querySelector('img'));
       } else {
         brand.insertAdjacentHTML('afterbegin', BRAND_IMG);
       }
@@ -155,7 +173,7 @@ class Gnav {
 
   decorateLogo = () => {
     const logo = this.body.querySelector('.adobe-logo a');
-    logo.href = makeRelative(logo.href, true);
+    if (!logo) return null;
     logo.classList.add('gnav-logo');
     logo.setAttribute('aria-label', logo.textContent);
     logo.setAttribute('daa-ll', 'Logo');
@@ -166,7 +184,7 @@ class Gnav {
 
   decorateMainNav = () => {
     const mainNav = createTag('div', { class: 'gnav-mainnav' });
-    const mainLinks = this.body.querySelectorAll('h2 > a');
+    const mainLinks = this.body.querySelectorAll('h2 > a, strong a');
     if (mainLinks.length > 0) {
       this.buildMainNav(mainNav, mainLinks);
     }
@@ -175,7 +193,12 @@ class Gnav {
 
   buildMainNav = (mainNav, navLinks) => {
     navLinks.forEach((navLink, idx) => {
-      navLink.href = makeRelative(navLink.href, true);
+      if (navLink.parentElement.nodeName === 'STRONG') {
+        const cta = this.decorateCta(navLink);
+        mainNav.append(cta);
+        return;
+      }
+      navLink.href = localizeLink(navLink.href);
       const navItem = createTag('div', { class: 'gnav-navitem' });
       const navBlock = navLink.closest('.large-menu');
       const menu = navLink.closest('div');
@@ -225,7 +248,7 @@ class Gnav {
       const subtitle = linkGroup.querySelector('p:last-of-type') || '';
       const titleWrapper = createTag('div');
       titleWrapper.className = 'link-group-title';
-      anchor.href = makeRelative(anchor.href, true);
+      anchor.href = localizeLink(anchor.href);
       const link = createTag('a', { class: 'link-block', href: anchor.href });
 
       linkGroup.replaceChildren();
@@ -268,7 +291,7 @@ class Gnav {
   decorateButtons = (menu) => {
     const buttons = menu.querySelectorAll('strong a');
     buttons.forEach((btn) => {
-      btn.classList.add('con-button', 'filled', 'blue', 'button-M');
+      btn.classList.add('con-button', 'filled', 'blue', 'button-m');
     });
   };
 
@@ -284,6 +307,7 @@ class Gnav {
       menu.classList.add('large-Variant');
       const container = createTag('div', { class: 'gnav-menu-container' });
       container.append(...Array.from(menu.children));
+      decorateLinks(container);
       menu.append(container);
     }
     this.decorateLinkGroups(menu);
@@ -296,7 +320,6 @@ class Gnav {
     });
     navLink.addEventListener('click', (e) => {
       e.preventDefault();
-      e.stopPropagation();
       this.toggleMenu(navItem);
     });
     this.decorateButtons(menu);
@@ -305,7 +328,7 @@ class Gnav {
 
   decorateLargeMenu = (navLink, navItem, menu) => {
     let path = navLink.href;
-    path = makeRelative(path, true);
+    path = localizeLink(path);
     const promise = fetch(`${path}.plain.html`);
     promise.then(async (resp) => {
       if (resp.status === 200) {
@@ -328,14 +351,13 @@ class Gnav {
     });
   };
 
-  decorateCta = () => {
-    const cta = this.body.querySelector('strong a');
+  decorateCta = (cta) => {
     if (cta) {
       const { origin } = new URL(cta.href);
       if (origin !== window.location.origin) {
         cta.target = '_blank';
       }
-      cta.classList.add('con-button', 'blue', 'button-M');
+      cta.classList.add('con-button', 'blue', 'button-m');
       cta.setAttribute('daa-ll', analyticsGetLabel(cta.textContent));
       cta.parentElement.classList.add('gnav-cta');
       return cta.parentElement;
@@ -345,32 +367,42 @@ class Gnav {
 
   decorateSearch = () => {
     const searchBlock = this.body.querySelector('.search');
-    if (searchBlock) {
-      const label = searchBlock.querySelector('p').textContent;
-      const searchEl = createTag('div', { class: 'gnav-search' });
-      const searchBar = this.decorateSearchBar(label);
-      const searchButton = createTag(
-        'button',
-        {
-          class: 'gnav-search-button',
-          'aria-label': label,
-          'aria-expanded': false,
-          'aria-controls': 'gnav-search-bar',
-          'daa-ll': 'Search',
-        },
-        SEARCH_ICON,
-      );
-      searchButton.addEventListener('click', () => {
-        this.loadSearch();
-        this.toggleMenu(searchEl);
-      });
-      searchEl.append(searchButton, searchBar);
-      return searchEl;
+    if (!searchBlock) return null;
+
+    const isContextual = searchBlock.classList.contains(SEARCH_TYPE_CONTEXTUAL);
+    if (isContextual) {
+      this.searchType = SEARCH_TYPE_CONTEXTUAL;
     }
-    return null;
+
+    const advancedSearchEl = searchBlock.querySelector('a');
+    let advancedSearchWrapper = null;
+    if (advancedSearchEl) {
+      advancedSearchWrapper = createTag('li', null, advancedSearchEl);
+    }
+
+    const label = searchBlock.querySelector('p').textContent;
+    const searchEl = createTag('div', { class: `gnav-search ${isContextual ? SEARCH_TYPE_CONTEXTUAL : ''}` });
+    const searchBar = this.decorateSearchBar(label, advancedSearchWrapper);
+    const searchButton = createTag(
+      'button',
+      {
+        class: 'gnav-search-button',
+        'aria-label': label,
+        'aria-expanded': false,
+        'aria-controls': 'gnav-search-bar',
+        'daa-ll': 'Search',
+      },
+      SEARCH_ICON,
+    );
+    searchButton.addEventListener('click', () => {
+      this.loadSearch();
+      this.toggleMenu(searchEl);
+    });
+    searchEl.append(searchButton, searchBar);
+    return searchEl;
   };
 
-  decorateSearchBar = (label) => {
+  decorateSearchBar = (label, advancedSearchEl) => {
     const searchBar = createTag('aside', { id: 'gnav-search-bar', class: 'gnav-search-bar' });
     const searchField = createTag('div', { class: 'gnav-search-field' }, SEARCH_ICON);
     const searchInput = createTag('input', {
@@ -384,7 +416,13 @@ class Gnav {
     const locale = getLocale();
 
     searchInput.addEventListener('input', (e) => {
-      this.onSearchInput(e.target.value, searchResultsUl, locale, searchInput);
+      this.onSearchInput({
+        value: e.target.value,
+        resultsEl: searchResultsUl,
+        locale,
+        searchInputEl: searchInput,
+        advancedSearchEl,
+      });
     });
 
     searchInput.addEventListener('keydown', (e) => {
@@ -398,6 +436,8 @@ class Gnav {
     return searchBar;
   };
 
+  getNoResultsEl = (advancedSearchEl) => createTag('li', null, advancedSearchEl);
+
   /* c8 ignore start */
   getAppLauncher = async (profileEl) => {
     const appLauncherBlock = this.body.querySelector('.app-launcher');
@@ -406,23 +446,27 @@ class Gnav {
     const { default: appLauncher } = await import('./gnav-appLauncher.js');
     appLauncher(profileEl, appLauncherBlock, this.toggleMenu);
   };
-  
+
   decorateProfile = () => {
     const blockEl = this.body.querySelector('.profile');
     if (!blockEl) return null;
     const profileEl = createTag('div', { class: 'gnav-profile' });
     if (blockEl.children.length > 1) profileEl.classList.add('has-menu');
 
-    const { locale, imsClientId, env } = getConfig();
+    const defaultOnReady = () => {
+      this.imsReady(blockEl, profileEl);
+    };
+
+    const { locale, imsClientId, env, onReady } = getConfig();
     if (!imsClientId) return null;
     window.adobeid = {
       client_id: imsClientId,
       scope: 'AdobeID,openid,gnav',
-      locale: locale || 'en-US',
+      locale: locale?.ietf?.replace('-', '_') || 'en_US',
       autoValidateToken: true,
       environment: env.ims,
       useLocalStorage: false,
-      onReady: () => { this.imsReady(blockEl, profileEl); },
+      onReady: onReady || defaultOnReady,
     };
     loadScript('https://auth.services.adobe.com/imslib/imslib.min.js');
     return profileEl;
@@ -448,6 +492,7 @@ class Gnav {
 
   decorateSignIn = (blockEl, profileEl) => {
     const dropDown = blockEl.querySelector(':scope > div:nth-child(2)');
+    decorateLinks(blockEl);
     const signIn = blockEl.querySelector('a');
 
     signIn.classList.add('gnav-signin');

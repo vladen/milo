@@ -7,14 +7,14 @@ export function decorateButtons(el, size) {
     const parent = button.parentElement;
     const buttonType = parent.nodeName === 'STRONG' ? 'blue' : 'outline';
     button.classList.add('con-button', buttonType);
-    if (size) button.classList.add(size); /* button-L, button-XL */
+    if (size) button.classList.add(size); /* button-l, button-xl */
     parent.insertAdjacentElement('afterend', button);
     parent.remove();
   });
   const actionArea = buttons[0].closest('p, div');
   if (actionArea) {
     actionArea.classList.add('action-area');
-    actionArea.nextElementSibling?.classList.add('supplemental-text', 'body-XL');
+    actionArea.nextElementSibling?.classList.add('supplemental-text', 'body-xl');
   }
 }
 
@@ -26,33 +26,21 @@ export function decorateIconArea(el) {
   });
 }
 
-export function decorateBlockText(el, size = 'small') {
-  const blockTypeSizes = {
-    media: {
-      // name: [heading, detail, body]
-      small: ['XS', 'M', 'S'],
-      medium: ['M', 'M', 'S'],
-      large: ['XL', 'L', 'M'],
-      xlarge: ['XXL', 'L', 'M'],
-    },
-    text: {
-      small: ['M', 'S', 'S'],
-      medium: ['L', 'M', 'M'],
-      large: ['XL', 'L', 'M'],
-      xlarge: ['XXL', 'XL', 'L'],
-    }
-  };
-  const sizeType = el.classList.contains('text-block') ? blockTypeSizes.text[size] : blockTypeSizes.media[size];
-  const decorateHeading = (headingEl, sizes) => {
-    headingEl.classList.add(`heading-${sizes[0]}`);
-    headingEl.previousElementSibling?.classList.add(`detail-${sizes[1]}`);
-    const emptyPs = headingEl.parentElement.querySelectorAll(':scope > p:not([class])');
-    if (emptyPs) emptyPs.forEach((p) => { p.classList.add(`body-${sizeType[2]}`); });
-  };
+export function decorateBlockText(el, config = ['m', 's', 'm']) {
   const headings = el.querySelectorAll('h1, h2, h3, h4, h5, h6');
-  const heading = headings[headings.length - 1];
-  if (heading) decorateHeading(heading, sizeType);
-  decorateIconArea(el);
+  if (!el.classList.contains('default')) {
+    if (headings) {
+      headings.forEach((h) => {
+        h.classList.add(`heading-${config[0]}`);
+      });
+      if (config[2]) {
+        headings[0]?.previousElementSibling?.classList.add(`detail-${config[2]}`);
+        decorateIconArea(el);
+      }
+    }
+    const emptyPs = el.querySelectorAll(':scope div > p:not([class])');
+    if (emptyPs) emptyPs.forEach((p) => { p.classList.add(`body-${config[1]}`); });
+  }
   decorateButtons(el);
   decorateLinkAnalytics(el, headings);
 }
@@ -77,7 +65,8 @@ export function decorateBlockBg(block, node) {
   }
 }
 
-export function getBlockSize(el) {
+export function getBlockSize(el, defaultSize = 1) {
   const sizes = ['small', 'medium', 'large', 'xlarge'];
-  return sizes.find((size) => el.classList.contains(size)) || sizes[1]; /* medium default */
+  if (defaultSize < 0 || defaultSize > sizes.length - 1) return null;
+  return sizes.find((size) => el.classList.contains(size)) || sizes[defaultSize];
 }

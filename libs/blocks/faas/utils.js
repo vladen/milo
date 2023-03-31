@@ -92,9 +92,9 @@ const afterYiiLoadedCallback = () => {
       i += 1;
     } while (sibs[i]);
   }
-  const { multicampaignradiostyle } = state; // temp
+
   function changeSelectionElement() {
-    if (multicampaignradiostyle) {
+    if (state.multicampaignradiostyle) {
       const inputs = wr.querySelectorAll('.checkboxlist input');
       inputs.forEach((input) => {
         if (input.type === 'checkbox') {
@@ -121,8 +121,8 @@ const afterYiiLoadedCallback = () => {
       });
     }
 
-    iterator($('.faasform input[type="text"]'));
-    iterator($('.faasform textarea'));
+    iterator($('.faas-form input[type="text"]'));
+    iterator($('.faas-form textarea'));
   }
 
   function removeRequired() {
@@ -262,11 +262,25 @@ export const makeFaasConfig = (targetState) => {
     state = defaultState;
     return state;
   }
+  
+  let url = targetState.d;
+  let destinationURL = '';
+  try {
+    // checking if URL is absolute.
+    new URL(url);
+    destinationURL = targetState.d;
+  }
+  catch (e) {
+    // in case of relative:
+    destinationURL = window.location.origin + targetState.d;
+  }
 
   const config = {
+    multicampaignradiostyle: targetState.multicampaignradiostyle ?? false,
+    hidePrepopulated: targetState.hidePrepopulated ?? false,
     id: targetState.id,
     l: targetState.l,
-    d: targetState.d,
+    d: destinationURL,
     as: targetState.as,
     ar: targetState.ar,
     pc: {
@@ -294,7 +308,15 @@ export const makeFaasConfig = (targetState) => {
     e: { 
       afterYiiLoadedCallback, 
       beforeSubmitCallback,
-    }
+    },
+    style_backgroundTheme: targetState.style_backgroundTheme || 'white',
+    style_layout: targetState.style_layout || 'column1',
+    isGate: targetState.isGate ? 'gated' : '',
+    pc1: targetState.pc1 || false,
+    pc2: targetState.pc2 || false,
+    pc3: targetState.pc3 || false,
+    pc4: targetState.pc4 || false,
+    pc5: targetState.pc5 || false,
   };
 
   // b2bpartners
@@ -311,7 +333,7 @@ export const makeFaasConfig = (targetState) => {
   if (targetState.q103) {
     Object.assign(config.q, { 103: { c: targetState.q103 } });
   }
-
+  
   return config;
 };
 
@@ -335,13 +357,24 @@ export const initFaas = (config, targetEl) => {
     formTitleWrapperEl.append(formTitleEl);
   }
 
-  const formEl = createTag('div', { class: 'faas-form-wrapper' });
+  if (window.location.pathname === '/tools/faas') {
+    state.as = false;
+    state.ar = false;
+  }
 
+  const formEl = createTag('div', { class: 'faas-form-wrapper' });
   if (state.complete) {
+    if (state.js) {
+        Object.keys(state.js).forEach((key) => {
+        state[key] = state.js[key];
+      });
+      delete state.js;
+    }
+    state.complete = false;
     state.e = { afterYiiLoadedCallback, beforeSubmitCallback };
     $(formEl).faas(state);
   } else {
-    state = makeFaasConfig(config);
+    state = makeFaasConfig(state);
     $(formEl).faas(state);
   }
 
