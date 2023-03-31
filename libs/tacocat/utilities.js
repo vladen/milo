@@ -1,6 +1,8 @@
 /** @type {Tacocat.isNil} */
 export const isNil = (value) => value == null;
 
+/** @type {Tacocat.isElement} */
+export const isElement = (value) => !isNil(value) && value instanceof Element;
 /** @type {Tacocat.isError} */
 export const isError = (value) => !isNil(value) && value instanceof Error;
 /** @type {Tacocat.isFunction} */
@@ -9,6 +11,8 @@ export const isFunction = (value) => typeof value === 'function';
 export const isObject = (value) => !isNil(value) && typeof value === 'object';
 /** @type {Tacocat.isPromise} */
 export const isPromise = (value) => !isNil(value) && value instanceof Promise;
+/** @type {Tacocat.isString} */
+export const isString = (value) => typeof value === 'string';
 /** @type {Tacocat.isUndefined} */
 export const isUndefined = (value) => value === undefined;
 
@@ -18,16 +22,6 @@ export const isUndefined = (value) => value === undefined;
  * @returns {boolean}
  */
 const combineFlags = (existing, overriding) => (existing ?? false) || (overriding ?? false);
-
-/**
- * @param {string} selector
- * @returns {Tacocat.Internal.SelectorMatcher}
- */
-export const createSelectorMatcher = (selector) => (
-  selector
-    ? (element) => element?.matches(selector)
-    : (element) => element && element instanceof Element
-);
 
 /**
  * @param {number} timeout
@@ -47,8 +41,8 @@ export const hasOwnProperty = (object, property) => !isNil(object)
 
 /**
  *
- * @param {Tacocat.Internal.Reactions[]} reactions
- * @returns
+ * @param {Tacocat.Engine.Reactions[]} reactions
+ * @returns {Tacocat.Internal.Reactions}
  */
 export const mergeReactions = (reactions) => ({
   events: [...new Set(
@@ -78,6 +72,9 @@ export const mergeReactions = (reactions) => ({
       },
       {},
     ),
+  selectors: reactions
+    .map(({ selector } = {}) => selector)
+    .filter((selector) => selector),
   triggers: reactions
     .map(({ trigger } = {}) => trigger)
     .filter((trigger) => isFunction(trigger)),

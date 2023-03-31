@@ -1,6 +1,4 @@
-import { isObject, isUndefined } from './utilities.js';
-
-const contextKeys = new WeakMap();
+import { isObject, isString } from './utilities.js';
 
 /**
  * @template T, U
@@ -18,23 +16,9 @@ const assignContext = (result, context) => Object.defineProperty(
   },
 );
 
-/**
- * @param {object} context
- * @returns {string}
- */
-function getContextKey(context) {
-  if (!isObject(context)) return '';
-  let key = contextKeys.get(context);
-  if (isUndefined(key)) {
-    key = JSON.stringify(context);
-    contextKeys.set(context, key);
-  }
-  return key;
-}
-
 /** @type {Tacocat.hasContext}} */
 const hasContext = (object) => isObject(object)
   // @ts-ignore
-  && getContextKey(object.context) !== '';
+  && isString(object.context.id) && object.context.id.length;
 
-export { assignContext, getContextKey, hasContext };
+export { assignContext, hasContext };

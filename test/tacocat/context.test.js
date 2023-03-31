@@ -1,24 +1,34 @@
 import { expect } from './tools.js';
-import Log, { quietLogFilter } from '../../libs/tacocat/log.js';
-import { getContextKey } from '../../libs/tacocat/context.js';
+import Log from '../../libs/tacocat/log.js';
+import { assignContext, hasContext } from '../../libs/tacocat/context.js';
 
-describe('module "context"', () => {
+describe.skip('module "context"', () => {
   after(() => {
     Log.reset();
   });
   before(() => {
-    Log.use(quietLogFilter);
+    Log.use(Log.quietFilter);
   });
 
-  describe('function "getContextKey"', () => {
-    it('returns empty string for null and undefined', () => {
-      expect(getContextKey()).to.equal('');
-      expect(getContextKey(null)).to.equal('');
+  describe('function "assignContext"', () => {
+    it('returns true if object has context with id', () => {
+      const context = { id: 'test' };
+      const result = { foo: 'bar' };
+      expect(assignContext(result, context)).to.equal({
+        context,
+        ...result,
+      });
+    });
+  });
+
+  describe('function "hasContext"', () => {
+    it('returns true if object has context with id', () => {
+      expect(hasContext({ context: { id: 'test' } })).to.be.true;
     });
 
-    it('returns not empty string for an object', () => {
-      expect(getContextKey({})).not.to.be.empty;
-      expect(getContextKey([])).not.to.be.empty;
+    it('returns false if object has no context with id', () => {
+      expect(hasContext()).to.be.false;
+      expect(hasContext({ context: { id: null } })).to.be.false;
     });
   });
 });

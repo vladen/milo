@@ -1,45 +1,61 @@
-import Channel from './channel.js';
-import { Stage } from './constants.js';
-import Subtree from './subtree.js';
+import { StageName } from './constants.js';
+
+/** @type {WeakMap<Tacocat.Internal.Placeholder, Tacocat.Engine.SomePlaceholder>} */
+const placeholders = new WeakMap();
 
 /**
- * @param {WeakMap<Element, Tacocat.Internal.Storage>} mounted
- * @param {Tacocat.Internal.Subtree} subtree
- * @returns {Tacocat.Engine.Placeholder[]}
+ * @param {Tacocat.Internal.Cycle} cycle
+ * @param {Tacocat.Internal.Placeholder} placeholder
+ * @returns {Tacocat.Engine.SomePlaceholder}
  */
-function exploreScope(mounted, { scope, selector }) {
-  const placeholders = [];
-  scope.querySelectorAll(selector).forEach((element) => {
-    const depot = mounted.get(element);
-    if (depot) {
-      /** @type {Tacocat.Internal.Placeholder} */
-      const placeholder = {
-        element,
-        state: depot.getState(element),
-        expect(stage) {
-          return new Promise((resolve) => {
-            Channel[stage]?.listen(element, () => resolve(placeholder), { once: true });
-          });
-        },
-        update(context) {
-          Channel.update.dispatch(element, { context }, Stage.pending);
-          return placeholder;
-        },
-      };
-      placeholders.push(placeholder);
-    }
-  });
-  return placeholders;
+function Placeholder(cycle, placeholder) {
+  if (!placeholders.has(placeholder)) {
+    placeholders.set(placeholder, {
+      get context() {
+        return placeholder.context;
+      },
+      get element() {
+        return placeholder.element;
+      },
+      get event() {
+        return placeholder.event;
+      },
+      get result() {
+        return placeholder.result;
+      },
+      get stage() {
+        return placeholder.stage;
+      },
+      get promise() {
+        return new Promise((resolve, reject) => {
+          switch (placeholder.stage) {
+            case StageName.resolved:
+              resolve(placeholder.result);
+              break;
+            case StageName.rejected:
+              reject(placeholder.result);
+              break;
+            default:
+
+              break;
+          }
+        });
+      },
+      update(context = {}) {
+        cycle.observe(placeholder.element, context);
+      },
+    });
+  }
+  return placeholders.get(placeholder);
 }
 
 /**
- * @param {WeakMap<Element, Tacocat.Internal.Storage>} mounted
- * @param {Tacocat.Internal.Subtree} subtree
+ * @param {Tacocat.Internal.Cycle} cycle
  * @returns {Tacocat.Internal.Engine}
  */
-const Engine = (mounted, subtree) => ({
-  explore(scope, selector) {
-    return exploreScope(mounted, Subtree(scope ?? subtree.scope, selector ?? subtree.selector));
+const Engine = (cycle) => ({
+  get placeholders() {
+    return cycle.placeholders.map((placeholder) => Placeholder(cycle, placeholder));
   },
 });
 

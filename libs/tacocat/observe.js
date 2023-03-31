@@ -1,57 +1,37 @@
-import Channel from './channel.js';
-import { Stage } from './constants.js';
+import Cycle from './cycle.js';
 import Engine from './engine.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import Storage from './storage.js';
-import { isFunction, isNil, mergeReactions } from './utilities.js';
+import { isFunction, isNil } from './utilities.js';
 
 const childListMutation = 'childList';
 const observableMutations = ['attributes', 'characterData', childListMutation];
 
 /**
  * @param {Tacocat.Internal.Control} control
- * @param {Tacocat.Internal.Reactions[]} reactions
+ * @param {Tacocat.Internal.Reactions} reactions
  * @param {Tacocat.Internal.Subscriber[]} subscribers
- * @param {Tacocat.Internal.Subtree} subtree
+ * @param {Element} scope
+ * @param {string} selector
  * @returns {Tacocat.Internal.Engine}
  */
-function Observe(control, reactions, subscribers, subtree) {
+function Observe(control, reactions, subscribers, scope, selector) {
   const log = Log.common.module('observe');
 
   if (control.signal?.aborted) {
-    return { explore: () => [] };
+    return {
+      get placeholders() {
+        return [];
+      },
+    };
   }
 
-  const tacoReactions = mergeReactions(reactions);
-  /** @type {WeakMap<Element, Tacocat.Internal.Storage>} */
-  const mounted = new WeakMap();
+  const cycle = Cycle(control, scope, selector);
   /** @type {Set<{ element: Element }>} */
   const removed = new Set();
   /** @type {Set<{ element: Element, event?: Event }>} */
   const updated = new Set();
   let timer;
-
-  /**
-     * Returns given element if it matches obsdervation conditions.
-     * @param {Node} node
-     * @returns {Element | undefined}
-     */
-  function match(node, ancestors = false) {
-    const element = node instanceof Element
-      ? node
-      : node.parentElement;
-    if (element) {
-      if (subtree.matcher(element)) return element;
-      if (ancestors) {
-        const closest = element.closest(subtree.selector);
-        if (closest?.compareDocumentPosition(subtree.scope) === Node.DOCUMENT_POSITION_CONTAINS) {
-          return closest;
-        }
-      }
-    }
-    return undefined;
-  }
 
   /**
      * Mounts new element to the observation session
@@ -60,14 +40,14 @@ function Observe(control, reactions, subscribers, subtree) {
      * @param {(event: Event) => void} listener
      */
   function mount(element, listener) {
-    if (mounted.has(element)) return;
+    if (cycle.exists(element)) return;
     log.debug('Mounting:', { element });
 
-    tacoReactions.events.forEach((type) => {
+    reactions.events.forEach((type) => {
       element.addEventListener(type, listener, { signal: control.signal });
     });
 
-    tacoReactions.triggers.forEach((trigger) => {
+    reactions.triggers.forEach((trigger) => {
       const result = safeSync(
         log,
         'Trigger callback error:',
@@ -79,24 +59,14 @@ function Observe(control, reactions, subscribers, subtree) {
         log.warn('Trigger callback must return a function:', { result, trigger });
       }
     });
-
-    const storage = Storage(log.id);
-    mounted.set(element, storage);
-    subscribers.forEach((subscriber) => {
-      subscriber(control, element, storage);
-    });
-    Channel.mount.dispatch(element);
   }
 
   /**
      * @param {Element} element
      */
   function unmount(element) {
-    mounted.get(element)?.deleteState(element);
-    mounted.delete(element);
-    control.release(element);
+    cycle.dispose(element);
     log.debug('Unmounted:', { element });
-    Channel.unmount.dispatch(element);
   }
 
   /**
@@ -118,7 +88,7 @@ function Observe(control, reactions, subscribers, subtree) {
           schedule();
         });
         log.debug('Observed:', { element, event });
-        Channel.observe.dispatch(element, undefined, Stage.pending, event);
+        cycle.observe(element, undefined, event);
       });
     }
 
@@ -141,31 +111,33 @@ function Observe(control, reactions, subscribers, subtree) {
     schedule();
   }
 
-  // Scan current DOM tree for matching elements
-  subtree.scope.querySelectorAll(subtree.selector).forEach((element) => {
-    update(match(element));
+  subscribers.forEach((subscriber) => {
+    subscriber(control, cycle);
   });
 
+  // Scan current DOM tree for matching elements
+  cycle.scope.querySelectorAll(cycle.selector).forEach(update);
+
   // Setup mutation observer
-  if (observableMutations.some((mutation) => tacoReactions.mutations[mutation])) {
+  if (observableMutations.some((mutation) => reactions.mutations[mutation])) {
     const observer = new MutationObserver((records) => records.forEach((record) => {
       if (record.type === childListMutation) {
         const { addedNodes, removedNodes } = record;
-        removedNodes.forEach((node) => remove(match(node)));
-        addedNodes.forEach((node) => update(match(node)));
+        removedNodes.forEach((node) => remove(cycle.match(node)));
+        addedNodes.forEach((node) => update(cycle.match(node)));
       } else {
-        update(match(record.target));
+        update(cycle.match(record.target));
       }
     }));
 
-    observer.observe(subtree.scope, tacoReactions.mutations);
+    observer.observe(scope, reactions.mutations);
     control.dispose(() => observer.disconnect());
-    log.debug('Observing:', { subtree });
+    log.debug('Observing:', { scope, selector });
   }
 
   control.dispose(() => log.debug('Aborted'));
-  log.debug('Activated:', { reactions: tacoReactions, subtree });
-  return Engine(mounted, subtree);
+  log.debug('Activated:', { reactions, scope, selector });
+  return Engine(cycle);
 }
 
 export default Observe;

@@ -1,17 +1,5 @@
 import { expect, spy } from './tools.js';
-import Log, { isLog } from '../../libs/tacocat/log.js';
-
-describe('function "isLog"', () => {
-  it('returns false of argument is not an instance of Log', () => {
-    expect(isLog()).to.be.false;
-    expect(isLog({})).to.be.false;
-  });
-
-  it('returns true of argument is an instance of Log', () => {
-    expect(isLog(Log.common)).to.be.true;
-    expect(isLog(Log('namespace'))).to.be.true;
-  });
-});
+import Log from '../../libs/tacocat/log.js';
 
 describe.skip('function "Log"', () => {
   describe('returned object', () => {

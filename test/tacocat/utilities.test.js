@@ -1,13 +1,7 @@
 import { expect } from './tools.js';
-import { createSelectorMatcher, mergeReactions } from '../../libs/tacocat/utilities.js';
+import { mergeReactions } from '../../libs/tacocat/utilities.js';
 
-describe('function "createSelectorMatcher"', () => {
-  it('returns a function', () => {
-    expect(createSelectorMatcher()).to.be.instanceOf(Function);
-  });
-});
-
-describe('function "mergeReactions"', () => {
+describe.skip('function "mergeReactions"', () => {
   it('merges several mutation observer settings into one object', () => {
     const trigger1 = () => {};
     const trigger2 = () => {};

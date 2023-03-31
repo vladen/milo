@@ -1,6 +1,4 @@
-import Channel from './channel.js';
-import { Stage } from './constants.js';
-import { getContextKey } from './context.js';
+import { EventType } from './constants.js';
 import Log from './log.js';
 import { safeAsyncEvery } from './safe.js';
 import { isFunction, isNil, isObject } from './utilities.js';
@@ -10,12 +8,14 @@ import { isFunction, isNil, isObject } from './utilities.js';
  * @param {Tacocat.Internal.Extractor[]} extractors
  * @returns {Tacocat.Internal.Subscriber}
  */
-const Extract = (base, extractors) => (control, element, storage) => {
+const Extract = (base, extractors) => (control, cycle) => {
   const log = Log.common.module('extract');
 
-  control.dispose(
-    Channel.observe.listen(element, async (state, stage, event) => {
-      const context = { ...base };
+  cycle.listen(
+    EventType.observed,
+    async ({ detail }, event) => {
+      const context = { ...base, ...detail.context };
+      const { id } = detail.context;
 
       const success = await safeAsyncEvery(
         log,
@@ -23,37 +23,33 @@ const Extract = (base, extractors) => (control, element, storage) => {
         extractors,
         async (extractor) => {
           if (control.signal?.aborted) return false;
-          let extracted;
+          let extraction;
           if (isFunction(extractor)) {
-            extracted = await extractor(context, element, event, control.signal);
+            extraction = await extractor(context, detail.element, event, control.signal);
           } else if (isObject(extractor)) {
-            extracted = extractor;
+            extraction = extractor;
           }
-          if (isObject(extracted)) {
-            Object.assign(context, extracted);
+          if (isObject(extraction)) {
+            Object.assign(context, extraction);
             return true;
           }
-          if (!isNil(extracted)) {
-            log.error('Unexpected extraction:', { extracted, event, extractor });
+          if (!isNil(extraction)) {
+            log.error('Unexpected extraction, cancelling:', { extraction, event, extractor });
           }
           return false;
         },
       );
 
-      if (
-        success
-        && getContextKey(context) !== getContextKey(storage.getState(element)?.context)
-      ) {
-        const nextState = { context };
-        storage.setState(element, nextState);
-        log.debug('Extracted:', { state: nextState, element, event });
-        Channel.extract.dispatch(element, nextState, Stage.pending, event);
+      if (success) {
+        context.id = id;
+        cycle.extract(context);
+        log.debug('Extracted:', { context, element: detail.element, event });
       }
-    }),
+    },
   );
 
   control.dispose(() => log.debug('Aborted'));
-  log.debug('Activated:', { base, element, extractors });
+  log.debug('Activated:', { base, extractors });
 };
 
 export default Extract;

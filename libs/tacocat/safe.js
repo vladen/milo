@@ -1,6 +1,6 @@
-import Log, { isLog } from './log.js';
+import Log from './log.js';
 
-const getLog = (log) => (isLog(log) ? log : Log.common ?? console);
+const getLog = (log) => (Log.isLog(log) ? log : Log.common ?? console);
 
 /**
  * @template T

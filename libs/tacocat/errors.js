@@ -5,7 +5,7 @@ class TacocatError extends Error {}
 /**
  * @template T
  * @param {T} context
- * @returns {Tacocat.ContextfulError<T>}
+ * @returns {Tacocat.Rejection<T>}
  */
 // eslint-disable-next-line import/prefer-default-export
 export const NotProvidedError = (context) => assignContext(

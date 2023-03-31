@@ -1,46 +1,43 @@
 declare namespace Tacocat {
   // --- types ---
+  type isElement = (value: any) => value is Element;
   type isError = (value: any) => value is Error;
   type isFunction = (value: any) => value is Function;
   type isNil = (value: any) => value is null | undefined;
   type isObject = (value: any) => value is object;
   type isPromise = (value: any) => value is Promise<any>;
+  type isString = (value: any) => value is string;
   type isUndefined = (value: any) => value is undefined;
 
-  type Contextful<T extends object> = { context?: T };
+  type Context<T extends object> = T & { id?: string };
+
+  type Contextful<T extends object> = { context: Context<T> };
   type Rejection<T extends object> = Contextful<T> & Error;
   type Resolution<T extends object, U extends object> = Contextful<T> & U;
-  type State<T extends object, U extends object> =
-    | Contextful<T>
-    | Rejection<T>
-    | Resolution<T, U>;
 
   type hasContext = (candidate: any) => candidate is Contextful<any>;
 
+  type Stale = 'stale';
   type Pending = 'pending';
   type Rejected = 'rejected';
   type Resolved = 'resolved';
-  type Stage = Pending | Rejected | Resolved;
+  type Stage = Stale | Pending | Rejected | Resolved;
 
-  type ContextfulEvent<T extends object> = Event & {
-    state: Contextful<T>;
-    stage: Stage;
-  };
-
-  type ContextfulError<T extends object> = Contextful<T> & Error;
-
-  type SomeContext = { [key: string]: any };
+  type SomeContext = Context<{}>;
   type SomeRejection = Rejection<SomeContext>;
   type SomeResolution = Resolution<SomeContext, SomeContext>;
-  type SomeState =
-    | Contextful<SomeContext>
-    | SomeRejection
-    | SomeResolution;
+  type SomeResult = SomeRejection | SomeResolution;
 
-  type StateEvent = Event & {
+  type CycleEvent = CustomEvent<{
+    context: SomeContext;
+    element: Element;
     stage: Stage;
-    state: SomeState
-}
+    result: SomeResult;
+  }>;
+
+  type CycleEventListener = (event: CycleEvent, cause: Event) => void;
+
+  type Writable<T> = { -readonly [K in keyof T]: T[K] };
 
   module Engine {
     // --- types ---
@@ -61,10 +58,10 @@ declare namespace Tacocat {
 
     type PendingPresenter<T extends object> = (
       element: Element,
-      state: Contextful<T>,
+      result: Contextful<T>,
       event?: Event,
       signal?: AbortSignal
-    ) => void;
+    ) => undefined | Element;
 
     type Provider<T extends object, U extends object> = (
       contexts: T[],
@@ -73,17 +70,19 @@ declare namespace Tacocat {
 
     type RejectedPresenter<T extends object> = (
       element: Element,
-      state: Rejection<T>,
+      result: Rejection<T>,
       event?: Event,
       signal?: AbortSignal
-    ) => void;
+    ) => undefined | Element;
 
     type ResolvedPresenter<T extends object, U extends object> = (
       element: Element,
-      state: Resolution<T, U>,
+      result: Resolution<T, U>,
       event?: Event,
       signal?: AbortSignal
-    ) => void;
+    ) => undefined | Element;
+
+    type SomePlaceholder = Placeholder<SomeContext, SomeContext>;
 
     type Trigger = (
       element: Element,
@@ -92,21 +91,6 @@ declare namespace Tacocat {
     ) => Disposer;
 
     // --- interfaces ---
-    interface Channel<T extends object> {
-      dispatch(
-        target: EventTarget,
-        state?: Contextful<T>,
-        stage?: Stage,
-        event?: Event
-      ): void;
-      listen: (
-        target: EventTarget,
-        listener: (state?: Contextful<T>, stage?: Stage, event?: Event) => void,
-        options?: AddEventListenerOptions
-      ) => Tacocat.Engine.Disposer;
-      promise(target: EventTarget): Promise<T>;
-    }
-
     interface Extract<T extends object> {
       /**
        * Continues defining tacocat pipeline by registering contexts extractor and reactions triggering it.
@@ -135,12 +119,13 @@ declare namespace Tacocat {
        * Base context to be clones by all further pipelinesd.
        */
       define<T extends object>(base?: T): Extract<T>;
-      channel: {
-        pending: Channel<SomeContext>;
-        rejected: Channel<SomeRejection>;
-        resolved: Channel<SomeResolution>;
+      Event: {
+        pending: string;
+        rejected: string;
+        resolved: string;
       };
-      stage: {
+      Log: Log.Factory;
+      Stage: {
         pending: Pending;
         rejected: Rejected;
         resolved: Resolved;
@@ -148,73 +133,80 @@ declare namespace Tacocat {
     }
 
     interface Instance<T extends object, U extends object> {
-      explore(scope?: Element, selector?: string): Placeholder<T, U>[];
+      get placeholders(): Placeholder<T, U>[];
     }
 
     interface Placeholder<T extends object, U extends object> {
-      element: Element;
-      state: State<T, U>;
-      expect(stage: Stage): Promise<Placeholder<T, U>>;
-      update(context: T): Placeholder<T, U>;
+      readonly context: T;
+      readonly element: Element;
+      readonly event: Event;
+      get promise(): Promise<U>;
+      readonly result: null | Rejection<T> | Resolution<T, U>;
+      readonly stage: Stage;
+      update(context: T): void;
     }
 
     interface Present<T extends object, U extends object> {
       observe(
-        scope: Element,
-        selector: string,
+        scope?: Element,
+        selector?: string,
         signal?: AbortSignal
       ): Instance<T, U>;
+      present(stage: Pending, presenter: PendingPresenter<T>): Present<T, U>;
       present(
         stage: Pending,
-        ...presenters: PendingPresenter<T>[]
+        condition: (result: Contextful<T>) => boolean,
+        presenter: PendingPresenter<T>
       ): Present<T, U>;
+      present(stage: Rejected, presenters: RejectedPresenter<T>): Present<T, U>;
       present(
         stage: Rejected,
-        ...presenters: RejectedPresenter<T>[]
+        condition: (result: Rejection<T>) => boolean,
+        presenter: RejectedPresenter<T>
       ): Present<T, U>;
       present(
         stage: Resolved,
-        ...presenters: ResolvedPresenter<T, U>[]
+        presenter: ResolvedPresenter<T, U>
+      ): Present<T, U>;
+      present(
+        stage: Resolved,
+        condition: (result: Resolution<T, U>) => boolean,
+        presenter: ResolvedPresenter<T, U>[]
       ): Present<T, U>;
     }
 
     interface Reactions {
       events?: string[];
       mutations?: Mutations;
+      selector?: string;
       trigger?: Trigger;
     }
   }
 
   module Internal {
     // --- aliases ---
-    type Contextful = Tacocat.Contextful<any>;
-    type ContextfulEvent = Tacocat.ContextfulEvent<any>;
     type Engine = Tacocat.Engine.Instance<any, any>;
-    type Extractor = Tacocat.Engine.Extractor<any, any>;
-    type Listener = Tacocat.Engine.Trigger;
-    type Mutations = Tacocat.Engine.Mutations;
-    type PendingPresenter = Tacocat.Engine.PendingPresenter<any>;
-    type Placeholder = Tacocat.Engine.Placeholder<any, any>;
+    type Extractor = Tacocat.Engine.Extractor<SomeContext, SomeContext>;
+    type PendingPresenter = Tacocat.Engine.PendingPresenter<SomeContext>;
+    type Placeholder = Writable<
+      Omit<Engine.Placeholder<SomeContext, SomeContext>, 'promise' | 'update'>
+    >;
+    type Presenter = PendingPresenter | RejectedPresenter | ResolvedPresenter;
     type Presenters = {
       pending: PendingPresenter[];
       rejected: RejectedPresenter[];
       resolved: ResolvedPresenter[];
     };
-    type Provider = Tacocat.Engine.Provider<any, any>;
-    type Reactions = Tacocat.Engine.Reactions;
-    type RejectedPresenter = Tacocat.Engine.RejectedPresenter<any>;
-    type ResolvedPresenter = Tacocat.Engine.ResolvedPresenter<any, any>;
-    type State = SomeContext | SomeRejection | SomeResolution;
+    type Provider = Tacocat.Engine.Provider<SomeContext, SomeContext>;
+    type RejectedPresenter = Tacocat.Engine.RejectedPresenter<SomeContext>;
+    type ResolvedPresenter = Tacocat.Engine.ResolvedPresenter<
+      SomeContext,
+      SomeContext
+    >;
 
     // --- types ---
 
-    type Subscriber = (
-      control: Control,
-      element: Element,
-      depot: Storage
-    ) => void;
-
-    type SelectorMatcher = (element: Element) => boolean;
+    type Subscriber = (control: Control, cycle: Cycle) => void;
 
     // --- interfaces ---
     interface Control {
@@ -223,35 +215,62 @@ declare namespace Tacocat {
       signal?: AbortSignal;
     }
 
-    interface Storage {
-      deleteState(element: Element): void;
-      getState(element: Element): State;
-      setState(element: Element, state: State): void;
+    interface Cycle {
+      get placeholders(): Placeholder[];
+      get scope(): Element;
+      get selector(): string;
+      dispose(element: Element): void;
+      exists(element: Element): boolean;
+      extract(context: SomeContext): void;
+      listen(
+        types: string | string[],
+        listener: Tacocat.CycleEventListener,
+        options?: AddEventListenerOptions
+      ): void;
+      match(node: Node): Element;
+      observe(element: Element, context?: SomeContext, event?: Event): void;
+      present(context: SomeContext, element?: Element): void;
+      provide(result: SomeResult): void;
+    }
+
+    interface Reactions {
+      events: string[];
+      mutations: Tacocat.Engine.Mutations;
+      selectors: string[];
+      triggers: Tacocat.Engine.Trigger[];
     }
 
     interface Subtree {
-      matcher: SelectorMatcher;
+      match(element: Element): boolean;
       scope: Element;
-      selector?: string;
+      select(element: Element): Element[];
     }
   }
 
   module Log {
     // --- types ---
+    type isLog = (candidate: any) => candidate is Instance;
+
     type Factory = {
       (namespace: string): Instance;
       common: Instance;
-      level: Level;
+      level: {
+        debug: 'debug';
+        error: 'error';
+        info: 'info';
+        warn: 'warn';
+      };
+
+      consoleWriter: Module;
+      debugFilter: Module;
+      quietFilter: Module;
+
+      isLog: isLog;
       reset(environment?: string): void;
       use(...modules: Module[]): Factory;
     };
 
-    type Level = {
-      debug: 'debug';
-      error: 'error';
-      info: 'info';
-      warn: 'warn';
-    };
+    type Level = 'debug' | 'error' | 'info' | 'warn';
 
     // --- interfaces ---
     interface Instance {
