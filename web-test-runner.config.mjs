@@ -14,6 +14,7 @@ export default {
       '**/ui/controls/**',
       '**/blocks/library-config/**',
       '**/hooks/**',
+      '**/special/tacocat/**',
     ],
   },
   plugins: [importMapsPlugin({})],
