@@ -10,20 +10,23 @@ const repo = params.get('repo');
 export default async function init(el) {
   el.append(createTag('div', { class: 'ost' }));
 
+  let ostLanguage = 'en';
+  let ostCountry = 'US';
+  try {
+    const res = await fetch(`https://admin.hlx.page/status/${owner}/${repo}/main?editUrl=${referrer}`);
+    const json = await res.json();
+    const { ietf } = getLocale(config.locale, new URL(json.preview.url));
+    console.info('Locale:', ietf);
+    [ostLanguage, ostCountry] = ietf.split('-');
+    if (!ostCountry) ostCountry = ostLanguage.toUpperCase();
+  } catch {
+    // ignore
+  }
+
   if (!window.ost) {
     const baseUrl = 'https://www.stage.adobe.com/special/tacocat/ost';
     await loadScript(`${baseUrl}/index.js`);
     loadStyle(`${baseUrl}/index.css`);
-  }
-
-  const ostLanguage = 'en';
-  const ostCountry = 'US';
-  try {
-    const res = await fetch(`https://admin.hlx.page/status/${owner}/${repo}/main?editUrl=${referrer}`);
-    const json = await res.json();
-    console.info('Locale:', getLocale(config.locales, new URL(json.preview.url)));
-  } catch {
-    // ignore
   }
 
   // TODO: integrate with IMS
