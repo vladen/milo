@@ -19,8 +19,8 @@ export default async function init(el) {
     console.info('Locale:', ietf);
     [ostLanguage, ostCountry] = ietf.split('-');
     if (!ostCountry) ostCountry = ostLanguage.toUpperCase();
-  } catch {
-    // ignore
+  } catch (error) {
+    console.error(error);
   }
 
   if (!window.ost) {
@@ -33,6 +33,7 @@ export default async function init(el) {
   const ostAosAccessToken = sessionStorage.getItem('AOS_ACCESS_TOKEN') || localStorage.getItem('AOS_ACCESS_TOKEN');
   // TODO: get price/checkout contexts from metadata.json and pass to OST
   window.ost.openOfferSelectorTool({
+    // TODO: remove ost prefix from property keys
     ostCountry,
     ostLanguage,
     ostEnvironment: 'STAGE',
