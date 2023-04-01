@@ -21,77 +21,72 @@ export const matchTemplateParam = (template) => (element) => !!parseHrefParams(e
 /**
  * @param {HTMLAnchorElement} element
  * @returns {{
-*  ost: string;
-*  template: string;
-* }}
-*/
+ *  osis: string[];
+ *  template: string;
+ * }}
+ */
 export const parseCommonHrefParams = (element) => checkoutHrefParamsCache.getOrSet(
   element,
   () => {
     const params = parseHrefParams(element);
-    const ost = params.get('ost');
+    const osis = params.getAll('osi');
     const template = params.get('template') ?? '';
-    if (!ost) {
-      log.warn('Ost param is missing, igniring:', params.toString());
-      return {};
+    if (!osis.length) {
+      log.warn('Osi param is missing, ignoring:', params.toString());
+      return undefined;
     }
-    return { ost, template };
+    if (!template) {
+      log.warn('Template param is missing, ignoring:', params.toString());
+      return undefined;
+    }
+    return { osis, template };
   },
 );
 
 /**
  * @param {HTMLAnchorElement} element
- * @returns {{
- *  client: string;
- *  ost: string;
- *  template: string;
- *  workflow: string;
- *  workflowStep: string;
- * }}
+ * @returns {Tacocat.Wcs.CheckoutPlaceholderContext}
  */
 export const parseCheckoutHrefParams = (element) => checkoutHrefParamsCache.getOrSet(
   element,
   () => {
     const params = parseHrefParams(element);
-    const { ost, template } = parseCommonHrefParams(element);
-    if (!ost) return undefined;
-    const client = params.get('client') ?? 'adobe';
-    const workflow = params.get('workflow') ?? 'ucv3';
-    const workflowStep = workflow === 'ucv3'
-      ? params.get('workflowStep') ?? 'email'
-      : undefined;
-    return { client, ost, template, workflow, workflowStep };
+    const { osis, template } = parseCommonHrefParams(element) ?? {};
+    if (!osis.length) return undefined;
+    const client = params.get('cli') || 'adobe';
+    const countrySpecific = params.getAll('cs');
+    const extra = element.dataset;
+    const qantity = params.getAll('q');
+    const step = params.get('step') || 'email';
+    return {
+      countrySpecific, client, extra, osis, qantity, step, template,
+    };
   },
 );
 
 /**
  * @param {HTMLAnchorElement} element
- * @returns {{
- *  format: boolean;
- *  ost: string;
- *  tax: boolean;
- *  template: string;
- *  unit: boolean;
- * }}
+ * @returns {Tacocat.Wcs.PricePlaceholderContext}
  */
 export const parsePriceHrefParams = (element) => priceHrefParamsCache.getOrSet(
   element,
   () => {
     const params = parseHrefParams(element);
-    const { ost, template } = parseCommonHrefParams(element);
-    if (!ost) return undefined;
+    const { osis, template } = parseCommonHrefParams(element) ?? {};
+    if (!osis.length) return undefined;
     const format = toBoolean(params.get('format') ?? false);
     const recurrence = params.get('client');
     const tax = toBoolean(params.get('tax') ?? false);
-    return { format, ost, recurrence, tax, template };
+    const unit = toBoolean(params.get('unit') ?? false);
+    return {
+      format, recurrence, osis, tax, template, unit,
+    };
   },
 );
 
 /**
  * @param {Element} element
- * @returns {{
-*  ctaLabel: string;
-* }}
+ * @returns {Tacocat.Wcs.CheckoutLiterals}
 */
 export const tryParseCheckoutLiterals = (element) => checkoutLiteralsCache.getOrSet(
   element,
@@ -105,31 +100,21 @@ export const tryParseCheckoutLiterals = (element) => checkoutLiteralsCache.getOr
 
 /**
  * @param {Element} element
- * @returns {{
- *  client: string;
- *  workflow: string;
- *  workflowStep: string;
- * }}
+ * @returns {Tacocat.Wcs.CheckoutSettings}
  */
 export const tryParseCheckoutSettings = (element) => checkoutSettingsCache.getOrSet(
   element,
   () => {
     const json = tryParseJson(element.textContent);
     const client = json.client ?? 'adobe';
-    const workflow = json.workflow ?? 'ucv3';
-    const workflowStep = workflow === 'ucv3'
-      ? json.workflowStep ?? 'email'
-      : undefined;
-    return { client, workflow, workflowStep };
+    const step = json.step ?? 'email';
+    return { client, step };
   },
 );
 
 /**
  * @param {Element} element
- * @returns {{
- *  perUnitLabel: string;
- *  recurrenceLabel: string;
- * }}
+ * @returns {Tacocat.Wcs.PriceLiterals}
  */
 export const tryParsePriceLiterals = (element) => priceLiteralsCache.getOrSet(
   element,
@@ -143,19 +128,16 @@ export const tryParsePriceLiterals = (element) => priceLiteralsCache.getOrSet(
 
 /**
  * @param {Element} element
- * @returns {{
- *  format: boolean;
- *  tax: boolean;
- *  unit: boolean;
- * }}
+ * @returns {Tacocat.Wcs.PricePlaceholderContext}
  */
 export const tryParsePriceSettings = (element) => priceSettingsCache.getOrSet(
   element,
   () => {
     const json = tryParseJson(element.textContent);
     const format = toBoolean(json.format);
+    const recurrence = toBoolean(json.recurrence);
     const tax = toBoolean(json.tax);
     const unit = toBoolean(json.unit);
-    return { format, tax, unit };
+    return { format, recurrence, tax, unit };
   },
 );

@@ -1,3 +1,4 @@
+import { setLocale } from './locale.js';
 import {
   matchTemplateParam,
   parseCheckoutHrefParams,
@@ -8,11 +9,11 @@ import {
   tryParsePriceSettings,
 } from './parsers.js';
 
-// eslint-disable-next-line import/prefer-default-export
-export const Wcs = {
+export default {
   matchTemplateParam,
   parseCheckoutHrefParams,
   parsePriceHrefParams,
+  setLocale,
   tryParseCheckoutLiterals,
   tryParseCheckoutSettings,
   tryParsePriceLiterals,

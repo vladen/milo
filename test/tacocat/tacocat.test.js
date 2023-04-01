@@ -1,9 +1,75 @@
-import { expect } from './tools.js';
-import Tacocat, { Utilility, Wcs } from '../../libs/tacocat/index.js';
+/// <reference path="../../libs/tacocat/types.d.ts" />
+/// <reference path="../../libs/tacocat/wcs/types.d.ts" />
+import { readFile } from '@web/test-runner-commands';
+import Tacocat, { Util } from '../../libs/tacocat/index.js';
+import Wcs from '../../libs/tacocat/wcs/index.js';
 import { createTag } from '../../libs/utils/utils.js';
 import { namespace } from '../../libs/tacocat/constants.js';
 
 const ostBaseUrl = 'https://milo.adobe.com//tools/ost?';
+
+async function mockHtmlDocument() {
+  const html = await readFile('./mocks/placeholders.html');
+  // eslint-disable-next-line no-template-curly-in-string
+  document.body.innerHTML = html.replaceAll('${ostBaseUrl}', ostBaseUrl);
+}
+
+/**
+ * @param {Tacocat.Wcs.CheckoutPlaceholderContext} context
+ * @param {Tacocat.Wcs.Offer[]} offers
+ */
+async function mockCheckoutUrl(context, ...offers) {
+  const url = new URL('https://commerce.adobe.com');
+  url.searchParams.append('cli', context.client);
+  url.searchParams.append('co', context.country);
+  url.searchParams.append('lang', context.language);
+  offers.forEach((offer, index) => {
+    const prefix = `items[${index}]`;
+    url.searchParams.append(`${prefix}[q]`, context.quantities[index] ?? 1);
+    url.searchParams.append(`${prefix}[id]`, offer.offerId);
+  });
+  Object.entries(context.extra).forEach(
+    (key, value) => url.searchParams.append(key, value),
+  );
+  return url.toString();
+}
+
+/**
+ * @param {Tacocat.Wcs.OsisContext[]} contexts
+ * @returns {Promise<
+ *  Tacocat.Resolution<Tacocat.Wcs.OsisContext, { offers: Tacocat.Wcs.Offer[] }>
+ * >[]}
+ */
+async function mockWcsProvider(contexts) {
+  const mock = JSON.parse(await readFile('./mocks/offers.json'));
+  return contexts.map(
+    (context) => new Promise(
+      (resolve, reject) => {
+        context.country = (context.country ?? 'US').toUpperCase();
+        /** @type {Tacocat.Wcs.Offer[]} */
+        const offers = mock[context.country]?.resolvedOffers.filter(
+          ({ offerSelectorIds }) => context.osis.some(
+            (osi) => offerSelectorIds?.includes(osi),
+          ),
+        ) ?? [];
+        if (offers.length) {
+          offers.every(
+            (candidate) => {
+              if (context.language !== candidate) {
+                context.language = 'mult';
+                return false;
+              }
+              return true;
+            },
+          );
+          resolve(Util.setContext({ offers }, context));
+        } else {
+          reject(Util.setContext(new Error(`Offer not found: ${context.osi}`), context));
+        }
+      },
+    ),
+  );
+}
 
 /*
   - processing DOM snapshot
@@ -36,49 +102,18 @@ describe.skip('tacocat pipeline', () => {
   before(() => {
     Tacocat.Log.use(Tacocat.Log.consoleWriter);
     controller = new AbortController();
-    container = document.createElement('div');
-    document.body.append(container);
+  });
+  beforeEach(async () => {
+    document.body.innerHTML = await mockHtmlDocument();
   });
 
   it('processes placeholders present in DOM', async () => {
-    container.innerHTML = `
-      <script id="tacocat-checkout-literals" type="application/json">
-        {
-          "label": "Buy now"
-        }
-      </script>
-      <script id="tacocat-checkout-settings" type="application/json">
-        {
-          "client": "adobe",
-          "workflow": "ucv3",
-          "workflowStep": "email"
-        }
-      </script>
-      <script id="tacocat-price-literals" type="application/json">
-        {
-          "perUnitLabel": "{perUnit, select, LICENSE {/seat} other {}}",
-          "recurrenceLabel": "{recurrenceTerm, select, MONTH {/month} YEAR {/year} other {}}"
-        }
-      </script>
-      <script id="tacocat-price-settings" type="application/json">
-        {
-          "format": "1",
-          "tax": "0",
-          "unit": "0"
-        }
-      </script>
-      <a href="${ostBaseUrl}osi=1234&template=price&recurrence=1&unit=1&tax=1"></a>
-      <a href="${ostBaseUrl}osi=2345&template=priceOptical&recurrence=1"></a>
-      <a href="${ostBaseUrl}osi=3456&template=priceStrikethrough&format=0"></a>
-      <a href="${ostBaseUrl}osi=3456&template=checkoutButton&workflowStep=recommendation"></a>
-      <a href="${ostBaseUrl}osi=3456&template=checkoutLink&client=adobe-firefly"></a>
-    `;
     // on pending, replace a with comment
     // on resolved, replace comment with price markup or CTA href
     // on rejected, replace comment with another comment
     const checkouts = Tacocat
       .select(
-        `a[href^="${ostBaseUrl}"],a[href~="template=checkout"]`,
+        `a[href^="${ostBaseUrl}"]`,
         Wcs.matchTemplateParam('checkout'),
       )
       .extract((context) => Promise.resolve({
@@ -87,20 +122,15 @@ describe.skip('tacocat pipeline', () => {
           document.getElementById(`${namespace}-price-literals`),
         ),
       }))
+      .extract((context) => Wcs.setLocale(context))
       .extract((context, element) => Promise.resolve({
         ...context,
         ...Wcs.parseCheckoutHrefParams(element),
       }))
-      .provide(
-        (contexts) => Promise.resolve(
-          contexts.map(
-            (context) => Utilility.setContext({ href: '#' }, context),
-          ),
-        ),
-      )
+      .provide(mockWcsProvider)
       .present(Tacocat.Stage.stale, (element) => {
         const span = createTag('span');
-        span.dataset = Object.fromEntries(Wcs.parseHrefParams(element).entries());
+        span.dataset = Object.fromEntries(Util.parseHrefParams(element).entries());
         element.replaceWith(span);
         return span;
       })
@@ -109,10 +139,20 @@ describe.skip('tacocat pipeline', () => {
         element.replaceWith(span);
         return span;
       })
-      .present(Tacocat.Stage.resolved, (element, { context, href }) => {
-        const a = createTag('a', { href }, context.literals.ctaLabel);
-        element.replaceWith(a);
-        return a;
+      .present(Tacocat.Stage.resolved, (element, { context, offers }) => {
+        const href = mockCheckoutUrl(context, ...offers);
+        /** @type {Element} */
+        let tag;
+        if (context.template === 'checkoutButton') {
+          tag = createTag('button', { class: 'checkout' }, context.literals.ctaLabel);
+          tag.addEventListener('click', () => {
+            window.location.assign(href);
+          });
+        } else {
+          tag = createTag('a', { href }, context.literals.ctaLabel);
+        }
+        element.replaceWith(tag);
+        return tag;
       });
 
     const prices = Tacocat
@@ -130,27 +170,37 @@ describe.skip('tacocat pipeline', () => {
         ...context,
         ...Wcs.parsePriceHrefParams(element),
       }))
-      .provide(
-        (contexts) => Promise.resolve(
-          contexts.map(
-            (context) => Utilility.setContext(
-              { product: `${context.ost}-product` },
-              context,
-            ),
-          ),
-        ),
-      )
+      .provide(mockWcsProvider)
       .present(Tacocat.Stage.stale, (element) => {
         const span = createTag('span');
-        span.dataset = Object.fromEntries(Utilility.parseHrefParams(element).entries());
+        span.dataset = Object.fromEntries(Util.parseHrefParams(element).entries());
         element.replaceWith(span);
         return span;
       })
       .present(Tacocat.Stage.rejected, (element) => {
         element.textContent = '...';
       })
-      .present(Tacocat.Stage.resolved, (element, { product }) => {
-        element.textContent = product;
+      .present(Tacocat.Stage.resolved, (element, { context, offers: [offer] }) => {
+        /** @type {Element} */
+        let tag;
+        if (context.template === 'price' || context.template === 'priceOptical') {
+          tag = createTag('span', { }, offer.priceDetails.price);
+        } else if (context.template === 'priceStrikethrough') {
+          tag = createTag('s', {}, offer.priceDetails.price);
+        }
+        if (tag) {
+          if (context.recurrence && context.literals.recurrenceLabel) {
+            tag.textContent += ` ${context.literals.recurrenceLabel}`;
+          }
+          if (context.unit && context.literals.perUnitLabel) {
+            tag.textContent += ` ${context.literals.perUnitLabel}`;
+          }
+          tag.classList.add(context.template);
+          element.replaceWith(tag);
+          return tag;
+        }
+        element.textContent = '...';
+        return element;
       });
 
     const placeholders = [
@@ -163,42 +213,5 @@ describe.skip('tacocat pipeline', () => {
     );
 
     // TODO: snapshot test?
-  });
-
-  it('processes placeholders present in DOM', async () => {
-    container.innerHTML = `
-      <p class="1" context="1"></p>
-      <p class="2" context="2"></p>
-    `;
-
-    const placeholders = Tacocat
-      .define({})
-      .extract(
-        (context, element) => Promise.resolve({ test: element.getAttribute('context') }),
-      )
-      .provide(
-        (contexts) => Promise.resolve(contexts.map((context) => ({
-          context,
-          product: `${context.test}-product`,
-        }))),
-      )
-      .present(Tacocat.Stage.rejected, (element, error) => {
-        element.textContent = error.message;
-      })
-      .present(Tacocat.Stage.resolved, (element, { context, product }) => {
-        element.textContent = `${context.test} ${product}`;
-      })
-      .observe(container, 'p', controller.signal)
-      .explore();
-
-    await Promise.all(
-      placeholders.map((placeholder) => placeholder.promise),
-    );
-
-    placeholders.forEach(({ element }) => {
-      expect(element.getAttribute('product')).toBe(
-        `${element.getAttribute('context')}-product`,
-      );
-    });
   });
 });

@@ -12,9 +12,7 @@ import {
   isPromise, isString, mergeReactions, toArray, toBoolean,
 } from './utilities.js';
 
-export * from './wcs/index.js';
-
-export const Utilility = {
+export const Util = {
   isBoolean,
   isElement,
   isError,
@@ -125,8 +123,12 @@ const Step1 = (selector, filter, extractors = [], reactions = []) => ({
 });
 
 /** @type {Tacocat.Engine.Factory} */
-// @ts-ignore
 const Tacocat = Object.freeze({
+  /**
+   * @param {string} selector
+   * @param {Tacocat.Engine.Filter} filter
+   * @returns {Tacocat.Engine.Extract<any>}
+   */
   select(selector, filter) {
     return Step1(selector, filter ?? (() => true));
   },

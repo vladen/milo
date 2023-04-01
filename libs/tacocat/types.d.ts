@@ -78,7 +78,7 @@ declare namespace Tacocat {
     type Provider<T extends object, U extends object> = (
       contexts: T[],
       signal?: AbortSignal
-    ) => Promise<Resolution<T, U>[]>;
+    ) => Promise<Resolution<T, U>>[];
 
     type RejectedPresenter<T extends object> = (
       element: Element,

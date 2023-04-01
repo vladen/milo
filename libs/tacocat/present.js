@@ -3,6 +3,19 @@ import Log from './log.js';
 import { safeSync } from './safe.js';
 import { isElement } from './utilities.js';
 
+const CssClasses = Object.values(CssClass);
+
+/**
+ * @param {Element} element
+ * @param {Tacocat.Stage} stage
+ */
+function setStageCssClasses(element, stage) {
+  CssClasses.forEach((name) => {
+    element.classList.remove(name);
+  });
+  element.classList.add(CssClass[stage]);
+}
+
 /**
  * @param {Tacocat.Internal.Presenters} presenters
  * @returns {Tacocat.Internal.Subscriber}
@@ -13,31 +26,28 @@ const Present = (presenters) => (control, cycle) => {
   cycle.listen(
     [Event.observed, Event.extracted, Event.provided],
     ({ detail: { context, element, result, stage } }, event) => {
-      Object.values(CssClass).forEach((name) => {
-        element.classList.remove(CssClass[name]);
-      });
-      element.classList.add(CssClass[stage]);
       /** @type {Tacocat.Internal.Presenter[]} */
       const group = presenters[stage];
+      let last = element;
       if (group?.length) {
-        cycle.present(
-          context,
-          group.reduce(
-            (current, presenter) => safeSync(log, 'Presenter callback error:', () => {
-              const newElement = presenter(
-                current,
-                // @ts-ignore
-                result ?? { context },
-                event,
-                control.signal,
-              );
-              return isElement(newElement) ? newElement : current;
-            }),
-            element,
-          ) ?? element,
-        );
+        last = group.reduce(
+          (current, presenter) => safeSync(log, 'Presenter callback error:', () => {
+            const next = presenter(
+              current,
+              // @ts-ignore
+              result ?? { context },
+              event,
+              control.signal,
+            );
+            return isElement(next) ? next : current;
+          }),
+          element,
+        ) ?? element;
+        setStageCssClasses(last, stage);
+        cycle.present(context, last);
         log.debug('Presented:', { context, element, event, result, stage });
       } else {
+        setStageCssClasses(last, stage);
         log.debug('No presenters, ignoring:', { context, element, event, result, stage });
       }
     },
