@@ -9,7 +9,7 @@ import Present from './present.js';
 import Provide from './provide.js';
 import {
   isBoolean, isElement, isError, isFunction, isNil, isObject,
-  isPromise, isString, mergeReactions, toBoolean,
+  isPromise, isString, mergeReactions, toArray, toBoolean,
 } from './utilities.js';
 
 export * from './wcs/index.js';
@@ -25,6 +25,7 @@ export const Utilility = {
   isString,
   parseHrefParams,
   setContext,
+  toArray,
   toBoolean,
   tryParseJson,
 };

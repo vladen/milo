@@ -20,7 +20,17 @@ export const isString = (value) => typeof value === 'string';
 /** @type {Tacocat.isWeakMap} */
 export const isWeakMap = (value) => !isNil(value) && value instanceof WeakMap;
 
-/** @type {Tacocat.toBoolean} */
+/**
+ * @template T
+ * @param {T | T[]} value
+ * @returns {T[]}
+ */
+export const toArray = (value) => (Array.isArray(value) ? value : [value]);
+
+/**
+ * @param {any} value
+ * @returns {boolean}
+ */
 export const toBoolean = (value) => (isBoolean(value) ? value : ['1', 'true'].includes(String(value)));
 
 /**

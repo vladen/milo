@@ -1,15 +1,16 @@
 import { Event, Stage } from './constants.js';
 import Log from './log.js';
-import { isElement, isError, isObject } from './utilities.js';
+import { isElement, isError, isObject, toArray } from './utilities.js';
 
 /** @type {Tacocat.CycleEvent} */
 class TacocatCycleEvent extends CustomEvent {
   /**
+   * @param {boolean} bubbles
    * @param {string} type
    * @param {Tacocat.Internal.Placeholder} detail
    */
-  constructor(type, { context, element, result, stage }) {
-    super(type, { bubbles: true, detail: { context, element, result, stage } });
+  constructor(bubbles, type, { context, element, result, stage }) {
+    super(type, { bubbles, detail: { context, element, result, stage } });
   }
 }
 
@@ -29,13 +30,14 @@ function Cycle(control, scope, selector, filter) {
   const placeholders = new Map();
 
   /**
+   * @param {boolean} bubbles
    * @param {string} type
    * @param {Tacocat.Internal.Placeholder} placeholder
    */
-  function dispatch(type, placeholder) {
-    const tacoEvent = new TacocatCycleEvent(type, placeholder);
+  function dispatch(bubbles, type, placeholder) {
+    const tacoEvent = new TacocatCycleEvent(bubbles, type, placeholder);
     if (placeholder.event) events.set(tacoEvent, placeholder.event);
-    placeholder.element.dispatchEvent(tacoEvent);
+    (bubbles ? placeholder.element : scope).dispatchEvent(tacoEvent);
   }
 
   return {
@@ -64,8 +66,8 @@ function Cycle(control, scope, selector, filter) {
       if (placeholder) {
         placeholder.context = context;
         log.debug('Extracted:', placeholder);
-        dispatch(Event.pending, placeholder);
-        dispatch(Event.extracted, placeholder);
+        dispatch(true, Event.pending, placeholder);
+        dispatch(false, Event.extracted, placeholder);
       } else {
         log.warn('Extracted context is unexpected:', { context });
       }
@@ -73,7 +75,7 @@ function Cycle(control, scope, selector, filter) {
 
     listen(types, listener, options = {}) {
       const tacocatListener = (event) => listener(event, events.get(event));
-      (Array.isArray(types) ? types : [types]).forEach((type) => {
+      toArray(types).forEach((type) => {
         scope.addEventListener(type, tacocatListener, options);
         control.dispose(() => scope.removeEventListener(type, tacocatListener));
       });
@@ -114,15 +116,19 @@ function Cycle(control, scope, selector, filter) {
         // eslint-disable-next-line no-plusplus
         id: `${++id}-${Date.now()}`,
       };
-      dispatch(Event.stale, placeholder);
-      dispatch(Event.observed, placeholder);
+      dispatch(true, Event.stale, placeholder);
+      dispatch(false, Event.observed, placeholder);
     },
 
     present(context, element) {
       const placeholder = placeholders.get(context.id);
       if (placeholder) {
         placeholder.element = element;
-        dispatch(Event.presented, placeholder);
+        dispatch(
+          true,
+          placeholder.stage === Stage.rejected ? Event.rejected : Event.resolved,
+          placeholder,
+        );
       }
     },
 
@@ -132,11 +138,7 @@ function Cycle(control, scope, selector, filter) {
         placeholder.context = result.context;
         placeholder.result = result;
         placeholder.stage = isError(result) ? Stage.rejected : Stage.resolved;
-        dispatch(
-          placeholder.stage === Stage.rejected ? Event.rejected : Event.resolved,
-          placeholder,
-        );
-        dispatch(Event.provided, placeholder);
+        dispatch(false, Event.provided, placeholder);
       } else {
         log.warn('Provided result is unexpected, ignoring:', result);
       }

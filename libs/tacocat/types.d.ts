@@ -10,8 +10,6 @@ declare namespace Tacocat {
   type isPromise = (value: any) => value is Promise<any>;
   type isString = (value: any) => value is string;
   type isWeakMap = (value: any) => value is WeakMap<any, any>;
-  
-  type toBoolean = (value: any) => boolean;
 
   type parseHrefParams = (element: HTMLAnchorElement) => URLSearchParams;
   type tryParseJson = (json: string, message?: string) => any | undefined;
