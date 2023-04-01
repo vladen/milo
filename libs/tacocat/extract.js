@@ -1,7 +1,7 @@
 import { Event } from './constants.js';
 import Log from './log.js';
-import { safeAsyncEvery } from './safe.js';
-import { isFunction, isNil, isObject } from './utilities.js';
+import { safeAsync, safeAsyncEvery } from './safe.js';
+import { isFunction, isNil } from './utils.js';
 
 /**
  * @param {Tacocat.Internal.Extractor[]} extractors
@@ -21,18 +21,17 @@ const Extract = (extractors) => (control, cycle) => {
         extractors,
         async (extractor) => {
           if (control.signal?.aborted) return false;
-          let extraction;
           if (isFunction(extractor)) {
-            extraction = await extractor(context, element, event, control.signal);
-          } else if (isObject(extractor)) {
-            extraction = extractor;
-          }
-          if (isObject(extraction)) {
-            Object.assign(context, extraction);
-            return true;
-          }
-          if (!isNil(extraction)) {
-            log.error('Unexpected extraction, cancelling:', { extraction, event, extractor });
+            const extraction = await safeAsync(
+              log,
+              'Extractor callback error:',
+              () => Promise.resolve(extractor(context, element, event, control.signal)),
+            );
+            if (!isNil(extraction)) {
+              Object.assign(context, extraction);
+            }
+          } else {
+            log.error('Extractor must be a function, cancelling:', { extractor });
           }
           return false;
         },

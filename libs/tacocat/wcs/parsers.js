@@ -1,7 +1,7 @@
 import { Cache, WeakCache } from '../cache.js';
 import Log from '../log.js';
 import { parseHrefParams, tryParseJson } from '../parsers.js';
-import { toBoolean } from '../utilities.js';
+import { toBoolean } from '../utils.js';
 
 const checkoutLiteralsCache = Cache();
 const checkoutHrefParamsCache = WeakCache();
@@ -91,10 +91,10 @@ export const parsePriceHrefParams = (element) => priceHrefParamsCache.getOrSet(
 export const tryParseCheckoutLiterals = (element) => checkoutLiteralsCache.getOrSet(
   element,
   () => {
-    const { ctaLabel } = tryParseJson(
-      document.textContent,
-    ) ?? {};
-    return { ctaLabel };
+    const { ctaLabel = '' } = element
+      ? tryParseJson(element.textContent) ?? {}
+      : {};
+    return { literals: { ctaLabel } };
   },
 );
 
@@ -119,10 +119,10 @@ export const tryParseCheckoutSettings = (element) => checkoutSettingsCache.getOr
 export const tryParsePriceLiterals = (element) => priceLiteralsCache.getOrSet(
   element,
   () => {
-    const { perUnitLabel, recurrenceLabel } = tryParseJson(
-      document.textContent,
-    ) ?? {};
-    return { perUnitLabel, recurrenceLabel };
+    const { perUnitLabel = '', recurrenceLabel = '' } = element
+      ? tryParseJson(element.textContent) ?? {}
+      : {};
+    return { literals: { perUnitLabel, recurrenceLabel } };
   },
 );
 

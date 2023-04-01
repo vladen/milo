@@ -1,6 +1,6 @@
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isNil } from './utilities.js';
+import { isNil } from './utils.js';
 
 /**
  * @param {AbortSignal?} signal

@@ -1,5 +1,23 @@
 declare namespace Tacocat {
   module Wcs {
+    // --- types ---
+    type CheckoutRejection = Tacocat.Rejection<
+      CheckoutPlaceholderContext & CheckoutLiterals
+    >;
+    type CheckoutResolution = Tacocat.Resolution<
+      CheckoutPlaceholderContext & CheckoutLiterals,
+      Offers
+    >;
+
+    type PriceRejection = Tacocat.Rejection<
+      PricePlaceholderContext & PriceLiterals
+    >;
+    type PriceResolution = Tacocat.Resolution<
+      PricePlaceholderContext & PriceLiterals,
+      Offers
+    >;
+
+    // --- interfaces ---
     interface LocaleContext {
       country: string;
       language: string;
@@ -10,7 +28,9 @@ declare namespace Tacocat {
     }
 
     interface CheckoutLiterals {
-      ctaLabel: string;
+      literals: {
+        ctaLabel: string;
+      };
     }
 
     interface CheckoutSettings extends OsisContext {
@@ -34,8 +54,10 @@ declare namespace Tacocat {
     }
 
     interface PriceLiterals {
-      perUnitLabel: string;
-      recurrenceLabel: string;
+      literals: {
+        perUnitLabel: string;
+        recurrenceLabel: string;
+      };
     }
 
     interface PriceSettings {
@@ -72,6 +94,10 @@ declare namespace Tacocat {
       productArrangementCode: string;
       salesChannel: string;
       term: string;
+    }
+
+    interface Offers {
+      offers: Offer[];
     }
   }
 }

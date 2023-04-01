@@ -1,13 +1,11 @@
 /**
- * @template T
- * @param {T} context
  * @param {string} country
  * @param {string} language
- * @returns {Promise<T & Tacocat.Wcs.LocaleContext>}
+ * @returns {Promise<Tacocat.Wcs.LocaleContext>}
  */
 // eslint-disable-next-line import/prefer-default-export
-export const setLocale = (context, country = 'US', language = 'en') => Promise.resolve({
-  ...context,
+export const getLocale = (country = 'US', language = 'en') => Promise.resolve({
+  // TODO: use Milo config
   country,
   language,
 });

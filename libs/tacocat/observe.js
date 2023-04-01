@@ -2,7 +2,7 @@ import Cycle from './cycle.js';
 import Engine from './engine.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isFunction, isNil } from './utilities.js';
+import { isFunction, isNil } from './utils.js';
 
 const childListMutation = 'childList';
 const observableMutations = ['attributes', 'characterData', childListMutation];
@@ -11,7 +11,7 @@ const observableMutations = ['attributes', 'characterData', childListMutation];
  * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Internal.Reactions} reactions
  * @param {Tacocat.Internal.Subscriber[]} subscribers
- * @param {Element} scope
+ * @param {HTMLElement} scope
  * @param {string} selector
  * @param {Tacocat.Engine.Filter} filter
  * @returns {Tacocat.Internal.Engine}
@@ -28,16 +28,16 @@ function Observe(control, reactions, subscribers, scope, selector, filter) {
   }
 
   const cycle = Cycle(control, scope, selector, filter);
-  /** @type {Set<{ element: Element }>} */
+  /** @type {Set<{ element: HTMLElement }>} */
   const removed = new Set();
-  /** @type {Set<{ element: Element, event?: Event }>} */
+  /** @type {Set<{ element: HTMLElement, event?: Event }>} */
   const updated = new Set();
   let timer;
 
   /**
      * Mounts new element to the observation session
      * by subscribing event listeners and initialising triggers.
-     * @param {Element} element
+     * @param {HTMLElement} element
      * @param {(event: Event) => void} listener
      */
   function mount(element, listener) {
@@ -63,8 +63,8 @@ function Observe(control, reactions, subscribers, scope, selector, filter) {
   }
 
   /**
-     * @param {Element} element
-     */
+   * @param {HTMLElement} element
+   */
   function unmount(element) {
     cycle.dispose(element);
     log.debug('Unmounted:', { element });

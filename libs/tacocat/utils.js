@@ -3,8 +3,8 @@ export const isNil = (value) => value == null;
 
 /** @type {Tacocat.isBoolean} */
 export const isBoolean = (value) => typeof value === 'boolean';
-/** @type {Tacocat.isElement} */
-export const isElement = (value) => !isNil(value) && value instanceof Element;
+/** @type {Tacocat.isHTMLElement} */
+export const isHTMLElement = (value) => !isNil(value) && value instanceof HTMLElement;
 /** @type {Tacocat.isError} */
 export const isError = (value) => !isNil(value) && value instanceof Error;
 /** @type {Tacocat.isFunction} */
@@ -34,6 +34,27 @@ export const toArray = (value) => (Array.isArray(value) ? value : [value]);
 export const toBoolean = (value) => (isBoolean(value) ? value : ['1', 'true'].includes(String(value)));
 
 /**
+ * @template T, U
+ * @param {T} result
+ * @param {U} context
+ * @returns {T & Tacocat.Contextful<U>}
+ */
+// @ts-ignore
+export const setContext = (result, context) => Object.defineProperty(
+  isObject(result) ? result : {},
+  'context',
+  {
+    enumerable: true,
+    value: context,
+  },
+);
+
+/** @type {Tacocat.hasContext}} */
+export const hasContext = (object) => isObject(object)
+  // @ts-ignore
+  && isString(object.context.id) && object.context.id.length;
+
+/**
  * @param {boolean?} existing
  * @param {boolean?} overriding
  * @returns {boolean}
@@ -57,11 +78,17 @@ export const hasOwnProperty = (object, property) => !isNil(object)
   && Object.prototype.hasOwnProperty.call(object, property);
 
 /**
+ * @param {string[]} strings
+ * @param {string} separator
+ */
+export const joinUnique = (strings, separator = ',') => [...new Set(strings)].join(separator);
+
+/**
  *
  * @param {Tacocat.Engine.Reactions[]} reactions
  * @returns {Tacocat.Internal.Reactions}
  */
-export const mergeReactions = (reactions) => ({
+export const mergeReactions = (...reactions) => ({
   events: [...new Set(
     reactions
       .flatMap(({ events } = {}) => events)
@@ -89,10 +116,23 @@ export const mergeReactions = (reactions) => ({
       },
       {},
     ),
-  selectors: reactions
-    .map(({ selector } = {}) => selector)
-    .filter((selector) => selector),
   triggers: reactions
     .map(({ trigger } = {}) => trigger)
-    .filter((trigger) => isFunction(trigger)),
+    .filter(isFunction),
 });
+
+export default {
+  hasContext,
+  isBoolean,
+  isHTMLElement,
+  isError,
+  isFunction,
+  isNil,
+  isObject,
+  isPromise,
+  isString,
+  joinUnique,
+  setContext,
+  toArray,
+  toBoolean,
+};

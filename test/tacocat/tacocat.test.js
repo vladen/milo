@@ -1,37 +1,25 @@
 /// <reference path="../../libs/tacocat/types.d.ts" />
 /// <reference path="../../libs/tacocat/wcs/types.d.ts" />
 import { readFile } from '@web/test-runner-commands';
-import Tacocat, { Util } from '../../libs/tacocat/index.js';
+import Tacocat, { Utils } from '../../libs/tacocat/index.js';
 import Wcs from '../../libs/tacocat/wcs/index.js';
-import { createTag } from '../../libs/utils/utils.js';
 import { namespace } from '../../libs/tacocat/constants.js';
+import { expect } from './tools.js';
 
+let wcsMock;
 const ostBaseUrl = 'https://milo.adobe.com//tools/ost?';
+
+async function mockWcs() {
+  if (!wcsMock) {
+    wcsMock = JSON.parse(await readFile('./mocks/offers.json'));
+  }
+  return wcsMock;
+}
 
 async function mockHtmlDocument() {
   const html = await readFile('./mocks/placeholders.html');
   // eslint-disable-next-line no-template-curly-in-string
   document.body.innerHTML = html.replaceAll('${ostBaseUrl}', ostBaseUrl);
-}
-
-/**
- * @param {Tacocat.Wcs.CheckoutPlaceholderContext} context
- * @param {Tacocat.Wcs.Offer[]} offers
- */
-async function mockCheckoutUrl(context, ...offers) {
-  const url = new URL('https://commerce.adobe.com');
-  url.searchParams.append('cli', context.client);
-  url.searchParams.append('co', context.country);
-  url.searchParams.append('lang', context.language);
-  offers.forEach((offer, index) => {
-    const prefix = `items[${index}]`;
-    url.searchParams.append(`${prefix}[q]`, context.quantities[index] ?? 1);
-    url.searchParams.append(`${prefix}[id]`, offer.offerId);
-  });
-  Object.entries(context.extra).forEach(
-    (key, value) => url.searchParams.append(key, value),
-  );
-  return url.toString();
 }
 
 /**
@@ -41,7 +29,7 @@ async function mockCheckoutUrl(context, ...offers) {
  * >[]}
  */
 async function mockWcsProvider(contexts) {
-  const mock = JSON.parse(await readFile('./mocks/offers.json'));
+  const mock = await mockWcs();
   return contexts.map(
     (context) => new Promise(
       (resolve, reject) => {
@@ -62,9 +50,9 @@ async function mockWcsProvider(contexts) {
               return true;
             },
           );
-          resolve(Util.setContext({ offers }, context));
+          resolve(Utils.setContext({ offers }, context));
         } else {
-          reject(Util.setContext(new Error(`Offer not found: ${context.osi}`), context));
+          reject(Utils.setContext(new Error(`Offer not found: ${context.osi}`), context));
         }
       },
     ),
@@ -108,110 +96,61 @@ describe.skip('tacocat pipeline', () => {
   });
 
   it('processes placeholders present in DOM', async () => {
-    // on pending, replace a with comment
-    // on resolved, replace comment with price markup or CTA href
-    // on rejected, replace comment with another comment
-    const checkouts = Tacocat
+    const ctaPipeline = Tacocat
       .select(
         `a[href^="${ostBaseUrl}"]`,
         Wcs.matchTemplateParam('checkout'),
       )
-      .extract((context) => Promise.resolve({
-        ...context,
-        literals: Wcs.tryParseCheckoutLiterals(
-          document.getElementById(`${namespace}-price-literals`),
-        ),
-      }))
-      .extract((context) => Wcs.setLocale(context))
-      .extract((context, element) => Promise.resolve({
-        ...context,
-        ...Wcs.parseCheckoutHrefParams(element),
-      }))
+      .extract((_, element) => Wcs.parseCheckoutHrefParams(element))
+      .extract((_, element) => Wcs.tryParseCheckoutLiterals(
+        element.closest(`${namespace}-price-literals`),
+      ))
+      .extract(() => Wcs.getLocale())
       .provide(mockWcsProvider)
-      .present(Tacocat.Stage.stale, (element) => {
-        const span = createTag('span');
-        span.dataset = Object.fromEntries(Util.parseHrefParams(element).entries());
-        element.replaceWith(span);
-        return span;
-      })
-      .present(Tacocat.Stage.rejected, (element) => {
-        const span = createTag('span', {}, '...');
-        element.replaceWith(span);
-        return span;
-      })
-      .present(Tacocat.Stage.resolved, (element, { context, offers }) => {
-        const href = mockCheckoutUrl(context, ...offers);
-        /** @type {Element} */
-        let tag;
-        if (context.template === 'checkoutButton') {
-          tag = createTag('button', { class: 'checkout' }, context.literals.ctaLabel);
-          tag.addEventListener('click', () => {
-            window.location.assign(href);
-          });
-        } else {
-          tag = createTag('a', { href }, context.literals.ctaLabel);
-        }
-        element.replaceWith(tag);
-        return tag;
-      });
+      .stale(Wcs.staleTemplate)
+      .rejected(Wcs.rejectedTemplate)
+      .resolved(Wcs.checkoutTemplate);
 
-    const prices = Tacocat
+    const pricePipeline = Tacocat
       .select(
         `a[href^="${ostBaseUrl}"]`,
         Wcs.matchTemplateParam('price'),
       )
-      .extract((context) => Promise.resolve({
-        ...context,
-        literals: Wcs.tryParsePriceLiterals(
-          document.getElementById(`${namespace}-price-literals`),
-        ),
-      }))
-      .extract((context, element) => Promise.resolve({
-        ...context,
-        ...Wcs.parsePriceHrefParams(element),
-      }))
+      .extract((_, element) => Promise.resolve(Wcs.parsePriceHrefParams(element)))
+      .extract(() => Wcs.getLocale())
+      .extract((_, element) => Wcs.tryParsePriceLiterals(
+        element.closest(`${namespace}-price-literals`),
+      ))
       .provide(mockWcsProvider)
-      .present(Tacocat.Stage.stale, (element) => {
-        const span = createTag('span');
-        span.dataset = Object.fromEntries(Util.parseHrefParams(element).entries());
-        element.replaceWith(span);
-        return span;
-      })
-      .present(Tacocat.Stage.rejected, (element) => {
-        element.textContent = '...';
-      })
-      .present(Tacocat.Stage.resolved, (element, { context, offers: [offer] }) => {
-        /** @type {Element} */
-        let tag;
-        if (context.template === 'price' || context.template === 'priceOptical') {
-          tag = createTag('span', { }, offer.priceDetails.price);
-        } else if (context.template === 'priceStrikethrough') {
-          tag = createTag('s', {}, offer.priceDetails.price);
-        }
-        if (tag) {
-          if (context.recurrence && context.literals.recurrenceLabel) {
-            tag.textContent += ` ${context.literals.recurrenceLabel}`;
-          }
-          if (context.unit && context.literals.perUnitLabel) {
-            tag.textContent += ` ${context.literals.perUnitLabel}`;
-          }
-          tag.classList.add(context.template);
-          element.replaceWith(tag);
-          return tag;
-        }
-        element.textContent = '...';
-        return element;
-      });
+      .stale(Wcs.staleTemplate)
+      .rejected(Wcs.rejectedTemplate)
+      .resolved(Wcs.priceTemplate);
 
-    const placeholders = [
-      ...checkouts.observe(container, controller.signal).explore(),
-      ...prices.observe(container, controller.signal).explore(),
-    ];
+    const ctaTacos = ctaPipeline.observe(container, controller.signal).placeholders;
+    const priceTacos = pricePipeline.observe(container, controller.signal).placeholders;
 
-    await Promise.all(
-      placeholders.map((placeholder) => placeholder.promise),
-    );
+    await Promise.all([
+      ...ctaTacos.map((placeholder) => placeholder.promise),
+      ...priceTacos.map((placeholder) => placeholder.promise),
+    ]);
 
-    // TODO: snapshot test?
+    // eslint-disable-next-line no-restricted-syntax
+    for (const placeholder of ctaTacos) {
+      const { context, element } = placeholder;
+      const {
+        [Wcs.DatasetKey.osis]: osis,
+        [Wcs.DatasetKey.template]: template,
+      } = element.dataset;
+      // eslint-disable-next-line no-await-in-loop
+      const mock = await mockWcs();
+      /** @type {Tacocat.Wcs.Offer[]} */
+      const offers = mock[context.country].resolvedOffers;
+      expect(osis).to.be(
+        Utils.joinUnique(
+          offers.flatMap(({ offerSelectorIds }) => offerSelectorIds),
+        ),
+      );
+      expect(template).to.be(context.template);
+    }
   });
 });

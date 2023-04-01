@@ -1,7 +1,7 @@
 import { CssClass, Event } from './constants.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isElement } from './utilities.js';
+import { isHTMLElement } from './utils.js';
 
 const CssClasses = Object.values(CssClass);
 
@@ -39,7 +39,7 @@ const Present = (presenters) => (control, cycle) => {
               event,
               control.signal,
             );
-            return isElement(next) ? next : current;
+            return isHTMLElement(next) ? next : current;
           }),
           element,
         ) ?? element;

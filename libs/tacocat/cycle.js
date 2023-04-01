@@ -1,6 +1,6 @@
 import { Event, Stage } from './constants.js';
 import Log from './log.js';
-import { isElement, isError, isObject, toArray } from './utilities.js';
+import { isHTMLElement, isError, isObject, toArray } from './utils.js';
 
 /** @type {Tacocat.CycleEvent} */
 class TacocatCycleEvent extends CustomEvent {
@@ -16,7 +16,7 @@ class TacocatCycleEvent extends CustomEvent {
 
 /**
  * @param {Tacocat.Internal.Control} control
- * @param {Element} scope
+ * @param {HTMLElement} scope
  * @param {string} selector
  * @param {Tacocat.Engine.Filter} filter
  * @returns {Tacocat.Internal.Cycle}
@@ -82,14 +82,15 @@ function Cycle(control, scope, selector, filter) {
     },
 
     match(node) {
-      const element = isElement(node)
+      const element = isHTMLElement(node)
         ? node
         : node.parentElement;
       if (element) {
         if (element.matches(selector) && filter(element)) return element;
         const closest = element.closest(selector);
         if (
-          closest?.compareDocumentPosition(scope) === Node.DOCUMENT_POSITION_CONTAINS
+          isHTMLElement(closest)
+          && closest?.compareDocumentPosition(scope) === Node.DOCUMENT_POSITION_CONTAINS
           && filter(closest)
         ) return closest;
       }

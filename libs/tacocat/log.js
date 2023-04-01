@@ -1,5 +1,5 @@
 import constants from './constants.js';
-import { isFunction } from './utilities.js';
+import { isFunction } from './utils.js';
 
 const epoch = Date.now();
 /** @type {Map<string, number>} */

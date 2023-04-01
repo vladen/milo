@@ -1,32 +1,14 @@
+import { Cache, WeakCache } from './cache.js';
 import { CssClass, Event, Stage, namespace } from './constants.js';
-import { setContext } from './context.js';
 import Control from './control.js';
 import Extract from './extract.js';
 import Log from './log.js';
 import Observe from './observe.js';
-import { parseHrefParams, tryParseJson } from './parsers.js';
 import Present from './present.js';
 import Provide from './provide.js';
-import {
-  isBoolean, isElement, isError, isFunction, isNil, isObject,
-  isPromise, isString, mergeReactions, toArray, toBoolean,
-} from './utilities.js';
+import Utils, { isFunction, mergeReactions } from './utils.js';
 
-export const Util = {
-  isBoolean,
-  isElement,
-  isError,
-  isFunction,
-  isNil,
-  isObject,
-  isPromise,
-  isString,
-  parseHrefParams,
-  setContext,
-  toArray,
-  toBoolean,
-  tryParseJson,
-};
+export { Cache, Utils, WeakCache };
 
 /**
  * @template T, U
@@ -37,51 +19,54 @@ export const Util = {
  * @param {Tacocat.Internal.Presenters} presenters
  * @returns {Tacocat.Engine.Present<T, U>}
  */
-const Step2 = (selector, filter, subscribers, reactions, presenters = {
+function Step2(selector, filter, subscribers, reactions, presenters = {
   pending: [],
   rejected: [],
   resolved: [],
-}) => ({
-  observe(scope = document.body, signal = null) {
-    if (!(scope instanceof Element)) {
-      throw new Error('Scope must be a DOM Element');
-    }
-    const merged = mergeReactions(reactions);
-    return Observe(
-      Control(signal),
-      merged,
-      [...subscribers, Present(presenters)],
-      scope,
-      selector,
-      filter,
-    );
-  },
-
-  present(stage, condition, presenter) {
+}) {
+  /**
+   * @param {Tacocat.Stage} stage
+   */
+  function present(stage, presenter) {
     if (isFunction(presenter)) {
       return Step2(selector, filter, subscribers, reactions, {
         ...presenters,
-        [stage]: [
-          ...(presenters[stage] ?? []),
-          isFunction(condition)
-            ? (result) => {
-              if (condition(result)) presenter(result);
-            }
-            : (result) => {
-              if (condition) presenter(result);
-            },
-        ],
-      });
-    }
-    if (isFunction(condition)) {
-      return Step2(selector, filter, subscribers, reactions, {
-        ...presenters,
-        [stage]: [...(presenters[stage] ?? []), condition],
+        [stage]: [...presenters[stage], presenter],
       });
     }
     throw new Error('Presenter must be a function');
-  },
-});
+  }
+
+  return {
+    observe(scope = document.body, overrides = null, signal = null) {
+      if (!(scope instanceof Element)) {
+        throw new Error('Scope must be a DOM Element');
+      }
+      const merged = mergeReactions(...reactions, overrides);
+      return Observe(
+        Control(signal),
+        merged,
+        [...subscribers, Present(presenters)],
+        scope,
+        selector,
+        filter,
+      );
+    },
+
+    pending(presenter) {
+      return present(Stage.pending, presenter);
+    },
+    rejected(presenter) {
+      return present(Stage.rejected, presenter);
+    },
+    resolved(presenter) {
+      return present(Stage.resolved, presenter);
+    },
+    stale(presenter) {
+      return present(Stage.stale, presenter);
+    },
+  };
+}
 
 /**
  * @template T, U
@@ -91,43 +76,46 @@ const Step2 = (selector, filter, subscribers, reactions, presenters = {
  * @param {Tacocat.Engine.Reactions[]} reactions
  * @returns {Tacocat.Engine.Extract<T, U>}
  */
-const Step1 = (selector, filter, extractors = [], reactions = []) => ({
-  extract(extractor, nextReactions) {
-    if (!isFunction(extractor)) {
-      throw new Error('Extractor must be a function');
-    }
-    return Step1(
-      selector,
-      filter,
-      [...extractors, extractor],
-      [...reactions, nextReactions],
-    );
-  },
-  provide(provider) {
-    if (!isFunction(provider)) {
-      throw new Error('Provider must be a function');
-    }
-    const presenters = {
-      pending: [],
-      rejected: [],
-      resolved: [],
-    };
-    return Step2(
-      selector,
-      filter,
-      [Extract(extractors), Provide(provider)],
-      reactions,
-      presenters,
-    );
-  },
-});
+function Step1(selector, filter, extractors = [], reactions = []) {
+  return {
+    extract(extractor, nextReactions) {
+      if (!isFunction(extractor)) {
+        throw new Error('Extractor must be a function');
+      }
+      return Step1(
+        selector,
+        filter,
+        [...extractors, extractor],
+        [...reactions, nextReactions],
+      );
+    },
+    provide(provider) {
+      if (!isFunction(provider)) {
+        throw new Error('Provider must be a function');
+      }
+      const presenters = {
+        [Stage.stale]: [],
+        [Stage.pending]: [],
+        [Stage.rejected]: [],
+        [Stage.resolved]: [],
+      };
+      return Step2(
+        selector,
+        filter,
+        [Extract(extractors), Provide(provider)],
+        reactions,
+        presenters,
+      );
+    },
+  };
+}
 
 /** @type {Tacocat.Engine.Factory} */
 const Tacocat = Object.freeze({
   /**
    * @param {string} selector
    * @param {Tacocat.Engine.Filter} filter
-   * @returns {Tacocat.Engine.Extract<any>}
+   * @returns {Tacocat.Engine.Select}
    */
   select(selector, filter) {
     return Step1(selector, filter ?? (() => true));

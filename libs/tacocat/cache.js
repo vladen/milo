@@ -1,4 +1,4 @@
-import { isMap, isWeakMap } from './utilities.js';
+import { isMap, isWeakMap } from './utils.js';
 
 const value$ = {};
 

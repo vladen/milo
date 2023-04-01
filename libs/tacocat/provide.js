@@ -1,9 +1,8 @@
 import { Event } from './constants.js';
-import { hasContext } from './context.js';
 import { NotProvidedError } from './errors.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isNil, isPromise } from './utilities.js';
+import { hasContext, isNil, isPromise } from './utils';
 
 /**
  * @param {Tacocat.Internal.Provider} provider

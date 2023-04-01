@@ -1,6 +1,9 @@
-export const namespace = 'tacocat';
+export const namespace = 'taco';
 
-const qualify = (name) => `${namespace}-${name}`;
+/**
+ * @param {string[]} names
+ */
+export const qualify = (...names) => [namespace, ...names].join('-');
 
 export const Stage = {
   /** @type {Tacocat.Stale} */

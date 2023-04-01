@@ -16,7 +16,7 @@ import { match, spy } from 'sinon';
 
 /**
  * 'sinon-chai' package does not have yet '@esm-bundle/sinon-chai' counterpart
- * and cannot be imported from mjs file
+ * and yet cannot be imported from mjs file
  */
 function sinonChai(chai, utils) {
   const { slice } = Array.prototype;
