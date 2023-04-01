@@ -1,4 +1,4 @@
-import { assignContext } from './context.js';
+import { setContext } from './context.js';
 
 class TacocatError extends Error {}
 
@@ -8,7 +8,7 @@ class TacocatError extends Error {}
  * @returns {Tacocat.Rejection<T>}
  */
 // eslint-disable-next-line import/prefer-default-export
-export const NotProvidedError = (context) => assignContext(
+export const NotProvidedError = (context) => setContext(
   new TacocatError('Not provided'),
   context,
 );

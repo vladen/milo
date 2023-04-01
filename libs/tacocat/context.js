@@ -2,12 +2,10 @@ import { isObject, isString } from './utilities.js';
 
 /**
  * @template T, U
- * @param {T} result
- * @param {U} context
- * @returns {T & Tacocat.Contextful<U>}
+ * @type {Tacocat.setContext<T, U>}
  */
 // @ts-ignore
-const assignContext = (result, context) => Object.defineProperty(
+const setContext = (result, context) => Object.defineProperty(
   isObject(result) ? result : {},
   'context',
   {
@@ -21,4 +19,4 @@ const hasContext = (object) => isObject(object)
   // @ts-ignore
   && isString(object.context.id) && object.context.id.length;
 
-export { assignContext, hasContext };
+export { hasContext, setContext };

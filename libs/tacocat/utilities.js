@@ -1,20 +1,27 @@
 /** @type {Tacocat.isNil} */
 export const isNil = (value) => value == null;
 
+/** @type {Tacocat.isBoolean} */
+export const isBoolean = (value) => typeof value === 'boolean';
 /** @type {Tacocat.isElement} */
 export const isElement = (value) => !isNil(value) && value instanceof Element;
 /** @type {Tacocat.isError} */
 export const isError = (value) => !isNil(value) && value instanceof Error;
 /** @type {Tacocat.isFunction} */
 export const isFunction = (value) => typeof value === 'function';
+/** @type {Tacocat.isMap} */
+export const isMap = (value) => !isNil(value) && value instanceof Map;
 /** @type {Tacocat.isObject} */
 export const isObject = (value) => !isNil(value) && typeof value === 'object';
 /** @type {Tacocat.isPromise} */
 export const isPromise = (value) => !isNil(value) && value instanceof Promise;
 /** @type {Tacocat.isString} */
 export const isString = (value) => typeof value === 'string';
-/** @type {Tacocat.isUndefined} */
-export const isUndefined = (value) => value === undefined;
+/** @type {Tacocat.isWeakMap} */
+export const isWeakMap = (value) => !isNil(value) && value instanceof WeakMap;
+
+/** @type {Tacocat.toBoolean} */
+export const toBoolean = (value) => (isBoolean(value) ? value : ['1', 'true'].includes(String(value)));
 
 /**
  * @param {boolean?} existing

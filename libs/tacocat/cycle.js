@@ -1,4 +1,4 @@
-import { EventType, StageName } from './constants.js';
+import { Event, Stage } from './constants.js';
 import Log from './log.js';
 import { isElement, isError, isObject } from './utilities.js';
 
@@ -17,9 +17,10 @@ class TacocatCycleEvent extends CustomEvent {
  * @param {Tacocat.Internal.Control} control
  * @param {Element} scope
  * @param {string} selector
+ * @param {Tacocat.Engine.Filter} filter
  * @returns {Tacocat.Internal.Cycle}
  */
-function Cycle(control, scope, selector) {
+function Cycle(control, scope, selector, filter) {
   /** @type {WeakMap<Event, Event>} */
   const events = new WeakMap();
   const log = Log.common.module('cycle');
@@ -63,8 +64,8 @@ function Cycle(control, scope, selector) {
       if (placeholder) {
         placeholder.context = context;
         log.debug('Extracted:', placeholder);
-        dispatch(EventType.pending, placeholder);
-        dispatch(EventType.extracted, placeholder);
+        dispatch(Event.pending, placeholder);
+        dispatch(Event.extracted, placeholder);
       } else {
         log.warn('Extracted context is unexpected:', { context });
       }
@@ -83,11 +84,12 @@ function Cycle(control, scope, selector) {
         ? node
         : node.parentElement;
       if (element) {
-        if (element.matches(selector)) return element;
+        if (element.matches(selector) && filter(element)) return element;
         const closest = element.closest(selector);
-        if (closest?.compareDocumentPosition(scope) === Node.DOCUMENT_POSITION_CONTAINS) {
-          return closest;
-        }
+        if (
+          closest?.compareDocumentPosition(scope) === Node.DOCUMENT_POSITION_CONTAINS
+          && filter(closest)
+        ) return closest;
       }
       return undefined;
     },
@@ -95,14 +97,14 @@ function Cycle(control, scope, selector) {
     observe(element, context, event) {
       let placeholder = placeholders.get(element);
       if (placeholder) {
-        placeholder.stage = StageName.pending;
+        placeholder.stage = Stage.pending;
       } else {
         placeholder = {
           context: null,
           element,
           event,
           result: null,
-          stage: StageName.pending,
+          stage: Stage.pending,
         };
         placeholders.set(context.id, placeholder);
         placeholders.set(element, placeholder);
@@ -112,15 +114,15 @@ function Cycle(control, scope, selector) {
         // eslint-disable-next-line no-plusplus
         id: `${++id}-${Date.now()}`,
       };
-      dispatch(EventType.stale, placeholder);
-      dispatch(EventType.observed, placeholder);
+      dispatch(Event.stale, placeholder);
+      dispatch(Event.observed, placeholder);
     },
 
     present(context, element) {
       const placeholder = placeholders.get(context.id);
       if (placeholder) {
         placeholder.element = element;
-        dispatch(EventType.presented, placeholder);
+        dispatch(Event.presented, placeholder);
       }
     },
 
@@ -129,15 +131,19 @@ function Cycle(control, scope, selector) {
       if (placeholder) {
         placeholder.context = result.context;
         placeholder.result = result;
-        placeholder.stage = isError(result) ? StageName.rejected : StageName.resolved;
+        placeholder.stage = isError(result) ? Stage.rejected : Stage.resolved;
         dispatch(
-          placeholder.stage === StageName.rejected ? EventType.rejected : EventType.resolved,
+          placeholder.stage === Stage.rejected ? Event.rejected : Event.resolved,
           placeholder,
         );
-        dispatch(EventType.provided, placeholder);
+        dispatch(Event.provided, placeholder);
       } else {
         log.warn('Provided result is unexpected, ignoring:', result);
       }
+    },
+
+    select() {
+      return [...scope.querySelectorAll(selector)].filter(filter);
     },
   };
 }

@@ -13,9 +13,10 @@ const observableMutations = ['attributes', 'characterData', childListMutation];
  * @param {Tacocat.Internal.Subscriber[]} subscribers
  * @param {Element} scope
  * @param {string} selector
+ * @param {Tacocat.Engine.Filter} filter
  * @returns {Tacocat.Internal.Engine}
  */
-function Observe(control, reactions, subscribers, scope, selector) {
+function Observe(control, reactions, subscribers, scope, selector, filter) {
   const log = Log.common.module('observe');
 
   if (control.signal?.aborted) {
@@ -26,7 +27,7 @@ function Observe(control, reactions, subscribers, scope, selector) {
     };
   }
 
-  const cycle = Cycle(control, scope, selector);
+  const cycle = Cycle(control, scope, selector, filter);
   /** @type {Set<{ element: Element }>} */
   const removed = new Set();
   /** @type {Set<{ element: Element, event?: Event }>} */
@@ -116,7 +117,7 @@ function Observe(control, reactions, subscribers, scope, selector) {
   });
 
   // Scan current DOM tree for matching elements
-  cycle.scope.querySelectorAll(cycle.selector).forEach(update);
+  cycle.select().forEach(update);
 
   // Setup mutation observer
   if (observableMutations.some((mutation) => reactions.mutations[mutation])) {

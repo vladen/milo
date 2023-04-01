@@ -1,21 +1,19 @@
-import { EventType } from './constants.js';
+import { Event } from './constants.js';
 import Log from './log.js';
 import { safeAsyncEvery } from './safe.js';
 import { isFunction, isNil, isObject } from './utilities.js';
 
 /**
- * @param {object} base
  * @param {Tacocat.Internal.Extractor[]} extractors
  * @returns {Tacocat.Internal.Subscriber}
  */
-const Extract = (base, extractors) => (control, cycle) => {
+const Extract = (extractors) => (control, cycle) => {
   const log = Log.common.module('extract');
 
   cycle.listen(
-    EventType.observed,
-    async ({ detail }, event) => {
-      const context = { ...base, ...detail.context };
-      const { id } = detail.context;
+    Event.observed,
+    async ({ detail: { context, element } }, event) => {
+      const { id } = context;
 
       const success = await safeAsyncEvery(
         log,
@@ -25,7 +23,7 @@ const Extract = (base, extractors) => (control, cycle) => {
           if (control.signal?.aborted) return false;
           let extraction;
           if (isFunction(extractor)) {
-            extraction = await extractor(context, detail.element, event, control.signal);
+            extraction = await extractor(context, element, event, control.signal);
           } else if (isObject(extractor)) {
             extraction = extractor;
           }
@@ -43,13 +41,13 @@ const Extract = (base, extractors) => (control, cycle) => {
       if (success) {
         context.id = id;
         cycle.extract(context);
-        log.debug('Extracted:', { context, element: detail.element, event });
+        log.debug('Extracted:', { context, element, event });
       }
     },
   );
 
   control.dispose(() => log.debug('Aborted'));
-  log.debug('Activated:', { base, extractors });
+  log.debug('Activated:', { extractors });
 };
 
 export default Extract;

@@ -1,26 +1,49 @@
-import { EventType, StageName } from './constants.js';
-import { assignContext } from './context.js';
+import { CssClass, Event, Stage, namespace } from './constants.js';
+import { setContext } from './context.js';
 import Control from './control.js';
 import Extract from './extract.js';
 import Log from './log.js';
 import Observe from './observe.js';
+import { parseHrefParams, tryParseJson } from './parsers.js';
 import Present from './present.js';
 import Provide from './provide.js';
-import { isFunction, mergeReactions } from './utilities.js';
+import {
+  isBoolean, isElement, isError, isFunction, isNil, isObject,
+  isPromise, isString, mergeReactions, toBoolean,
+} from './utilities.js';
+
+export * from './wcs/index.js';
+
+export const Utilility = {
+  isBoolean,
+  isElement,
+  isError,
+  isFunction,
+  isNil,
+  isObject,
+  isPromise,
+  isString,
+  parseHrefParams,
+  setContext,
+  toBoolean,
+  tryParseJson,
+};
 
 /**
  * @template T, U
+ * @param {string} selector
+ * @param {Tacocat.Engine.Filter} filter
  * @param {Tacocat.Internal.Subscriber[]} subscribers
  * @param {Tacocat.Engine.Reactions[]} reactions
  * @param {Tacocat.Internal.Presenters} presenters
  * @returns {Tacocat.Engine.Present<T, U>}
  */
-const Step2 = (subscribers, reactions, presenters = {
+const Step2 = (selector, filter, subscribers, reactions, presenters = {
   pending: [],
   rejected: [],
   resolved: [],
 }) => ({
-  observe(scope = document.body, selector = '*', signal = null) {
+  observe(scope = document.body, signal = null) {
     if (!(scope instanceof Element)) {
       throw new Error('Scope must be a DOM Element');
     }
@@ -31,12 +54,13 @@ const Step2 = (subscribers, reactions, presenters = {
       [...subscribers, Present(presenters)],
       scope,
       selector,
+      filter,
     );
   },
 
   present(stage, condition, presenter) {
     if (isFunction(presenter)) {
-      return Step2(subscribers, reactions, {
+      return Step2(selector, filter, subscribers, reactions, {
         ...presenters,
         [stage]: [
           ...(presenters[stage] ?? []),
@@ -51,7 +75,7 @@ const Step2 = (subscribers, reactions, presenters = {
       });
     }
     if (isFunction(condition)) {
-      return Step2(subscribers, reactions, {
+      return Step2(selector, filter, subscribers, reactions, {
         ...presenters,
         [stage]: [...(presenters[stage] ?? []), condition],
       });
@@ -62,18 +86,20 @@ const Step2 = (subscribers, reactions, presenters = {
 
 /**
  * @template T, U
- * @param {object} context
+ * @param {string} selector
+ * @param {Tacocat.Engine.Filter} filter
  * @param {Tacocat.Internal.Extractor[]} extractors
  * @param {Tacocat.Engine.Reactions[]} reactions
  * @returns {Tacocat.Engine.Extract<T, U>}
  */
-const Step1 = (context, extractors = [], reactions = []) => ({
+const Step1 = (selector, filter, extractors = [], reactions = []) => ({
   extract(extractor, nextReactions) {
     if (!isFunction(extractor)) {
       throw new Error('Extractor must be a function');
     }
     return Step1(
-      context,
+      selector,
+      filter,
       [...extractors, extractor],
       [...reactions, nextReactions],
     );
@@ -88,7 +114,9 @@ const Step1 = (context, extractors = [], reactions = []) => ({
       resolved: [],
     };
     return Step2(
-      [Extract(context, extractors), Provide(provider)],
+      selector,
+      filter,
+      [Extract(extractors), Provide(provider)],
       reactions,
       presenters,
     );
@@ -96,14 +124,16 @@ const Step1 = (context, extractors = [], reactions = []) => ({
 });
 
 /** @type {Tacocat.Engine.Factory} */
-const Tacocat = {
-  assign: assignContext,
-  define(context) {
-    return Step1(context);
+// @ts-ignore
+const Tacocat = Object.freeze({
+  select(selector, filter) {
+    return Step1(selector, filter ?? (() => true));
   },
+  CssClass,
+  Event,
   Log,
-  Event: EventType,
-  Stage: StageName,
-};
+  namespace,
+  Stage,
+});
 
 export default Tacocat;

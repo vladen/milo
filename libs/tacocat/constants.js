@@ -1,8 +1,8 @@
 export const namespace = 'tacocat';
 
-const qualify = (name) => `${namespace}:${name}`;
+const qualify = (name) => `${namespace}-${name}`;
 
-export const StageName = {
+export const Stage = {
   /** @type {Tacocat.Stale} */
   stale: 'stale',
   /** @type {Tacocat.Pending} */
@@ -13,15 +13,22 @@ export const StageName = {
   resolved: 'resolved',
 };
 
-export const EventType = {
-  stale: qualify(StageName.stale),
+export const Event = {
+  stale: qualify(Stage.stale),
   observed: qualify('observed'),
-  pending: qualify(StageName.pending),
+  pending: qualify(Stage.pending),
   extracted: qualify('extracted'),
   provided: qualify('provided'),
-  rejected: qualify(StageName.rejected),
-  resolved: qualify(StageName.resolved),
+  rejected: qualify(Stage.rejected),
+  resolved: qualify(Stage.resolved),
   presented: qualify('presented'),
 };
 
-export default { namespace, EventType, StageName };
+export const CssClass = {
+  stale: Event.stale,
+  pending: Event.pending,
+  rejected: Event.resolved,
+  resolved: Event.rejected,
+};
+
+export default { CssClass, Event, Stage, namespace };

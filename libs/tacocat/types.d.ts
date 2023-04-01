@@ -1,17 +1,28 @@
 declare namespace Tacocat {
   // --- types ---
+  type isBoolean = (value: any) => value is boolean;
   type isElement = (value: any) => value is Element;
   type isError = (value: any) => value is Error;
   type isFunction = (value: any) => value is Function;
+  type isMap = (value: any) => value is Map<any, any>;
   type isNil = (value: any) => value is null | undefined;
   type isObject = (value: any) => value is object;
   type isPromise = (value: any) => value is Promise<any>;
   type isString = (value: any) => value is string;
-  type isUndefined = (value: any) => value is undefined;
+  type isWeakMap = (value: any) => value is WeakMap<any, any>;
+  
+  type toBoolean = (value: any) => boolean;
+
+  type parseHrefParams = (element: HTMLAnchorElement) => URLSearchParams;
+  type tryParseJson = (json: string, message?: string) => any | undefined;
 
   type Context<T extends object> = T & { id?: string };
 
-  type Contextful<T extends object> = { context: Context<T> };
+  type setContext<T extends object, U extends object> = (
+    result: U,
+    context: T
+  ) => U & Contextful<T>;
+
   type Rejection<T extends object> = Contextful<T> & Error;
   type Resolution<T extends object, U extends object> = Contextful<T> & U;
 
@@ -39,6 +50,12 @@ declare namespace Tacocat {
 
   type Writable<T> = { -readonly [K in keyof T]: T[K] };
 
+  // --- interfaces ---
+
+  interface Contextful<T extends object> {
+    context: Context<T>;
+  }
+
   module Engine {
     // --- types ---
     type Disposer = () => void;
@@ -49,7 +66,9 @@ declare namespace Tacocat {
       element: Element,
       event: Event,
       signal?: AbortSignal
-    ) => U | Promise<U>;
+    ) => Promise<U>;
+
+    type Filter = (element: Element) => boolean;
 
     type Mutations = Omit<
       MutationObserverInit,
@@ -82,6 +101,12 @@ declare namespace Tacocat {
       signal?: AbortSignal
     ) => undefined | Element;
 
+    type StalePresenter = (
+      element: Element,
+      event?: Event,
+      signal?: AbortSignal
+    ) => undefined | Element;
+
     type SomePlaceholder = Placeholder<SomeContext, SomeContext>;
 
     type Trigger = (
@@ -91,44 +116,53 @@ declare namespace Tacocat {
     ) => Disposer;
 
     // --- interfaces ---
+    interface Cache<T> {
+      getOrSet(keys: any | any[], factory: () => T): T;
+    }
+
     interface Extract<T extends object> {
       /**
-       * Continues defining tacocat pipeline by registering contexts extractor and reactions triggering it.
+       * Defines function extracting context objects from placeholder elements and reactions triggering updates of placeholders.
        * @param extractor
-       * A function accepting current pipeline context and DOM element being processed as placeholder.
+       * A function accepting already extracted context and DOM element being processed as placeholder.
        * Returns null to cancel placeholder processing or object to merge into pipeline context.
+       * Or an object to be assigned to already extracted context.
        * @param reactions
        * Lists of event types to listen on element and/or mutations to observe and/or custom function triggering
        * this pipeline.
        */
       extract<U extends object>(
-        extractor: Extractor<T, U>,
+        extractor: U | Extractor<T, U>,
         reactions?: Reactions
       ): Extract<T & U>;
       provide<U extends object>(provider: Provider<T, U>): Present<T, U>;
     }
 
     interface Factory {
-      assign<T extends object, U extends object>(
-        result: T,
-        context: U
-      ): T & Contextful<U>;
       /**
-       * Starts definintion of tacocat pipeline.
-       * @param base
-       * Base context to be clones by all further pipelinesd.
+       * Defines CSS selector matching placeholder elements to be processed by tacocat.
+       * @param selector
        */
-      define<T extends object>(base?: T): Extract<T>;
+      select<T extends object>(selector: string, filter?: Filter): Extract<T>;
+      CssClass: {
+        pending: string;
+        rejected: string;
+        resolved: string;
+        stale: string;
+      };
       Event: {
         pending: string;
         rejected: string;
         resolved: string;
+        stale: string;
       };
       Log: Log.Factory;
+      namespace: string;
       Stage: {
         pending: Pending;
         rejected: Rejected;
         resolved: Resolved;
+        stale: Stale;
       };
     }
 
@@ -147,31 +181,13 @@ declare namespace Tacocat {
     }
 
     interface Present<T extends object, U extends object> {
-      observe(
-        scope?: Element,
-        selector?: string,
-        signal?: AbortSignal
-      ): Instance<T, U>;
+      observe(scope?: Element, signal?: AbortSignal): Instance<T, U>;
+      present(stage: Stale, presenter: StalePresenter): Present<T, U>;
       present(stage: Pending, presenter: PendingPresenter<T>): Present<T, U>;
-      present(
-        stage: Pending,
-        condition: (result: Contextful<T>) => boolean,
-        presenter: PendingPresenter<T>
-      ): Present<T, U>;
       present(stage: Rejected, presenters: RejectedPresenter<T>): Present<T, U>;
-      present(
-        stage: Rejected,
-        condition: (result: Rejection<T>) => boolean,
-        presenter: RejectedPresenter<T>
-      ): Present<T, U>;
       present(
         stage: Resolved,
         presenter: ResolvedPresenter<T, U>
-      ): Present<T, U>;
-      present(
-        stage: Resolved,
-        condition: (result: Resolution<T, U>) => boolean,
-        presenter: ResolvedPresenter<T, U>[]
       ): Present<T, U>;
     }
 
@@ -231,6 +247,7 @@ declare namespace Tacocat {
       observe(element: Element, context?: SomeContext, event?: Event): void;
       present(context: SomeContext, element?: Element): void;
       provide(result: SomeResult): void;
+      select(): Element[];
     }
 
     interface Reactions {

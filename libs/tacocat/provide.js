@@ -1,4 +1,4 @@
-import { EventType } from './constants.js';
+import { Event } from './constants.js';
 import { hasContext } from './context.js';
 import { NotProvidedError } from './errors.js';
 import Log from './log.js';
@@ -75,7 +75,7 @@ function Provide(provider) {
       ));
     }
 
-    cycle.listen(EventType.extracted, ({ detail: { context } }) => {
+    cycle.listen(Event.extracted, ({ detail: { context } }) => {
       waiting.set(context.id, context);
       if (!timer) timer = setTimeout(provide, 1);
     });

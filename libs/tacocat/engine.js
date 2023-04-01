@@ -1,4 +1,4 @@
-import { StageName } from './constants.js';
+import { Stage } from './constants.js';
 
 /** @type {WeakMap<Tacocat.Internal.Placeholder, Tacocat.Engine.SomePlaceholder>} */
 const placeholders = new WeakMap();
@@ -29,10 +29,10 @@ function Placeholder(cycle, placeholder) {
       get promise() {
         return new Promise((resolve, reject) => {
           switch (placeholder.stage) {
-            case StageName.resolved:
+            case Stage.resolved:
               resolve(placeholder.result);
               break;
-            case StageName.rejected:
+            case Stage.rejected:
               reject(placeholder.result);
               break;
             default:

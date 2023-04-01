@@ -1,4 +1,4 @@
-import { EventType } from './constants.js';
+import { CssClass, Event } from './constants.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
 import { isElement } from './utilities.js';
@@ -11,8 +11,12 @@ const Present = (presenters) => (control, cycle) => {
   const log = Log.common.module('present');
 
   cycle.listen(
-    EventType.provided,
+    [Event.observed, Event.extracted, Event.provided],
     ({ detail: { context, element, result, stage } }, event) => {
+      Object.values(CssClass).forEach((name) => {
+        element.classList.remove(CssClass[name]);
+      });
+      element.classList.add(CssClass[stage]);
       /** @type {Tacocat.Internal.Presenter[]} */
       const group = presenters[stage];
       if (group?.length) {
