@@ -16,11 +16,6 @@ declare namespace Tacocat {
 
   type Context<T extends object> = T & { id?: string };
 
-  type setContext<T extends object, U extends object> = (
-    result: U,
-    context: T
-  ) => U & Contextful<T>;
-
   type Rejection<T extends object> = Contextful<T> & Error;
   type Resolution<T extends object, U extends object> = Contextful<T> & U;
 

@@ -149,8 +149,8 @@ describe.skip('tacocat pipeline', () => {
       .present(Tacocat.Stage.rejected, (element) => {
         element.textContent = '...';
       })
-      .present(Tacocat.Stage.resolved, (element, product) => {
-        element.textContent = `${product} ${product}`;
+      .present(Tacocat.Stage.resolved, (element, { product }) => {
+        element.textContent = product;
       });
 
     const placeholders = [
