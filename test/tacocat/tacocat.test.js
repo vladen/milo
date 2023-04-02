@@ -3,11 +3,10 @@
 import { readFile } from '@web/test-runner-commands';
 import Tacocat, { Utils } from '../../libs/tacocat/index.js';
 import Wcs from '../../libs/tacocat/wcs/index.js';
-import { namespace } from '../../libs/tacocat/constants.js';
 import { expect } from './tools.js';
 
 let wcsMock;
-const ostBaseUrl = 'https://milo.adobe.com//tools/ost?';
+const ostBaseUrl = 'https://milo.adobe.com/tools/ost?';
 
 async function mockWcs() {
   if (!wcsMock) {
@@ -59,6 +58,58 @@ async function mockWcsProvider(contexts) {
   );
 }
 
+const checkoutOstLinkPipeline = Tacocat
+  .select(
+    Wcs.Constant.CheckoutCssSelector.link,
+    Wcs.matchTemplateHrefParam('checkout'),
+  )
+  .extract((_, element) => Wcs.Parser.parseCheckoutHref(element))
+  .extract((_, element) => Wcs.Parser.parseCheckoutLiterals(element))
+  .extract(() => Wcs.getLocale())
+  .provide(mockWcsProvider)
+  .stale(Wcs.Template.staleCheckoutTemplate)
+  .pending(Wcs.Template.pendingCheckoutTemplate);
+
+const priceOstLinkPipeline = Tacocat
+  .select(
+    Wcs.Constant.PriceCssSelector.link,
+    Wcs.matchTemplateHrefParam('price'),
+  )
+  .extract((_, element) => Wcs.Parser.parsePriceHref(element))
+  .extract((_, element) => Wcs.Parser.parsePriceLiterals(element))
+  .extract(() => Wcs.getLocale())
+  .provide(mockWcsProvider)
+  .stale(Wcs.Template.stalePriceTemplate)
+  .pending(Wcs.Template.pendingPriceTemplate);
+
+const checkoutPlaceholderPipeline = Tacocat
+  .select(
+    Wcs.Constant.CheckoutCssSelector.placeholder,
+    Wcs.matchTemplateDatasetParam('checkout'),
+  )
+  .extract((_, element) => Wcs.Parser.parseCheckoutHref(element))
+  .extract((_, element) => Wcs.Parser.parseCheckoutLiterals(element))
+  .extract(() => Wcs.getLocale())
+  .provide(mockWcsProvider)
+  .stale(Wcs.Template.staleTemplate)
+  .pending(Wcs.Template.pendingCheckoutTemplate)
+  .rejected(Wcs.Template.rejectedTemplate)
+  .resolved(Wcs.Template.resolvedCheckoutTemplate);
+
+const pricePlaceholderPipeline = Tacocat
+  .select(
+    Wcs.Constant.PriceCssSelector.placeholder,
+    Wcs.matchTemplateDatasetParam('price'),
+  )
+  .extract((_, element) => Wcs.Parser.parsePriceHref(element))
+  .extract((_, element) => Wcs.Parser.parsePriceLiterals(element))
+  .extract(() => Wcs.getLocale())
+  .provide(mockWcsProvider)
+  .stale(Wcs.Template.staleTemplate)
+  .pending(Wcs.Template.pendingPriceTemplate)
+  .rejected(Wcs.Template.rejectedTemplate)
+  .resolved(Wcs.Template.resolvedPriceTemplate);
+
 /*
   - processing DOM snapshot
     - breaks after immediate abort
@@ -96,61 +147,65 @@ describe.skip('tacocat pipeline', () => {
   });
 
   it('processes placeholders present in DOM', async () => {
-    const ctaPipeline = Tacocat
-      .select(
-        `a[href^="${ostBaseUrl}"]`,
-        Wcs.matchTemplateParam('checkout'),
-      )
-      .extract((_, element) => Wcs.parseCheckoutHrefParams(element))
-      .extract((_, element) => Wcs.tryParseCheckoutLiterals(
-        element.closest(`${namespace}-price-literals`),
-      ))
-      .extract(() => Wcs.getLocale())
-      .provide(mockWcsProvider)
-      .stale(Wcs.staleTemplate)
-      .rejected(Wcs.rejectedTemplate)
-      .resolved(Wcs.checkoutTemplate);
-
-    const pricePipeline = Tacocat
-      .select(
-        `a[href^="${ostBaseUrl}"]`,
-        Wcs.matchTemplateParam('price'),
-      )
-      .extract((_, element) => Promise.resolve(Wcs.parsePriceHrefParams(element)))
-      .extract(() => Wcs.getLocale())
-      .extract((_, element) => Wcs.tryParsePriceLiterals(
-        element.closest(`${namespace}-price-literals`),
-      ))
-      .provide(mockWcsProvider)
-      .stale(Wcs.staleTemplate)
-      .rejected(Wcs.rejectedTemplate)
-      .resolved(Wcs.priceTemplate);
-
-    const ctaTacos = ctaPipeline.observe(container, controller.signal).placeholders;
-    const priceTacos = pricePipeline.observe(container, controller.signal).placeholders;
+    checkoutOstLinkPipeline.observe(container, controller.signal);
+    priceOstLinkPipeline.observe(container, controller.signal);
+    const checkoutTacos = checkoutPlaceholderPipeline
+      .observe(container, controller.signal)
+      .placeholders;
+    const priceTacos = pricePlaceholderPipeline
+      .observe(container, controller.signal)
+      .placeholders;
 
     await Promise.all([
-      ...ctaTacos.map((placeholder) => placeholder.promise),
+      ...checkoutTacos.map((placeholder) => placeholder.promise),
       ...priceTacos.map((placeholder) => placeholder.promise),
     ]);
 
+    // eslint-disable-next-line no-await-in-loop
+    const mock = await mockWcs();
+
     // eslint-disable-next-line no-restricted-syntax
-    for (const placeholder of ctaTacos) {
-      const { context, element } = placeholder;
+    for (const taco of checkoutTacos) {
+      const { context, element } = taco;
+      const Param = Wcs.Constant.CheckoutDatasetParam.resolved;
       const {
-        [Wcs.DatasetKey.osis]: osis,
-        [Wcs.DatasetKey.template]: template,
+        [Param.commitments]: commitments,
+        [Param.offers]: offers,
+        [Param.terms]: terms,
+        [Param.url]: url,
       } = element.dataset;
-      // eslint-disable-next-line no-await-in-loop
-      const mock = await mockWcs();
       /** @type {Tacocat.Wcs.Offer[]} */
-      const offers = mock[context.country].resolvedOffers;
-      expect(osis).to.be(
-        Utils.joinUnique(
-          offers.flatMap(({ offerSelectorIds }) => offerSelectorIds),
-        ),
+      const wcsOffers = mock[context.country]?.resolvedOffers ?? [];
+      expect(wcsOffers).to.be.not.empty;
+      expect(commitments).to.be(
+        wcsOffers.map(({ commitment }) => commitment).join(','),
       );
-      expect(template).to.be(context.template);
+      expect(offers).to.be(
+        wcsOffers.map(({ offerId }) => offerId).join(','),
+      );
+      expect(terms).to.be(
+        wcsOffers.map(({ term }) => term).join(','),
+      );
+      expect(url.indexOf(ostBaseUrl)).to.be(0);
+    }
+
+    // eslint-disable-next-line no-restricted-syntax
+    for (const taco of priceTacos) {
+      const { context, element } = taco;
+      const Param = Wcs.Constant.PriceDatasetParam.resolved;
+      const {
+        [Param.analytics]: analytics,
+        [Param.commitment]: commitment,
+        [Param.offer]: offer,
+        [Param.term]: term,
+      } = element.dataset;
+      /** @type {Tacocat.Wcs.Offer[]} */
+      const wcsOffers = mock[context.country]?.resolvedOffers ?? [];
+      expect(wcsOffers).to.be.not.empty;
+      expect(analytics).to.be(wcsOffers[0].analytics);
+      expect(commitment).to.be(wcsOffers[0].commitment);
+      expect(offer).to.be(wcsOffers[0].offerId);
+      expect(term).to.be(wcsOffers[0].term);
     }
   });
 });

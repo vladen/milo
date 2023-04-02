@@ -23,35 +23,31 @@ declare namespace Tacocat {
       language: string;
     }
 
-    interface OsisContext extends LocaleContext {
-      osis: string[];
-    }
-
     interface CheckoutLiterals {
       literals: {
         ctaLabel: string;
       };
     }
 
-    interface CheckoutSettings extends OsisContext {
+    interface CheckoutSettings {
       client: string;
       step: string;
+      target: string;
     }
 
-    interface CheckoutContext extends CheckoutSettings, OsisContext {
-      countrySpecific: string[];
-      qantity: number[];
+    interface CheckoutContext extends CheckoutSettings, LocaleContext {
+      osis: string[];
+      quantities: number[];
     }
 
     interface PlaceholderContext {
+      extra: DOMStringMap;
       template: string;
     }
 
     interface CheckoutPlaceholderContext
       extends CheckoutContext,
-        PlaceholderContext {
-      extra: DOMStringMap;
-    }
+        PlaceholderContext {}
 
     interface PriceLiterals {
       literals: {
@@ -67,9 +63,12 @@ declare namespace Tacocat {
       unit: boolean;
     }
 
+    interface PriceContext extends PriceSettings, LocaleContext {
+      osi: string;
+    }
+
     interface PricePlaceholderContext
-      extends OsisContext,
-        PriceSettings,
+      extends PriceContext,
         PlaceholderContext {}
 
     interface Offer {

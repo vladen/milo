@@ -15,7 +15,7 @@ class TacocatCycleEvent extends CustomEvent {
 }
 
 /**
- * @param {Tacocat.Internal.Control} control
+ * @param {Tacocat.Engine.Control} control
  * @param {HTMLElement} scope
  * @param {string} selector
  * @param {Tacocat.Engine.Filter} filter
@@ -113,7 +113,7 @@ function Cycle(control, scope, selector, filter) {
         placeholders.set(element, placeholder);
       }
       placeholder.context = {
-        ...(isObject(context) ? context : {}),
+        ...(isObject(context) ? { ...context } : {}),
         // eslint-disable-next-line no-plusplus
         id: `${++id}-${Date.now()}`,
       };

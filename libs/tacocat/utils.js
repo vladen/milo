@@ -34,6 +34,16 @@ export const toArray = (value) => (Array.isArray(value) ? value : [value]);
 export const toBoolean = (value) => (isBoolean(value) ? value : ['1', 'true'].includes(String(value)));
 
 /**
+ * @param {any} value
+ * @param {number} defaultValue
+ * @returns {number}
+ */
+export function toInteger(value, defaultValue) {
+  const integer = parseInt(value, 10);
+  return Number.isNaN(integer) ? defaultValue : integer;
+}
+
+/**
  * @template T, U
  * @param {T} result
  * @param {U} context
@@ -74,14 +84,14 @@ export const delay = (timeout, signal = null) => new Promise((resolve) => {
   }
 });
 
-export const hasOwnProperty = (object, property) => !isNil(object)
-  && Object.prototype.hasOwnProperty.call(object, property);
-
 /**
- * @param {string[]} strings
- * @param {string} separator
+ * @param {HTMLElement} element
+ * @param {string} selector
+ * @returns {HTMLElement?}
  */
-export const joinUnique = (strings, separator = ',') => [...new Set(strings)].join(separator);
+export const getMatchingSelfOrAncestor = (element, selector) => (element.matches(selector)
+  ? element
+  : element.closest(selector));
 
 /**
  *
@@ -122,6 +132,7 @@ export const mergeReactions = (...reactions) => ({
 });
 
 export default {
+  getMatchingSelfOrAncestor,
   hasContext,
   isBoolean,
   isHTMLElement,
@@ -131,7 +142,6 @@ export default {
   isObject,
   isPromise,
   isString,
-  joinUnique,
   setContext,
   toArray,
   toBoolean,

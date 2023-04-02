@@ -1,7 +1,7 @@
 import { Event } from './constants.js';
 import Log from './log.js';
-import { safeAsync, safeAsyncEvery } from './safe.js';
-import { isFunction, isNil } from './utils.js';
+import { safeAsyncEvery } from './safe.js';
+import { isObject } from './utils.js';
 
 /**
  * @param {Tacocat.Internal.Extractor[]} extractors
@@ -13,34 +13,31 @@ const Extract = (extractors) => (control, cycle) => {
   cycle.listen(
     Event.observed,
     async ({ detail: { context, element } }, event) => {
-      const { id } = context;
+      const { id: prevId, ...prevRest } = context;
 
       const success = await safeAsyncEvery(
         log,
-        'Extractor callback error:',
+        'Extractor function error:',
         extractors,
         async (extractor) => {
           if (control.signal?.aborted) return false;
-          if (isFunction(extractor)) {
-            const extraction = await safeAsync(
-              log,
-              'Extractor callback error:',
-              () => Promise.resolve(extractor(context, element, event, control.signal)),
-            );
-            if (!isNil(extraction)) {
-              Object.assign(context, extraction);
-            }
-          } else {
-            log.error('Extractor must be a function, cancelling:', { extractor });
+          const result = await extractor(context, element, event, control);
+          if (isObject(result)) {
+            Object.assign(context, result);
+            return true;
           }
+          log.debug('Extractor function returned not object, ignoring placeholder:', { context, element, event });
           return false;
         },
       );
 
       if (success) {
-        context.id = id;
-        cycle.extract(context);
-        log.debug('Extracted:', { context, element, event });
+        const { id: nextId, ...nextRest } = context;
+        if (JSON.stringify(nextRest) !== JSON.stringify(prevRest)) {
+          context.id = prevId;
+          cycle.extract(context);
+          log.debug('Extracted:', { context, element, event });
+        }
       }
     },
   );

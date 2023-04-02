@@ -63,7 +63,7 @@ function Step2(selector, filter, subscribers, reactions, presenters = {
       return present(Stage.resolved, presenter);
     },
     stale(presenter) {
-      return present(Stage.stale, presenter);
+      return present(Stage.pending, presenter);
     },
   };
 }
@@ -94,7 +94,7 @@ function Step1(selector, filter, extractors = [], reactions = []) {
         throw new Error('Provider must be a function');
       }
       const presenters = {
-        [Stage.stale]: [],
+        [Stage.pending]: [],
         [Stage.pending]: [],
         [Stage.rejected]: [],
         [Stage.resolved]: [],

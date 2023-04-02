@@ -4,7 +4,7 @@ import { isNil } from './utils.js';
 
 /**
  * @param {AbortSignal?} signal
- * @returns {Tacocat.Internal.Control}
+ * @returns {Tacocat.Engine.Control}
  */
 function Control(signal) {
   const log = Log.common.module('control');

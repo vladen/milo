@@ -58,8 +58,8 @@ declare namespace Tacocat {
     type Extractor<T extends object, U extends object> = (
       context: T,
       element: Element,
-      event: Event,
-      signal?: AbortSignal
+      event: Event | undefined,
+      control: Control,
     ) => Promise<U> | U;
 
     type Filter = (element: Element) => boolean;
@@ -72,33 +72,33 @@ declare namespace Tacocat {
     type PendingPresenter<T extends object> = (
       element: Element,
       result: Contextful<T>,
-      event?: Event,
-      signal?: AbortSignal
+      event: Event | undefined,
+      control: Control,
     ) => undefined | Element;
 
     type Provider<T extends object, U extends object> = (
       contexts: T[],
-      signal?: AbortSignal
+      control: Control,
     ) => Promise<Resolution<T, U>>[];
 
     type RejectedPresenter<T extends object> = (
       element: Element,
       result: Rejection<T>,
-      event?: Event,
-      signal?: AbortSignal
+      event: Event | undefined,
+      control: Control,
     ) => undefined | Element;
 
     type ResolvedPresenter<T extends object, U extends object> = (
       element: Element,
       result: Resolution<T, U>,
-      event?: Event,
-      signal?: AbortSignal
+      event: Event | undefined,
+      control: Control,
     ) => undefined | Element;
 
     type StalePresenter = (
       element: Element,
-      event?: Event,
-      signal?: AbortSignal
+      event: Event | undefined,
+      control: Control,
     ) => undefined | Element;
 
     type SomePlaceholder = Placeholder<Stage, SomeContext, object>;
@@ -106,12 +106,18 @@ declare namespace Tacocat {
     type Trigger = (
       element: Element,
       listener: (event?: Event) => void,
-      signal?: AbortSignal
+      control: Control,
     ) => Disposer;
 
     // --- interfaces ---
     interface Cache<T> {
       getOrSet(keys: any | any[], factory: () => T): T;
+    }
+
+    interface Control {
+      dispose(disposers: Tacocat.Engine.Disposers, key: any): boolean;
+      release(key: any): void;
+      signal?: AbortSignal;
     }
 
     interface Extract<T extends object> {
@@ -246,15 +252,9 @@ declare namespace Tacocat {
 
     // --- types ---
 
-    type Subscriber = (control: Control, cycle: Cycle) => void;
+    type Subscriber = (control: Engine.Control, cycle: Cycle) => void;
 
     // --- interfaces ---
-    interface Control {
-      dispose(disposers: Tacocat.Engine.Disposers, key: any): boolean;
-      release(key: any): void;
-      signal?: AbortSignal;
-    }
-
     interface Cycle {
       get placeholders(): Placeholder[];
       get scope(): HTMLElement;

@@ -8,7 +8,7 @@ const childListMutation = 'childList';
 const observableMutations = ['attributes', 'characterData', childListMutation];
 
 /**
- * @param {Tacocat.Internal.Control} control
+ * @param {Tacocat.Engine.Control} control
  * @param {Tacocat.Internal.Reactions} reactions
  * @param {Tacocat.Internal.Subscriber[]} subscribers
  * @param {HTMLElement} scope
@@ -35,11 +35,11 @@ function Observe(control, reactions, subscribers, scope, selector, filter) {
   let timer;
 
   /**
-     * Mounts new element to the observation session
-     * by subscribing event listeners and initialising triggers.
-     * @param {HTMLElement} element
-     * @param {(event: Event) => void} listener
-     */
+   * Mounts new element to the observation session
+   * by subscribing defined event listeners and calling triggers.
+   * @param {HTMLElement} element
+   * @param {(event: Event) => void} listener
+   */
   function mount(element, listener) {
     if (cycle.exists(element)) return;
     log.debug('Mounting:', { element });
@@ -51,18 +51,20 @@ function Observe(control, reactions, subscribers, scope, selector, filter) {
     reactions.triggers.forEach((trigger) => {
       const result = safeSync(
         log,
-        'Trigger callback error:',
-        () => trigger(element, listener, control.signal),
+        'Trigger function error:',
+        () => trigger(element, listener, control),
       );
       if (isFunction(result)) {
         control.dispose(result, element);
       } else if (!isNil(result)) {
-        log.warn('Trigger callback must return a function:', { result, trigger });
+        log.warn('Trigger must return a function:', { result, trigger });
       }
     });
   }
 
   /**
+   * Unmounts element by calling its disposers
+   * and removing it from the observation session.
    * @param {HTMLElement} element
    */
   function unmount(element) {
@@ -71,8 +73,8 @@ function Observe(control, reactions, subscribers, scope, selector, filter) {
   }
 
   /**
-     * Schedules async dispatch of observation results.
-     */
+   * Schedules async dispatch of observation results.
+   */
   function schedule() {
     if (timer) return;
 
@@ -112,6 +114,7 @@ function Observe(control, reactions, subscribers, scope, selector, filter) {
     schedule();
   }
 
+  // Activate subscribers
   subscribers.forEach((subscriber) => {
     subscriber(control, cycle);
   });
