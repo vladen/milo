@@ -1,8 +1,8 @@
-import { Event } from './constants.js';
+import { Event } from './constant.js';
 import { NotProvidedError } from './errors.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { hasContext, isNil, isPromise } from './utils';
+import { hasContext, isNil, isPromise } from './util.js';
 
 /**
  * @param {Tacocat.Internal.Provider} provider
@@ -60,13 +60,14 @@ function Provide(provider) {
       safeSync(
         log,
         'Provider callback error:',
-        () => traverse(pending, promises, provider([...pending.values()], control.signal)),
+        () => traverse(pending, promises, provider([...pending.values()], control)),
       );
 
-      const i = 0;
+      let i = 0;
       while (i < promises.length) {
-      // eslint-disable-next-line no-await-in-loop
+        // eslint-disable-next-line no-await-in-loop
         await promises[i].catch(() => {});
+        i += 1;
       }
 
       traverse(pending, [], [...pending.values()].map(
@@ -74,10 +75,14 @@ function Provide(provider) {
       ));
     }
 
-    cycle.listen(Event.extracted, ({ detail: { context } }) => {
-      waiting.set(context.id, context);
-      if (!timer) timer = setTimeout(provide, 1);
-    });
+    cycle.listen(
+      cycle.scope,
+      Event.extracted,
+      ({ detail: { context } }) => {
+        waiting.set(context.id, context);
+        if (!timer) timer = setTimeout(provide, 1);
+      },
+    );
 
     control.dispose(() => log.debug('Aborted'));
     log.debug('Activated:', { provider });

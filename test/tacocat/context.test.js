@@ -1,8 +1,8 @@
-import { expect } from './tools.js';
+import { expect } from './tool.js';
 import Log from '../../libs/tacocat/log.js';
-import { hasContext, setContext } from '../../libs/tacocat/context.js';
+import { Util } from '../../libs/tacocat/index.js';
 
-describe.skip('module "context"', () => {
+describe('module "Util"', () => {
   after(() => {
     Log.reset();
   });
@@ -11,6 +11,8 @@ describe.skip('module "context"', () => {
   });
 
   describe('function "hasContext"', () => {
+    const { hasContext } = Util;
+
     it('returns true if object has context with id', () => {
       expect(hasContext({ context: { id: 'test' } })).to.be.true;
     });
@@ -22,10 +24,12 @@ describe.skip('module "context"', () => {
   });
 
   describe('function "setContext"', () => {
+    const { setContext } = Util;
+
     it('returns true if object has context with id', () => {
       const context = { id: 'test' };
       const result = { foo: 'bar' };
-      expect(setContext(result, context)).to.equal({
+      expect(setContext(result, context)).to.deep.equal({
         context,
         ...result,
       });

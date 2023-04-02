@@ -1,3 +1,5 @@
+import { createTag } from '../utils/utils.js';
+
 /** @type {Tacocat.isNil} */
 export const isNil = (value) => value == null;
 
@@ -11,6 +13,8 @@ export const isError = (value) => !isNil(value) && value instanceof Error;
 export const isFunction = (value) => typeof value === 'function';
 /** @type {Tacocat.isMap} */
 export const isMap = (value) => !isNil(value) && value instanceof Map;
+/** @type {Tacocat.isNumber} */
+export const isNumber = (value) => typeof value === 'number';
 /** @type {Tacocat.isObject} */
 export const isObject = (value) => !isNil(value) && typeof value === 'object';
 /** @type {Tacocat.isPromise} */
@@ -62,7 +66,7 @@ export const setContext = (result, context) => Object.defineProperty(
 /** @type {Tacocat.hasContext}} */
 export const hasContext = (object) => isObject(object)
   // @ts-ignore
-  && isString(object.context.id) && object.context.id.length;
+  && isString(object.context.id) && !!object.context.id.length;
 
 /**
  * @param {boolean?} existing
@@ -89,9 +93,12 @@ export const delay = (timeout, signal = null) => new Promise((resolve) => {
  * @param {string} selector
  * @returns {HTMLElement?}
  */
-export const getMatchingSelfOrAncestor = (element, selector) => (element.matches(selector)
-  ? element
-  : element.closest(selector));
+export const querySelectorUp = (element, selector) => (
+  isNil(element?.parentElement)
+    ? null
+    : element.parentElement.querySelector(selector)
+      ?? querySelectorUp(element.parentElement, selector)
+);
 
 /**
  *
@@ -101,8 +108,8 @@ export const getMatchingSelfOrAncestor = (element, selector) => (element.matches
 export const mergeReactions = (...reactions) => ({
   events: [...new Set(
     reactions
-      .flatMap(({ events } = {}) => events)
-      .filter((event) => event),
+      .flatMap(({ events } = {}) => toArray(events))
+      .filter((event) => isString(event)),
   )],
   mutations: reactions
     .map(({ mutations } = {}) => mutations)
@@ -128,11 +135,15 @@ export const mergeReactions = (...reactions) => ({
     ),
   triggers: reactions
     .map(({ trigger } = {}) => trigger)
-    .filter(isFunction),
+    .filter((trigger) => isFunction(trigger)),
 });
 
+export { createTag };
+
 export default {
-  getMatchingSelfOrAncestor,
+  createTag,
+  delay,
+  querySelectorUp,
   hasContext,
   isBoolean,
   isHTMLElement,

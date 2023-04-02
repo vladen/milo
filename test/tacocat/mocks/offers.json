@@ -3,8 +3,8 @@
     "US": {
       "resolvedOffers": [
         {
-          "offerSelectorIds": ["puf"],
-          "offerId": "1",
+          "offerSelectorIds": ["osi-puf"],
+          "offerId": "offer-1",
           "priceDetails": {
             "price": 599.88,
             "usePrecision": true,
@@ -27,8 +27,8 @@
         },
 
         {
-          "offerSelectorIds": ["puf-promo"],
-          "offerId": "2",
+          "offerSelectorIds": ["osi-puf-promo"],
+          "offerId": "offer-2",
           "priceDetails": {
             "price": 499.88,
             "usePrecision": true,
@@ -51,8 +51,8 @@
         },
 
         {
-          "offerSelectorIds": ["abm"],
-          "offerId": "3",
+          "offerSelectorIds": ["osi-abm"],
+          "offerId": "offer-3",
           "priceDetails": {
             "price": 54.99,
             "usePrecision": true,
@@ -74,8 +74,8 @@
           "merchant": "ADOBE"
         },
         {
-          "offerSelectorIds": ["m2m"],
-          "offerId": "4",
+          "offerSelectorIds": ["osi-m2m"],
+          "offerId": "offer-4",
           "priceDetails": {
             "price": 82.49,
             "usePrecision": true,
@@ -101,8 +101,8 @@
     "GB": {
       "resolvedOffers": [
         {
-          "offerSelectorIds": ["puf"],
-          "offerId": "5",
+          "offerSelectorIds": ["osi-puf"],
+          "offerId": "offer-5",
           "priceDetails": {
             "price": 596.33,
             "usePrecision": true,
@@ -124,8 +124,8 @@
           "merchant": "ADOBE"
         },
         {
-          "offerSelectorIds": ["puf-promo"],
-          "offerId": "6",
+          "offerSelectorIds": ["osi-puf-promo"],
+          "offerId": "offer-6",
           "priceDetails": {
             "price": 496.33,
             "usePrecision": true,
@@ -147,8 +147,8 @@
           "merchant": "ADOBE"
         },
         {
-          "offerSelectorIds": ["abm"],
-          "offerId": "7",
+          "offerSelectorIds": ["osi-abm"],
+          "offerId": "offer-7",
           "priceDetails": {
             "price": 19.97,
             "usePrecision": true,
@@ -170,8 +170,8 @@
           "merchant": "ADOBE"
         },
         {
-          "offerSelectorIds": ["m2m"],
-          "offerId": "8",
+          "offerSelectorIds": ["osi-m2m"],
+          "offerId": "offer-8",
           "priceDetails": {
             "price": 78.98,
             "usePrecision": true,
@@ -197,8 +197,8 @@
     "HK": {
       "resolvedOffers": [
         {
-          "offerSelectorIds": ["puf"],
-          "offerId": "9",
+          "offerSelectorIds": ["osi-puf"],
+          "offerId": "offer-9",
           "priceDetails": {
             "price": 4656.0,
             "usePrecision": true,
@@ -220,8 +220,8 @@
           "merchant": "ADOBE"
         },
         {
-          "offerSelectorIds": ["puf-promo"],
-          "offerId": "10",
+          "offerSelectorIds": ["osi-puf-promo"],
+          "offerId": "offer-10",
           "priceDetails": {
             "price": 3656.0,
             "usePrecision": true,
@@ -243,8 +243,8 @@
           "merchant": "ADOBE"
         },
         {
-          "offerSelectorIds": ["abm"],
-          "offerId": "11",
+          "offerSelectorIds": ["osi-abm"],
+          "offerId": "offer-11",
           "priceDetails": {
             "price": 408.0,
             "usePrecision": true,
@@ -266,8 +266,8 @@
           "merchant": "ADOBE"
         },
         {
-          "offerSelectorIds": ["m2m"],
-          "offerId": "12",
+          "offerSelectorIds": ["osi-m2m"],
+          "offerId": "offer-12",
           "priceDetails": {
             "price": 618.0,
             "usePrecision": true,

@@ -6,6 +6,7 @@ declare namespace Tacocat {
   type isFunction = (value: any) => value is Function;
   type isMap = (value: any) => value is Map<any, any>;
   type isNil = (value: any) => value is null | undefined;
+  type isNumber = (value: any) => value is number;
   type isObject = (value: any) => value is object;
   type isPromise = (value: any) => value is Promise<any>;
   type isString = (value: any) => value is string;
@@ -163,7 +164,6 @@ declare namespace Tacocat {
         stale: string;
       };
       Log: Log.Factory;
-      namespace: string;
       Stage: {
         pending: Pending;
         rejected: Rejected;
@@ -210,11 +210,11 @@ declare namespace Tacocat {
     }
 
     interface Present<T extends object, U extends object> {
-      observe(
-        scope?: Element,
+      observe(options: {
+        scope?: HTMLElement,
         reactions?: Reactions,
         signal?: AbortSignal
-      ): Instance<T, U>;
+      }): Instance<T, U>;
       stale(presenter: StalePresenter): Present<T, U>;
       pending(presenter: PendingPresenter<T>): Present<T, U>;
       rejected(presenter: RejectedPresenter<T>): Present<T, U>;
@@ -224,7 +224,6 @@ declare namespace Tacocat {
     interface Reactions {
       events?: string[];
       mutations?: Mutations;
-      selector?: string;
       trigger?: Trigger;
     }
   }
@@ -242,6 +241,7 @@ declare namespace Tacocat {
       pending: PendingPresenter[];
       rejected: RejectedPresenter[];
       resolved: ResolvedPresenter[];
+      stale: ResolvedPresenter[];
     };
     type Provider = Tacocat.Engine.Provider<SomeContext, SomeContextful>;
     type RejectedPresenter = Tacocat.Engine.RejectedPresenter<SomeContext>;
@@ -263,6 +263,7 @@ declare namespace Tacocat {
       exists(element: HTMLElement): boolean;
       extract(context: SomeContext): void;
       listen(
+        target: HTMLElement,
         types: string | string[],
         listener: Tacocat.CycleEventListener,
         options?: AddEventListenerOptions

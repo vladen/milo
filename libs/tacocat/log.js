@@ -1,5 +1,5 @@
-import constants from './constants.js';
-import { isFunction } from './utils.js';
+import Constant from './constant.js';
+import { isFunction } from './util.js';
 
 const epoch = Date.now();
 /** @type {Map<string, number>} */
@@ -32,7 +32,7 @@ function reportError(message, ...params) {
     Log.level.error,
     message,
     // eslint-disable-next-line import/no-named-as-default-member
-    constants.namespace,
+    Constant.namespace,
     params,
   ));
 }
@@ -134,7 +134,7 @@ Log.use = (...modules) => {
 };
 
 // eslint-disable-next-line import/no-named-as-default-member
-Log.common = Log(constants.namespace);
+Log.common = Log(Constant.namespace);
 Log.reset();
 
 export default Log;

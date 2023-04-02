@@ -1,6 +1,6 @@
 import { pendingTemplate, rejectedTemplate } from './common.js';
-import { CheckoutCssClass, CheckoutDatasetParam, CheckoutTarget, Key, namespace } from '../constants.js';
-import { createTag } from '../../../utils/utils.js';
+import { CheckoutCssClass, CheckoutDatasetParam, CheckoutTarget, Key, namespace } from '../constant.js';
+import { createTag } from '../../util.js';
 import Log from '../../log.js';
 
 const log = Log.common.module(namespace).module('template').module('checkout');
@@ -36,20 +36,6 @@ function onCheckoutButtonClick(event) {
 }
 
 /**
- * @param {HTMLAnchorElement | HTMLButtonElement} element
- * @param {string} target
- * @param {URL} url
- */
-function setCheckoutUrl(element, target, url) {
-  if (element instanceof HTMLAnchorElement) {
-    element.href = url.toString();
-    element.target = target;
-  } else if (element instanceof HTMLButtonElement) {
-    element.disabled = false;
-  }
-}
-
-/**
  * @param {HTMLElement} element
  * @param {Tacocat.Contextful<
  *  Tacocat.Wcs.CheckoutLiterals & Tacocat.Wcs.PlaceholderContext
@@ -77,7 +63,6 @@ function checkoutTemplate(element, { context }, event, control) {
   }
   tag.classList.add(CheckoutCssClass.placeholder);
 
-  if (tag !== element) element.replaceWith(tag);
   // @ts-ignore
   return tag;
 }
@@ -97,12 +82,17 @@ export function pendingCheckoutTemplate(element, { context }, event, control) {
   const tag = checkoutTemplate(element, { context }, event, control);
   pendingTemplate(tag, { context });
 
-  const Param = CheckoutDatasetParam.stale;
+  const Param = CheckoutDatasetParam.pending;
   tag.dataset[Param.client] = context.client;
-  tag.dataset[Param.osis] = context.osis.join('\n');
   tag.dataset[Param.quantities] = context.quantities.join(',');
   tag.dataset[Param.step] = context.step;
   tag.dataset[Param.target] = context.target;
+
+  tag.classList.remove(CheckoutCssClass.link);
+
+  if (element instanceof HTMLAnchorElement) {
+    element.href = '#';
+  }
 
   return tag;
 }
@@ -142,16 +132,23 @@ export function resolvedCheckoutTemplate(element, { context, offers }, event, co
   );
 
   const tag = checkoutTemplate(element, { context }, event, control);
-  setCheckoutUrl(tag, context.target, url);
 
   const Param = CheckoutDatasetParam.resolved;
   tag.dataset[Param.analytics] = analytics.join(' ');
   tag.dataset[Param.commitments] = offers.map(({ commitment }) => commitment).join(',');
   tag.dataset[Param.offers] = offers.map(({ offerId }) => offerId).join(',');
   tag.dataset[Param.terms] = offers.map(({ term }) => term).join(',');
-  if (tag instanceof HTMLButtonElement) {
+
+  if (tag instanceof HTMLAnchorElement) {
+    tag.href = url.toString();
+    tag.style.display = null;
+    tag.target = context.target;
+  } else if (tag instanceof HTMLButtonElement) {
     tag.dataset[Param.url] = url.toString();
+    tag.disabled = false;
   }
+
+  tag.textContent = context.literals.ctaLabel;
 
   return tag;
 }
@@ -162,9 +159,8 @@ export function resolvedCheckoutTemplate(element, { context, offers }, event, co
  */
 export function staleCheckoutTemplate(element) {
   if (element instanceof HTMLAnchorElement) {
-    element.href = '#';
+    element.style.display = 'none';
   } else if (element instanceof HTMLButtonElement) {
     element.disabled = true;
   }
-  return element;
 }

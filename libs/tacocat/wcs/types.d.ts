@@ -23,6 +23,19 @@ declare namespace Tacocat {
       language: string;
     }
 
+    interface PlaceholderContext {
+      extra: DOMStringMap;
+      osis: string[];
+      promo: string;
+      template: string;
+    }
+
+    interface WcsContext extends LocaleContext {
+      currency?: string;
+      osis: string[];
+      promo: string;
+    }
+
     interface CheckoutLiterals {
       literals: {
         ctaLabel: string;
@@ -35,14 +48,8 @@ declare namespace Tacocat {
       target: string;
     }
 
-    interface CheckoutContext extends CheckoutSettings, LocaleContext {
-      osis: string[];
+    interface CheckoutContext extends CheckoutSettings, WcsContext {
       quantities: number[];
-    }
-
-    interface PlaceholderContext {
-      extra: DOMStringMap;
-      template: string;
     }
 
     interface CheckoutPlaceholderContext
@@ -63,8 +70,7 @@ declare namespace Tacocat {
       unit: boolean;
     }
 
-    interface PriceContext extends PriceSettings, LocaleContext {
-      osi: string;
+    interface PriceContext extends PriceSettings, WcsContext {
     }
 
     interface PricePlaceholderContext

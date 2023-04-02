@@ -1,22 +1,28 @@
+import Control from './control.js';
 import Cycle from './cycle.js';
 import Engine from './engine.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isFunction, isNil } from './utils.js';
+import { isFunction, isNil } from './util.js';
 
 const childListMutation = 'childList';
 const observableMutations = ['attributes', 'characterData', childListMutation];
 
 /**
- * @param {Tacocat.Engine.Control} control
- * @param {Tacocat.Internal.Reactions} reactions
- * @param {Tacocat.Internal.Subscriber[]} subscribers
- * @param {HTMLElement} scope
- * @param {string} selector
- * @param {Tacocat.Engine.Filter} filter
+ * @param {{
+ *  reactions: Tacocat.Internal.Reactions;
+ *  subscribers: Tacocat.Internal.Subscriber[];
+ *  scope: HTMLElement;
+ *  signal: AbortSignal;
+ *  selector: string;
+ *  filter: Tacocat.Engine.Filter;
+ * }} detail
  * @returns {Tacocat.Internal.Engine}
  */
-function Observe(control, reactions, subscribers, scope, selector, filter) {
+function Observe({
+  filter, reactions, scope, selector, signal, subscribers,
+}) {
+  const control = Control(signal);
   const log = Log.common.module('observe');
 
   if (control.signal?.aborted) {
@@ -49,6 +55,8 @@ function Observe(control, reactions, subscribers, scope, selector, filter) {
     });
 
     reactions.triggers.forEach((trigger) => {
+      // eslint-disable-next-line no-debugger
+      debugger;
       const result = safeSync(
         log,
         'Trigger function error:',
@@ -87,10 +95,14 @@ function Observe(control, reactions, subscribers, scope, selector, filter) {
 
       updated.forEach(({ element, event }) => {
         mount(element, (nextEvent) => {
+          // eslint-disable-next-line no-debugger
+          debugger;
           updated.add({ element, event: nextEvent });
           schedule();
         });
-        log.debug('Observed:', { element, event });
+        const detail = { element };
+        if (!isNil(event)) detail.event = event;
+        log.debug('Observed:', detail);
         cycle.observe(element, undefined, event);
       });
     }
@@ -125,6 +137,8 @@ function Observe(control, reactions, subscribers, scope, selector, filter) {
   // Setup mutation observer
   if (observableMutations.some((mutation) => reactions.mutations[mutation])) {
     const observer = new MutationObserver((records) => records.forEach((record) => {
+      // eslint-disable-next-line no-debugger
+      debugger;
       if (record.type === childListMutation) {
         const { addedNodes, removedNodes } = record;
         removedNodes.forEach((node) => remove(cycle.match(node)));

@@ -1,7 +1,7 @@
-import { Event } from './constants.js';
+import { Event } from './constant.js';
 import Log from './log.js';
 import { safeAsyncEvery } from './safe.js';
-import { isObject } from './utils.js';
+import { isNil, isObject } from './util.js';
 
 /**
  * @param {Tacocat.Internal.Extractor[]} extractors
@@ -11,6 +11,7 @@ const Extract = (extractors) => (control, cycle) => {
   const log = Log.common.module('extract');
 
   cycle.listen(
+    cycle.scope,
     Event.observed,
     async ({ detail: { context, element } }, event) => {
       const { id: prevId, ...prevRest } = context;
@@ -36,7 +37,9 @@ const Extract = (extractors) => (control, cycle) => {
         if (JSON.stringify(nextRest) !== JSON.stringify(prevRest)) {
           context.id = prevId;
           cycle.extract(context);
-          log.debug('Extracted:', { context, element, event });
+          const detail = { context, element };
+          if (!isNil(event)) detail.event = event;
+          log.debug('Extracted:', detail);
         }
       }
     },

@@ -1,0 +1,67 @@
+<script class="taco-wcs-checkout-literals" type="application/json">
+  {
+    "ctaLabel": "Buy now"
+  }
+</script>
+<script class="taco-wcs-checkout-settings" type="application/json">
+  {
+    "client": "adobe",
+    "step": "email"
+  }
+</script>
+<script class="taco-wcs-price-literals" type="application/json">
+  {
+    "perUnitLabel": "/seat",
+    "recurrenceLabel": "/term"
+  }
+</script>
+<script class="taco-wcs-price-settings" type="application/json">
+  {
+    "format": "1",
+    "tax": "0",
+    "unit": "0"
+  }
+</script>
+
+<section>
+  <h1>ABM</h1>
+  <a
+    class="taco-wcs-ost-price"
+    href="${ostBaseUrl}?osi=osi-abm&template=price&recurrence=1&unit=1&tax=1"
+  ></a>
+
+  <a
+    class="taco-wcs-ost-checkout"
+    href="${ostBaseUrl}?osi=osi-abm&template=checkoutLink&workflowStep=recommendation"
+  ></a>
+</section>
+
+<section>
+  <h1>M2M</h1>
+  <a
+    class="taco-wcs-ost-price"
+    href="${ostBaseUrl}?osi=osi-m2m&template=priceOptical&recurrence=1"
+  ></a>
+
+  <a
+    class="taco-wcs-ost-checkout"
+    href="${ostBaseUrl}?osi=osi-m2m&template=checkoutLink&client=adobe-firefly"
+  ></a>
+</section>
+
+<section>
+  <h1>PUF</h1>
+  <a
+    class="taco-wcs-ost-price"
+    href="${ostBaseUrl}?osi=osi-puf&template=priceStrikethrough&format=0"
+  ></a>
+  <a
+    class="taco-wcs-ost-price"
+    href="${ostBaseUrl}?osi=osi-puf-promo&template=price"
+  ></a>
+
+  <a
+    class="taco-wcs-ost-checkout"
+    href="${ostBaseUrl}?osi=osi-puf&osi=puf-promo&template=checkoutButton"
+  ></a>
+</section>

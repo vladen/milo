@@ -1,14 +1,13 @@
 import { getLocale } from './locale.js';
-import Constant from './constants.js';
-import Parser from './parsers/index.js';
-import Template from './templates/index.js';
-import { matchTemplateDatasetParam, matchTemplateHrefParam } from './utils.js';
+import Constant from './constant.js';
+import Parser from './parser/index.js';
+import Template from './template/index.js';
+import Matcher from './match.js';
 
 export default {
   getLocale,
-  matchTemplateDatasetParam,
-  matchTemplateHrefParam,
   Constant,
+  Matcher,
   Parser,
   Template,
 };

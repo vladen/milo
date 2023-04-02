@@ -1,4 +1,4 @@
-import { Stage } from './constants.js';
+import { Event, Stage } from './constant.js';
 
 /** @type {WeakMap<Tacocat.Internal.Placeholder, Tacocat.Engine.SomePlaceholder>} */
 const placeholders = new WeakMap();
@@ -36,7 +36,16 @@ function Placeholder(cycle, placeholder) {
               reject(placeholder.result);
               break;
             default:
-
+              cycle.listen(
+                placeholder.element,
+                [Event.rejected, Event.resolved],
+                () => {
+                  (placeholder.stage === Stage.resolved ? resolve : reject)(
+                    placeholder.result,
+                  );
+                },
+                { once: true },
+              );
               break;
           }
         });

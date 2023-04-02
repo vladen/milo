@@ -1,4 +1,4 @@
-import { expect, spy } from './tools.js';
+import { expect, spy } from './tool.js';
 import Log from '../../libs/tacocat/log.js';
 import Control from '../../libs/tacocat/control.js';
 

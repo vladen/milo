@@ -1,19 +1,21 @@
 import { pendingTemplate, rejectedTemplate } from './common.js';
-import { Key, PriceCssClass, PriceDatasetParam, namespace } from '../constants.js';
+import { Key, PriceCssClass, PriceDatasetParam, namespace } from '../constant.js';
 import Log from '../../log.js';
-import { isObject } from '../../utils.js';
-import { createTag } from '../../../utils/utils.js';
+import { createTag, isNil, isObject } from '../../util.js';
 
 const log = Log.common.module(namespace).module('template').module('price');
 
 /**
  * @param {HTMLElement} element
+ * @param {string} template
  * @returns {HTMLSpanElement}
  */
-function priceTemplate(element) {
+function priceTemplate(element, template) {
   /** @type {HTMLElement} */
   let tag = element;
-  if (tag.tagName !== 'SPAN') {
+  if (template === Key.priceStrikethrough && tag.tagName !== 'S') {
+    tag = createTag('s');
+  } else if (tag.tagName !== 'SPAN') {
     tag = createTag('span');
   }
   tag.classList.add(PriceCssClass.placeholder);
@@ -31,15 +33,16 @@ function priceTemplate(element) {
  * @returns {HTMLSpanElement} Original or new `span` element.
  */
 export function pendingPriceTemplate(element, { context }) {
-  const tag = priceTemplate(element);
+  const tag = priceTemplate(element, context.template);
   pendingTemplate(tag, { context });
 
-  const Param = PriceDatasetParam.stale;
+  const Param = PriceDatasetParam.pending;
   tag.dataset[Param.format] = context.format.toString();
-  tag.dataset[Param.osi] = context.osi;
   tag.dataset[Param.recurrence] = context.recurrence.toString();
   tag.dataset[Param.tax] = context.tax.toString();
   tag.dataset[Param.unit] = context.unit.toString();
+
+  tag.classList.remove(PriceCssClass.link);
 
   return tag;
 }
@@ -55,13 +58,13 @@ export function pendingPriceTemplate(element, { context }) {
  */
 export function resolvedPriceTemplate(element, { context, offers }) {
   const offer = offers.find(isObject);
-  if (!offer) {
+  if (isNil(offer)) {
     log.warn('No offer was resolved for price context, rejecting placeholder:', { context, element });
     // @ts-ignore
     return rejectedTemplate(element, { context });
   }
 
-  const tag = priceTemplate(element);
+  const tag = priceTemplate(element, context.template);
 
   if (context.template === Key.priceOptical) {
     tag.textContent = Math.round(+offer.priceDetails.price).toString();

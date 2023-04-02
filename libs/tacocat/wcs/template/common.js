@@ -1,5 +1,5 @@
-import { DatasetParam } from '../constants.js';
-import { isNil } from '../../utils.js';
+import { DatasetParam } from '../constant.js';
+import { isNil } from '../../util.js';
 
 /**
  * Updates common Wcs data attributes on the placeholder element from tacocat context.
@@ -13,6 +13,7 @@ export function pendingTemplate(element, { context }) {
   } else {
     element.dataset[Param.extra] = JSON.stringify(context.extra);
   }
+  element.dataset[Param.osis] = context.osis.join('\n');
   element.dataset[Param.template] = context.template;
   return element;
 }
