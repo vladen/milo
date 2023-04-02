@@ -1,12 +1,13 @@
 import { expect } from './tool.js';
-import { Util } from '../../libs/tacocat/index.js';
+import { mergeReactions } from '../../libs/tacocat/util.js';
 
+// TODO: fix tests
 describe.skip('module "Util"', () => {
   describe('function "mergeReactions"', () => {
     it('merges several mutation observer settings into one object', () => {
       const trigger1 = () => { };
       const trigger2 = () => { };
-      expect(Util.mergeReactions([
+      expect(mergeReactions([
         {
           events: ['test1'],
           mutations: { attributes: true, attributeFilter: ['class'] },

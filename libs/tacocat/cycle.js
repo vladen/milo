@@ -171,7 +171,7 @@ function Cycle(control, scope, selector, filter) {
         placeholders.set(context.id, placeholder);
       } else {
         const { id } = placeholder.context;
-        placeholder.context = Object.assign(context, placeholder.context, { id });
+        placeholder.context = Object.assign(placeholder.context, context, { id });
       }
       dispatch(false, Event.observed, placeholder);
     },

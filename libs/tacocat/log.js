@@ -106,10 +106,10 @@ Log.consoleWriter = {
 /** @type {Tacocat.Log.isLog} */
 Log.isLog = (object) => object != null && object[Symbol.toStringTag] === tag;
 
-Log.reset = (env) => {
+Log.reset = (env = 'prod') => {
   filters.clear();
   writers.clear();
-  if (true || env?.startsWith('dev')) { // TODO: restore
+  if (env?.toLowerCase() === 'dev') {
     Log.use(Log.consoleWriter);
   } else {
     Log.use(Log.debugFilter);
