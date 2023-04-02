@@ -3,12 +3,10 @@
 import { readFile } from '@web/test-runner-commands';
 import WcsMock from './mocks/wcs.js';
 import { expect } from './tool.js';
-import Tacocat, { Util } from '../../libs/tacocat/index.js';
+import Tacocat from '../../libs/tacocat/index.js';
 import Wcs from '../../libs/tacocat/wcs/index.js';
 
 /*
-- processing DOM snapshot
-  - breaks after immediate abort
 - tiggering by events
   - updates placeholders when event is dispatched
   - event data can be used in extractor
@@ -31,13 +29,13 @@ describe('module "Tacocat"', () => {
     document.body.innerHTML = '';
   });
   beforeEach(() => {
-    Tacocat.Log.use(Tacocat.Log.consoleWriter);
+    Tacocat.Log.use();
     controller = new AbortController();
     observation = { signal: controller.signal };
   });
 
-  describe('pipeline', () => {
-    it('processes placeholders present in DOM', async () => {
+  describe('OST pipeline', () => {
+    it('processes placeholders', async () => {
       document.body.innerHTML = (await readFile({ path: './mocks/links.html' })).replaceAll(
         // eslint-disable-next-line no-template-curly-in-string
         '${ostBaseUrl}',

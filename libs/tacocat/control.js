@@ -19,16 +19,14 @@ function Control(signal) {
   /** @type {Map<any, Tacocat.Engine.Disposer[]>} */
   const disposers = new Map();
 
-  const onAbort = (listener) => signal?.addEventListener(
+  signal?.addEventListener?.(
     'abort',
-    listener,
+    () => {
+      log.debug('Aborted:', signal.reason?.message ?? signal.reason);
+      dispose([...disposers.values()].flat());
+    },
     { once: true },
   );
-
-  onAbort(() => {
-    log.debug('Aborted:', signal.reason?.message ?? signal.reason);
-    dispose([...disposers.values()].flat());
-  });
 
   log.debug('Activated:', { signal });
 

@@ -1,7 +1,7 @@
 import { expect, spy } from './tool.js';
 import Log from '../../libs/tacocat/log.js';
 
-describe.skip('function "Log"', () => {
+describe('function "Log"', () => {
   describe('returned object', () => {
     describe('property "id"', () => {
       it('returns namespace concatenated with index of this Log instance', () => {

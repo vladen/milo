@@ -1,8 +1,9 @@
 import { expect, spy } from './tool.js';
 import Log from '../../libs/tacocat/log.js';
 import Control from '../../libs/tacocat/control.js';
+import { Util } from '../../libs/tacocat/index.js';
 
-describe.skip('function "Control"', () => {
+describe('function "Control"', () => {
   after(() => {
     Log.reset();
   });
@@ -23,29 +24,32 @@ describe.skip('function "Control"', () => {
         const key = {};
 
         control.dispose(disposer1, key);
-        expect(disposer1).not.to.have.been.called;
+        expect(disposer1.called).to.be.false;
         control.dispose(disposer2, key);
-        expect(disposer2).not.to.have.been.called;
+        expect(disposer2.called).to.be.false;
         control.release(key);
-        expect(disposer1).to.have.been.called;
-        expect(disposer2).to.have.been.called;
+        expect(disposer1.called).to.be.true;
+        expect(disposer2.called).to.to.be.true;
       });
     });
 
-    describe('method "dispose"', () => {
-      it('registers disposer calbacks called on abort signal', () => {
+    // TODO: fix test
+    describe.skip('method "dispose"', () => {
+      it('registers disposer calbacks called on abort signal', async () => {
         const controller = new AbortController();
         const control = Control({ signal: controller.signal });
         const disposer1 = spy();
         const disposer2 = spy();
 
         control.dispose(disposer1);
-        expect(disposer1).not.to.have.been.called;
+        expect(disposer1.called).to.be.false;
         control.dispose(disposer2);
-        expect(disposer2).not.to.have.been.called;
-        controller.abort();
-        expect(disposer1).to.have.been.called;
-        expect(disposer2).to.have.been.called;
+        expect(disposer2.called).to.be.false;
+        controller.abort('test');
+        await Util.delay(100);
+
+        expect(disposer1.called).to.be.true;
+        expect(disposer2.called).to.be.true;
       });
     });
   });
