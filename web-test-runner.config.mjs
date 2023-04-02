@@ -1,5 +1,8 @@
+/* eslint-disable import/no-extraneous-dependencies */
 import { importMapsPlugin } from '@web/dev-server-import-maps';
+import { filePlugin } from '@web/test-runner-commands/plugins';
 
+/** @type {import('@web/test-runner').TestRunnerConfig} */
 export default {
   coverageConfig: {
     exclude: [
@@ -12,7 +15,8 @@ export default {
       '**/ui/controls/**',
       '**/blocks/library-config/**',
       '**/hooks/**',
+      '**/special/tacocat/**',
     ],
   },
-  plugins: [importMapsPlugin({})],
+  plugins: [importMapsPlugin({}), filePlugin()],
 };
