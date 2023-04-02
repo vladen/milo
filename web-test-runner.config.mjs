@@ -1,4 +1,4 @@
-/* eslint-disable import/no-extraneous-dependencies */
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { importMapsPlugin } from '@web/dev-server-import-maps';
 
 /** @type {import('@web/test-runner').TestRunnerConfig} */
