@@ -206,6 +206,11 @@ describe.skip('tacocat pipeline', () => {
       expect(commitment).to.be(wcsOffers[0].commitment);
       expect(offer).to.be(wcsOffers[0].offerId);
       expect(term).to.be(wcsOffers[0].term);
+      expect(element.innerText).to.be(
+        taco.context.template === Wcs.Constant.Key.priceOptical
+          ? Math.round(wcsOffers[0].price, 10).toString()
+          : Number.parseInt(wcsOffers[0].price, 10).toString(),
+      );
     }
   });
 });
