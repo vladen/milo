@@ -1,136 +1,167 @@
+import Control from './control.js';
+import Cycle from './cycle.js';
+import Engine from './engine.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isFunction } from './utilities.js';
+import { isFunction, isNil } from './util.js';
+
+const childListMutation = 'childList';
+const observableMutations = ['attributes', 'attributeFilter', 'characterData', childListMutation];
 
 /**
- * @param {Tacocat.Internal.Control} control
- * @param {Tacocat.Internal.Listener[]} listeners
- * @param {Tacocat.Internal.Mutations} mutations
- * @returns {Tacocat.Internal.SafeObserver}
+ * @param {{
+ *  reactions: Tacocat.Internal.Reactions;
+ *  subscribers: Tacocat.Internal.Subscriber[];
+ *  scope: HTMLElement;
+ *  signal: AbortSignal;
+ *  selector: string;
+ *  filter: Tacocat.Engine.Filter;
+ * }} detail
+ * @returns {Tacocat.Internal.Engine}
  */
-function Observe(control, listeners, mutations) {
-  const log = Log.common.module('observer');
-  log.debug('Created:', { control, listeners, mutations });
+function Observe({
+  filter, reactions, scope, selector, signal, subscribers,
+}) {
+  const control = Control(signal);
+  const log = Log.common.module('observe');
 
-  return (consumer, { matcher, scope, selector }) => {
-    if (control.dispose(() => log.debug('Disposed'))) return;
+  if (control.signal?.aborted) {
+    return {
+      get placeholders() {
+        return [];
+      },
+    };
+  }
 
-    /** @type {Set<Element>} */
-    const listening = new Set();
-    /** @type {Set<Element>} */
-    const removed = new Set();
-    /** @type {Set<Element>} */
-    const updated = new Set();
-    let timer;
-    /**
-     * @param {Node} node
-     * @returns {Element | undefined}
-     */
-    function match(node) {
-      const element = node instanceof Element
-        ? node
-        : node.parentElement;
-      if (element) {
-        if (matcher(element)) return element;
-        if (mutations.subtree) {
-          const closest = element.closest(selector);
-          if (closest?.compareDocumentPosition(scope) === Node.DOCUMENT_POSITION_CONTAINS) {
-            return closest;
-          }
-        }
+  const cycle = Cycle(control, scope, selector, filter);
+  /** @type {Set<HTMLElement>} */
+  const removed = new Set();
+  /** @type {Map<HTMLElement, Event?>} */
+  const updated = new Map();
+  let timer;
+
+  /**
+   * Mounts new element to the observation session
+   * by subscribing defined event listeners and calling triggers.
+   * @param {HTMLElement} element
+   * @param {(event: Event) => void} listener
+   */
+  function mount(element, listener) {
+    if (cycle.exists(element)) return;
+    log.debug('Mounting:', { element });
+
+    reactions.events.forEach((type) => {
+      element.addEventListener(type, listener, { signal: control.signal });
+    });
+
+    reactions.triggers.forEach((trigger) => {
+      // eslint-disable-next-line no-debugger
+      debugger;
+      const result = safeSync(
+        log,
+        'Trigger function error:',
+        () => trigger(element, listener, control),
+      );
+      if (isFunction(result)) {
+        control.dispose(result, element);
+      } else if (!isNil(result)) {
+        log.warn('Trigger must return a function:', { result, trigger });
       }
-      return undefined;
+    });
+  }
+
+  /**
+   * Unmounts element by calling its disposers
+   * and removing it from the observation session.
+   * @param {HTMLElement} element
+   */
+  function unmount(element) {
+    cycle.dispose(element);
+    log.debug('Unmounted:', { element });
+  }
+
+  /**
+   * Schedules async dispatch of observation results.
+   */
+  function schedule() {
+    if (timer) return;
+
+    function dispatch() {
+      if (control.signal?.aborted) return;
+      timer = 0;
+      removed.forEach(unmount);
+
+      updated.forEach((event, element) => {
+        mount(element, (nextEvent) => {
+          // eslint-disable-next-line no-debugger
+          debugger;
+          updated.set(element, nextEvent);
+          schedule();
+        });
+        const detail = { element };
+        if (!isNil(event)) detail.event = event;
+        setTimeout(() => {
+          log.debug('Observed:', detail);
+          cycle.observe(element, undefined, event);
+        }, 1);
+      });
     }
 
-    function produce() {
-      if (!timer) {
-        timer = setTimeout(() => {
-          timer = 0;
-          if (removed.size || updated.size) {
-            const placeholders = [
-              ...[...removed].map((element) => ({ context: null, element })),
-              ...[...updated].map((element) => ({ context: {}, element })),
-            ];
-            if (removed.size) {
-              log.debug('Removed:', { elements: [...removed] });
-              removed.clear();
-            }
-            if (updated.size) {
-              log.debug('Updated:', { elements: [...updated] });
-              updated.clear();
-            }
-            consumer(placeholders);
-          }
-        }, 0);
-      }
-    }
+    timer = setTimeout(dispatch, 0);
+  }
 
-    function remove(element) {
-      if (!element) return;
-
-      control.release(element);
+  /**
+   * Adds element to the remove queue and schedules async handling.
+   * @param {HTMLElement} element
+   */
+  function remove(element) {
+    if (element) {
       removed.add(element);
       updated.delete(element);
     }
+    schedule();
+  }
 
-    function update(element) {
-      if (!element) return;
-
+  /**
+   * Adds element to the update queue and schedules async handling.
+   * @param {HTMLElement} element
+   */
+  function update(element) {
+    if (element) {
       removed.delete(element);
-      updated.add(element);
+      updated.set(element, undefined);
+    }
+    schedule();
+  }
 
-      if (listeners.length && !listening.has(element)) {
-        const listen = () => {
-          updated.add(element);
-          produce();
-        };
-        listeners.forEach((listener) => {
-          const disposer = safeSync(log, 'Listener callback error:', () => listener(element, listen));
-          if (isFunction(disposer)) {
-            control.dispose(disposer, element);
-          } else {
-            log.error('Listener callback must return a function:', { listener });
-          }
-        });
-        log.debug('Listening:', { element, listeners });
-        listening.add(element);
+  // Activate subscribers
+  subscribers.forEach((subscriber) => {
+    subscriber(control, cycle);
+  });
+
+  // Scan current DOM tree for matching elements
+  cycle.select().forEach(update);
+
+  let observing = false;
+  // Setup mutation observer
+  if (observableMutations.some((mutation) => reactions.mutations[mutation])) {
+    const observer = new MutationObserver((records) => records.forEach((record) => {
+      if (record.type === childListMutation) {
+        const { addedNodes, removedNodes } = record;
+        removedNodes.forEach((node) => remove(cycle.match(node)));
+        addedNodes.forEach((node) => update(cycle.match(node)));
+      } else {
+        update(cycle.match(record.target));
       }
-    }
+    }));
+    observer.observe(scope, reactions.mutations);
+    control.dispose(() => observer.disconnect());
+    observing = true;
+  }
 
-    const elements = [scope];
-    let index = 0;
-    while (index < elements.length) {
-      const element = elements[index];
-      if (mutations.childList) elements.push(...element.children);
-      update(match(element));
-      index += 1;
-    }
-    produce();
-
-    if (['attributes', 'characterData', 'childList'].some((key) => mutations[key])) {
-      const observer = new MutationObserver((records) => records.forEach((record) => {
-        const { type } = record;
-        if (type === 'attributes' || type === 'characterData') {
-          const element = match(record.target);
-          if (element) updated.add(element);
-        } else if (type === 'childList') {
-          const { addedNodes, removedNodes } = record;
-          [...removedNodes].forEach((node) => {
-            remove(match(node));
-          });
-          [...addedNodes].forEach((node) => {
-            update(match(node));
-          });
-        }
-
-        produce();
-      }));
-
-      observer.observe(scope, mutations);
-      control.dispose(() => observer.disconnect());
-      log.debug('Observing:', { scope, selector });
-    }
-  };
+  control.dispose(() => log.debug('Aborted'));
+  log.debug('Activated:', { observing, reactions, scope, selector });
+  return Engine(cycle);
 }
 
 export default Observe;

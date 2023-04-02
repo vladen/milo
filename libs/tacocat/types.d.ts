@@ -1,194 +1,321 @@
 declare namespace Tacocat {
   // --- types ---
+  type isBoolean = (value: any) => value is boolean;
+  type isHTMLElement = (value: any) => value is HTMLElement;
+  type isError = (value: any) => value is Error;
   type isFunction = (value: any) => value is Function;
+  type isMap = (value: any) => value is Map<any, any>;
   type isNil = (value: any) => value is null | undefined;
+  type isNumber = (value: any) => value is number;
   type isObject = (value: any) => value is object;
   type isPromise = (value: any) => value is Promise<any>;
-  type isUndefined = (value: any) => value is undefined;
+  type isString = (value: any) => value is string;
+  type isWeakMap = (value: any) => value is WeakMap<any, any>;
 
-  type hasContext = (candidate: any, key?: string) => candidate is Result<any, any>;
-  type isFailure = (candidate: any, key?: string) => candidate is Failure<any>;
-  type isProduct = (candidate: any, key?: string) => candidate is Product<any, any>;
+  type parseHrefParams = (element: HTMLAnchorElement) => URLSearchParams;
+  type tryParseJson = (json: string, message?: string) => any | undefined;
 
-  type Contextful<T> = { context?: T };
-  type Failure<T> = Contextful<T> & Error;
-  type Product<T, U> = Contextful<T> & { value?: U };
-  type Result<T, U> = Failure<T> | Product<T, U>;
+  type Context<T extends object> = T & { id?: string };
+
+  type Rejection<T extends object> = Contextful<T> & Error;
+  type Resolution<T extends object, U extends object> = Contextful<T> & U;
+
+  type hasContext = (candidate: any) => candidate is Contextful<any>;
+
+  type Mounted = 'mounted';
+  type Pending = 'pending';
+  type Rejected = 'rejected';
+  type Resolved = 'resolved';
+  type Stage = Mounted | Pending | Rejected | Resolved;
+
+  type SomeContext = Context<{}>;
+  type SomeContextful = Contextful<SomeContext>;
+  type SomeRejection = Rejection<SomeContext>;
+  type SomeResolution = Resolution<SomeContext, object>;
+  type SomeResult = SomeRejection | SomeResolution;
+
+  type CycleEvent = CustomEvent<{
+    context: SomeContext;
+    element: HTMLElement;
+    stage: Stage;
+    result: SomeResult;
+  }>;
+
+  type CycleEventListener = (event: CycleEvent, cause: Event) => void;
+
+  type Writable<T> = { -readonly [K in keyof T]: T[K] };
+
+  // --- interfaces ---
+
+  interface Contextful<T extends object> {
+    context: Context<T>;
+  }
 
   module Engine {
     // --- types ---
-    type Declarer<T, U extends object> = (context: T) => U;
+    type Disposer = () => void;
+    type Disposers = Disposer | Disposer[] | Disposer[][];
 
-    type Extractor<T, U extends object> = (context: T, element: Element) => U;
-
-    type Factory = (
-      signal?: AbortSignal,
-      timeout?: number
-    ) => {
-      declare<T extends object>(context: T): Declare<T>;
-      declare<T extends object>(declarer: Declarer<object, T>): Declare<T>;
-    };
-
-    type Listener = (
+    type Extractor<T extends object, U extends object> = (
+      context: T,
       element: Element,
-      listener: (event: Event) => void
-    ) => () => void;
+      event: Event | undefined,
+      control: Control,
+    ) => Promise<U> | U;
+
+    type Filter = (element: Element) => boolean;
+
+    type MountedPresenter = (
+      element: Element,
+      event: Event | undefined,
+      control: Control,
+    ) => undefined | Element;
 
     type Mutations = Omit<
       MutationObserverInit,
       'attributeOldValue' | 'characterDataOldValue'
     >;
 
-    type Provider<T, U> = (control: Control, contexts: T[]) => any;
+    type PendingPresenter<T extends object> = (
+      element: Element,
+      result: Contextful<T>,
+      event: Event | undefined,
+      control: Control,
+    ) => undefined | Element;
 
-    type Transformer<T, U, V extends U> = (
-      product: Product<T, U>
-    ) => Result<T, V>;
+    type Provider<T extends object, U extends object> = (
+      contexts: T[],
+      control: Control,
+    ) => Promise<Resolution<T, U>>[];
+
+    type RejectedPresenter<T extends object> = (
+      element: Element,
+      result: Rejection<T>,
+      event: Event | undefined,
+      control: Control,
+    ) => undefined | Element;
+
+    type ResolvedPresenter<T extends object, U extends object> = (
+      element: Element,
+      result: Resolution<T, U>,
+      event: Event | undefined,
+      control: Control,
+    ) => undefined | Element;
+
+    type SomePlaceholder = Placeholder<Stage, SomeContext, object>;
+
+    type Trigger = (
+      element: Element,
+      listener: (event?: Event) => void,
+      control: Control,
+    ) => Disposer;
 
     // --- interfaces ---
+    interface Cache<T> {
+      getOrSet(keys: any | any[], factory: () => T): T;
+    }
+
     interface Control {
+      dispose(disposers: Tacocat.Engine.Disposers, key: any): boolean;
+      release(key: any): void;
       signal?: AbortSignal;
-      timeout?: number;
     }
 
-    interface Declare<T extends object> {
-      declare<U extends object>(declarer: Declarer<T, U>): Declare<T & U>;
-      declare<U extends object>(context: U): Declare<T & U>;
-
+    interface Extract<T extends object> {
       extract<U extends object>(
         extractor: Extractor<T, U>,
-        mutations?: Mutations
+        reactions?: Reactions
       ): Extract<T & U>;
+      provide<U extends object>(provider: Provider<T, U>): Present<T, U>;
     }
 
-    interface Extract<T> {
-      extract<U extends object>(
-        extractor: Extractor<T, U>,
-        mutations?: Mutations,
-        listener?: Listener
-      ): Extract<T & U>;
-
-      provide<U>(provider: Provider<T, U>): Transform<T, U>;
+    interface Select {
+      /**
+       * Defines function extracting context objects from placeholder elements and reactions triggering updates of placeholders.
+       * @param extractor
+       * A function accepting already extracted context and DOM element being processed as placeholder.
+       * Returns null to cancel placeholder processing or object to merge into pipeline context.
+       * @param reactions
+       * Lists of event types to listen on element and/or mutations to observe and/or custom function triggering
+       * this pipeline.
+       */
+      extract<T extends object>(
+        extractor: Extractor<object, T>,
+        reactions?: Reactions
+      ): Extract<T>;
     }
 
-    interface Observe<T, U> {
-      explore(scope: Element, selector?: string): Placeholder[];
-
-      observe(scope: Element, selector?: string): Observe<T, U>;
-
-      refresh(scope: Element, selector?: string): Promise<Placeholder[]>;
-
-      resolve(context: T): Promise<Product<T, U>>;
+    interface Factory {
+      /**
+       * Defines CSS selector matching placeholder elements to be processed by tacocat.
+       * @param selector
+       */
+      select<T extends object>(selector: string, filter?: Filter): Select;
+      CssClass: {
+        mounted: string;
+        pending: string;
+        rejected: string;
+        resolved: string;
+      };
+      Event: {
+        mounted: string;
+        pending: string;
+        rejected: string;
+        resolved: string;
+      };
+      Log: Log.Factory;
+      Stage: {
+        mounted: Mounted;
+        pending: Pending;
+        rejected: Rejected;
+        resolved: Resolved;
+      };
     }
 
-    interface Placeholder {
-      context: object;
-      element: Element;
-      stage?: 'pending' | 'resolved' | 'rejected';
-      value?: any;
+    interface Instance<T extends object, U extends object> {
+      get placeholders(): (
+        | PendingPlaceholder<T, U>
+        | RejectedPlaceholder<T, U>
+        | ResolvedPlaceholder<T, U>
+        | StalePlaceholder<T, U>
+      )[];
     }
 
-    interface Render<T, U> {
-      observe(scope: Element, selector?: string): Observe<T, U>;
-
-      render(renderers: Renderers<T, U>): Render<T, U>;
+    interface Placeholder<T extends Stage, U extends object, V extends object> {
+      readonly context: U;
+      readonly element: HTMLElement;
+      readonly event: Event;
+      get promise(): Promise<V>;
+      readonly result?: Contextful<U>;
+      readonly stage: T;
+      update(context: U): void;
     }
 
-    type PendingRenderer = (element: Element) => void;
-    type RejectedRenderer<T> = (
-      element: Element,
-      failure: Failure<T>
-    ) => void;
-    type ResolvedRenderer<T, U> = (
-      element: Element,
-      product: Product<T, U>
-    ) => void;
-    interface Renderers<T, U> {
-      pending?: PendingRenderer | PendingRenderer[];
-
-      rejected?: RejectedRenderer<T> | RejectedRenderer<T>[];
-
-      resolved?: ResolvedRenderer<T, U> | ResolvedRenderer<T, U>[];
+    interface StalePlaceholder<T extends object, U extends object>
+      extends Placeholder<Mounted, T, U> {
     }
 
-    interface Transform<T, U> {
-      transform<V extends U>(
-        transformer: Transformer<T, U, V>
-      ): Transform<T, V>;
+    interface PendingPlaceholder<T extends object, U extends object>
+      extends Placeholder<Pending, T, U> {
+    }
 
-      render(renderers: Renderers<T, U>): Render<T, U>;
+    interface RejectedPlaceholder<T extends object, U extends object>
+      extends Placeholder<Rejected, T, U> {
+      readonly result: Rejection<T>;
+    }
+
+    interface ResolvedPlaceholder<T extends object, U extends object>
+      extends Placeholder<Resolved, T, U> {
+      readonly result: Resolution<T, U>;
+    }
+
+    interface Present<T extends object, U extends object> {
+      observe(options: {
+        scope?: HTMLElement,
+        reactions?: Reactions,
+        signal?: AbortSignal
+      }): Instance<T, U>;
+      mounted(presenter: MountedPresenter): Present<T, U>;
+      pending(presenter: PendingPresenter<T>): Present<T, U>;
+      rejected(presenter: RejectedPresenter<T>): Present<T, U>;
+      resolved(presenter: ResolvedPresenter<T, U>): Present<T, U>;
+    }
+
+    interface Reactions {
+      events?: string[];
+      mutations?: Mutations;
+      trigger?: Trigger;
     }
   }
 
   module Internal {
-    // --- types ---
-    type Consumer = (product: Product) => void;
-    type Control = Tacocat.Engine.Control & {
-      dispose(disposer: () => void, key: any): boolean;
-      expire<T>(fallback: T): Promise<T>;
-      release(key: any): void;
+    // --- aliases ---
+    type Engine = Tacocat.Engine.Instance<any, any>;
+    type Extractor = Tacocat.Engine.Extractor<SomeContext, SomeContext>;
+    type PendingPresenter = Tacocat.Engine.PendingPresenter<SomeContext>;
+    type Placeholder = Writable<
+      Omit<Engine.SomePlaceholder, 'promise' | 'update'>
+    >;
+    type Presenter = PendingPresenter | RejectedPresenter | ResolvedPresenter;
+    type Presenters = {
+      pending: PendingPresenter[];
+      rejected: RejectedPresenter[];
+      resolved: ResolvedPresenter[];
+      stale: ResolvedPresenter[];
     };
-    type Declarer = Tacocat.Engine.Declarer<any, any>;
-    type Engine = Omit<Tacocat.Engine.Observe<any, any>, 'observe'>;
-    type Extractor = Tacocat.Engine.Extractor<any, any>;
-    type Failure = Tacocat.Failure<any>;
-    type Listener = Tacocat.Engine.Listener;
-    type Mutations = Tacocat.Engine.Mutations;
-    type Product = Tacocat.Product<any, any>;
-    type Provider = Tacocat.Engine.Provider<any, any>;
-    type Renderers = Tacocat.Engine.Renderers<any, any>;
-    type Resolver = (products: Product[]) => void;
-    type Result = Tacocat.Result<any, any>;
-    type SafeDeclarer = (context: object) => boolean;
-    type SafeExtractor = (context: object, element: Element) => boolean;
-    type SafeObserver = (
-      consumer: (placeholders: Tacocat.Engine.Placeholder[]) => void,
-      subtree: Subtree
-    ) => void;
-    type SafeProvider = (
-      contexts: object[],
-      consumer: Consumer,
-    ) => Promise<Product[]>;
-    type SafeRenderer = (
-      element: Element,
-      result: Tacocat.Result<any, any> | undefined
-    ) => void;
-    type SelectorMatcher = (element: Element) => boolean;
-    type Transformer = (product: Product) => Product;
+    type Provider = Tacocat.Engine.Provider<SomeContext, SomeContextful>;
+    type RejectedPresenter = Tacocat.Engine.RejectedPresenter<SomeContext>;
+    type ResolvedPresenter = Tacocat.Engine.ResolvedPresenter<
+      SomeContext,
+      SomeContextful
+    >;
+
+    // --- types ---
+
+    type Subscriber = (control: Engine.Control, cycle: Cycle) => void;
 
     // --- interfaces ---
-    interface Subtree {
-      matcher: SelectorMatcher;
-      scope: Element;
-      selector?: string;
+    interface Cycle {
+      get placeholders(): Placeholder[];
+      get scope(): HTMLElement;
+      get selector(): string;
+      dispose(element: HTMLElement): void;
+      exists(element: HTMLElement): boolean;
+      extract(context: SomeContext): void;
+      listen(
+        target: HTMLElement,
+        types: string | string[],
+        listener: Tacocat.CycleEventListener,
+        options?: AddEventListenerOptions
+      ): void;
+      match(node: Node): HTMLElement;
+      observe(element: HTMLElement, context?: SomeContext, event?: Event): void;
+      present(context: SomeContext, element?: HTMLElement): void;
+      provide(result: SomeResult): void;
+      select(): Element[];
     }
-    interface Workflow {
-      observer: Tacocat.Internal.SafeObserver;
-      extractor: Tacocat.Internal.SafeExtractor;
-      provider: Tacocat.Internal.SafeProvider;
-      renderer: Tacocat.Internal.SafeRenderer;
+
+    interface Reactions {
+      events: string[];
+      mutations: Tacocat.Engine.Mutations;
+      triggers: Tacocat.Engine.Trigger[];
+    }
+
+    interface Subtree {
+      match(element: Element): boolean;
+      scope: Element;
+      select(element: Element): Element[];
     }
   }
 
   module Log {
     // --- types ---
+    type isLog = (candidate: any) => candidate is Instance;
+
     type Factory = {
       (namespace: string): Instance;
       common: Instance;
-      level: Level;
-      reset(): void;
+      level: {
+        debug: 'debug';
+        error: 'error';
+        info: 'info';
+        warn: 'warn';
+      };
+
+      consoleWriter: Module;
+      debugFilter: Module;
+      quietFilter: Module;
+
+      isLog: isLog;
+      reset(environment?: string): void;
       use(...modules: Module[]): Factory;
     };
 
-    type Level = {
-      debug: 'debug';
-      error: 'error';
-      info: 'info';
-      warn: 'warn';
-    };
+    type Level = 'debug' | 'error' | 'info' | 'warn';
 
     // --- interfaces ---
     interface Instance {
+      readonly id: string;
       readonly namespace: string;
       debug(message: string, ...params: any[]): void;
       error(message: string, ...params: any[]): void;

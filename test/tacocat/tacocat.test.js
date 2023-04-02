@@ -1,109 +1,65 @@
-import { expect } from './tools.js';
-import Log, { quietFilter } from '../../libs/tacocat/log.js';
-import Tacocat from '../../libs/tacocat/tacocat.js';
-import { delay } from '../../libs/tacocat/utilities.js';
+/// <reference path="../../libs/tacocat/types.d.ts" />
+/// <reference path="../../libs/tacocat/wcs/types.d.ts" />
+import { readFile } from '@web/test-runner-commands';
+import WcsMock from './mocks/wcs.js';
+import { expect } from './tool.js';
+import Tacocat, { Util } from '../../libs/tacocat/index.js';
+import Wcs from '../../libs/tacocat/wcs/index.js';
 
-describe('function "Tacocat"', () => {
-  let controller = new AbortController();
+/*
+- processing DOM snapshot
+  - breaks after immediate abort
+- tiggering by events
+  - updates placeholders when event is dispatched
+  - event data can be used in extractor
+  - stops after abort
+- tiggering by mutations
+  - updates placeholders when their attribute mutates
+  - stops after abort
+- resilience
+  - does not throw if extractor/provider/presenter throw
+*/
 
-  after(() => {
-    Log.reset();
-  });
-
-  before(() => {
-    Log.use(quietFilter);
-  });
+describe('module "Tacocat"', () => {
+  /** @type {AbortController} */
+  let controller;
+  let observation;
 
   afterEach(() => {
-    document.body.innerHTML = '';
     controller.abort();
+    Tacocat.Log.reset();
+    document.body.innerHTML = '';
+  });
+  beforeEach(() => {
+    Tacocat.Log.use(Tacocat.Log.consoleWriter);
     controller = new AbortController();
+    observation = { signal: controller.signal };
   });
 
-  it.only('processes placeholders existed in the DOM', async () => {
-    document.body.innerHTML = `
-      <a href="https://sidekick.milo.adobe.com/plugin/wcs?osi=abc123&type=price">???</a>
-    `;
+  describe('pipeline', () => {
+    it('processes placeholders present in DOM', async () => {
+      document.body.innerHTML = (await readFile({ path: './mocks/links.html' })).replaceAll(
+        // eslint-disable-next-line no-template-curly-in-string
+        '${ostBaseUrl}',
+        Wcs.Constant.ostBaseUrl,
+      );
 
-    Tacocat(controller.signal)
-      .declare({})
-      .extract((context, element) => Object.fromEntries([
-        ...new URL(element.href).searchParams.entries(),
-      ]), { childList: true })
-      .provide((_, contexts) => contexts.map((context) => ({ context, value: 'test' })))
-      .render({
-        pending(element) {
-          element.textContent = '...';
-        },
-        rejected(element) {
-          element.textContent = '---';
-        },
-        resolved(element, product) {
-          Object.entries(product.context).forEach(([key, value]) => {
-            element.href = '#';
-            element.dataset[key] = value;
-            element.textContent = '+++';
-          });
-          element.setAttribute('value', product.value);
-        },
-      })
-      .observe(document.body, 'a[href*="sidekick.milo.adobe.com/plugin/wcs"');
+      const {
+        checkoutOstLink, checkoutPlaceholder,
+        priceOstLink, pricePlaceholder,
+        run,
+      } = WcsMock(
+        JSON.parse(await readFile({ path: './mocks/offers.json' })),
+      );
 
-    await delay(10);
-    expect(document.body.innerHTML.trim()).to.equal(`
-      <a href="#" data-osi="abc123" data-type="price" value="test">+++</a>
-    `.trim());
-  });
+      await run(
+        checkoutOstLink.observe(observation),
+        checkoutPlaceholder.observe(observation),
+        priceOstLink.observe(observation),
+        pricePlaceholder.observe(observation),
+      );
 
-  it('updates placeholder on attribute change', () => {
-
-  });
-
-  it('updates placeholder on text change', () => {
-
-  });
-
-  it('updates placeholder on child element addition', () => {
-
-  });
-
-  it('updates placeholder on descendant element addition', () => {
-
-  });
-
-  it('updates placeholder on child element removal', () => {
-
-  });
-
-  it('updates placeholder on descendant element removal', () => {
-
-  });
-
-  describe('returned object', () => {
-    describe('method "explore"', () => {
-      it('returns array of placeholders located within the provided scope', async () => {
-
-      });
-    });
-
-    describe('method "refresh"', () => {
-    });
-
-    describe('method "resolve"', () => {
-      it('returns promise resolving to the provided value', async () => {
-        const value = 'test';
-        const context = { test: value };
-
-        const engine = Tacocat(controller.signal)
-          .declare(context)
-          .extract((ctx) => ctx, { childList: true })
-          .provide((_, contexts) => contexts.map(() => ({ context, value })))
-          .render({})
-          .observe(document.body);
-
-        const product = await engine.resolve(context);
-        expect(product).to.deep.equal({ context, value });
-      });
+      expect(document.body).dom.to.equalSnapshot();
     });
   });
 });

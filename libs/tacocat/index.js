@@ -1,78 +1,167 @@
+import { Cache, WeakCache } from './cache.js';
+import Constant, { CssClass, Event, Stage } from './constant.js';
+import Extract from './extract.js';
 import Log from './log.js';
-import { Failure, Product } from './product.js';
-import { safeAsync, safeSync } from './safe.js';
-import Tacocat from './tacocat.js';
+import Observe from './observe.js';
+import Present from './present.js';
+import Provide from './provide.js';
+import Util, { isFunction, isNil, isObject, isString, mergeReactions } from './util.js';
 
-export { Log, safeAsync, safeSync, Tacocat };
+export { Constant, Cache, Util, WeakCache };
 
-const controller = new AbortController();
-const tacocat = Tacocat(controller.signal)
-  // defines initial context of placeholders
-  .declare({ test1: 'test1' })
-  .declare(({ test1 }) => ({ test2: test1 }))
-  // updates placeholder context with the data extracted from placeholder element
-  .extract((_, element) => ({ foo: element.id }), { attributeFilter: ['id'] })
-  .extract((context, element) => ({
-    ...context,
-    bar: element.closest(`.class-${context.foo}`).getAttribute('bar'),
-  }), { childList: true })
-  // provides values for extracted contexts, async
-  .provide((controls, contexts) => contexts.map(
-    (context) => {
-      if (context.foo === 'foo') {
-        return Promise.resolve(Product(context, { baz: 42 }));
+function assertExtractor(extractor) {
+  if (!isFunction(extractor)) {
+    throw new Error('Tacocat extractor must be a function');
+  }
+}
+
+function assertProvider(provider) {
+  if (!isFunction(provider)) {
+    throw new Error('Tacocat provider must be a function');
+  }
+}
+
+/**
+ * @param {Tacocat.Engine.Reactions} reactions
+ */
+function assertReactions(reactions) {
+  if (!isObject(reactions)) {
+    throw new Error('Tacocat reactions must be an object');
+  }
+  if (!isNil(reactions.events) && (
+    isString(reactions.events)
+    || (Array.isArray(reactions.events) && reactions.events.every(isString))
+  )) {
+    throw new Error('Tacocat reactions events must be a string or an array of strings');
+  }
+  if (!isNil(reactions.trigger) && !isFunction(reactions.trigger)) {
+    throw new Error('Tacocat reactions trigger must be a function');
+  }
+}
+
+/**
+ * @template T, U
+ * @param {{
+ *  filter: Tacocat.Engine.Filter;
+ *  presenters?: Tacocat.Internal.Presenters;
+ *  provider: Tacocat.Internal.Provider;
+ *  reactions: Tacocat.Engine.Reactions[];
+ *  selector: string;
+ *  subscribers: Tacocat.Internal.Subscriber[];
+ * }} detail
+ * @returns {Tacocat.Engine.Present<T, U>}
+ */
+function Step2(detail) {
+  if (isNil(detail.presenters)) {
+    detail.presenters = {
+      [Stage.pending]: [],
+      [Stage.rejected]: [],
+      [Stage.resolved]: [],
+      [Stage.mounted]: [],
+    };
+  }
+  /**
+   * @param {Function} presenter
+   * @param {Tacocat.Stage} stage
+   */
+  function present(presenter, stage) {
+    if (isFunction(presenter)) {
+      return Step2({
+        ...detail,
+        presenters: {
+          ...detail.presenters,
+          [stage]: [...detail.presenters[stage], presenter],
+        },
+      });
+    }
+    throw new Error('Tacocat presenter must be a function');
+  }
+
+  return {
+    observe({
+      scope = document.body,
+      reactions = {},
+      signal = null,
+    }) {
+      if (!(scope instanceof HTMLElement)) {
+        throw new Error('Tacocat scope must be an instance of HTMLElement');
       }
-      return Promise.reject(Failure(context));
+      return Observe({
+        ...detail,
+        reactions: mergeReactions(...detail.reactions, reactions),
+        scope,
+        signal,
+        subscribers: [...detail.subscribers, Present(detail.presenters)],
+      });
     },
-  ))
-  // transforms only successfully provided values, async
-  .transform(({ context, value }) => ({ context, value: { ...value, qux: value.baz.toString() } }))
-  // registers functions updating placeholder elements
-  .render({
-    // updates placeholder awaiting for its value to resolve
-    pending(element) {
-      element.classList.add('tacocat-pending');
-    },
-    // updates placeholder with resolution error
-    rejected(element) {
-      element.classList.add('tacocat-rejected');
-    },
-    // updates placeholder with resolved value
-    resolved(element) {
-      element.classList.add('tacocat-resolved');
-    },
-  })
-  .render({
-    pending(element) {
-      element.innerHTML = '...';
-    },
-    resolved(element, { context, value }) {
-      element.innerHTML = `${context.foo} ${value.baz} ${value.qux}`;
-    },
-  })
-  .observe(document.body.firstElementChild)
-  // starts processing by detecting existing and future placeholders
-  // located within `document.body` and matching `span[data-osi]` selector
-  .observe(document.body, 'span[data-foo]');
 
-// searches for placeholders located within `document.body` and matching `span[data-osi]` selector
-// returns array of objects referring to placeholder element, its context and latest value
-tacocat
-  .explore(document.body, 'span[data-osi]')
-  .forEach(({ context, element, value }) => {
-    console.log('Found osi placeholder:', element, context, value);
-  });
+    pending(presenter) {
+      return present(presenter, Stage.pending);
+    },
+    rejected(presenter) {
+      return present(presenter, Stage.rejected);
+    },
+    resolved(presenter) {
+      return present(presenter, Stage.resolved);
+    },
+    mounted(presenter) {
+      return present(presenter, Stage.mounted);
+    },
+  };
+}
 
-// refreshes all placeholders located within `document.body` and matching `span[data-osi]` selector
-tacocat.refresh(document.body, 'span[data-osi]');
+/**
+ * @template T, U
+ * @param {{
+ *  filter: Tacocat.Engine.Filter;
+ *  extractors?: Tacocat.Internal.Extractor[];
+ *  reactions?: Tacocat.Engine.Reactions[];
+ *  selector: string;
+ * }} detail
+ * @returns {Tacocat.Engine.Extract<T, U>}
+ */
+function Step1(detail) {
+  if (isNil(detail.extractors)) detail.extractors = [];
+  if (isNil(detail.reactions)) detail.reactions = [];
+  return {
+    extract(extractor, reactions = {}) {
+      assertExtractor(extractor);
+      assertReactions(reactions);
+      return Step1({
+        ...detail,
+        extractors: [...detail.extractors, extractor],
+        reactions: [...detail.reactions, reactions],
+      });
+    },
+    provide(provider) {
+      assertProvider(provider);
+      return Step2({
+        ...detail,
+        reactions: detail.reactions,
+        provider,
+        subscribers: [Extract(detail.extractors), Provide(provider)],
+      });
+    },
+  };
+}
 
-// does not update placeholders, just returns a promise resolving to context-value pair
-tacocat.resolve({
-  bar: 'bar',
-  foo: 'foo',
-  test1: 'test1',
-  test2: 'test2',
-}).then(({ context, value }) => console.log('Resolved context:', context, value));
+/** @type {Tacocat.Engine.Factory} */
+const Tacocat = Object.freeze({
+  /**
+   * @param {string} selector
+   * @param {Tacocat.Engine.Filter} filter
+   * @returns {Tacocat.Engine.Select}
+   */
+  select(selector, filter = (() => true)) {
+    if (!isFunction(filter)) {
+      throw new Error('Tacocat DOM element filter must be a function');
+    }
+    return Step1({ selector, filter });
+  },
+  CssClass,
+  Event,
+  Log,
+  Stage,
+});
 
-// stops observation of DOM, processing of placeholders and other pending operations
-controller.abort();
+export default Tacocat;

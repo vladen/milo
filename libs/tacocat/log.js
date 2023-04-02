@@ -1,22 +1,20 @@
-import { getConfig } from '../utils/utils.js';
-import { isFunction } from './utilities.js';
+import Constant from './constant.js';
+import { isFunction } from './util.js';
 
 const epoch = Date.now();
 /** @type {Map<string, number>} */
-const instances = new Map();
+const indexes = new Map();
 
-const isProd = getConfig().env?.name === 'prod';
-export const Level = Object.freeze({
+const filters = new Set();
+const tag = 'Log';
+const writers = new Set();
+
+const Level = Object.freeze({
   debug: 'debug',
   error: 'error',
   info: 'info',
   warn: 'warn',
 });
-const filters = new Set();
-const tag = 'Log';
-const writers = new Set();
-
-const isLog = (object) => object != null && object[Symbol.toStringTag] === tag;
 
 const createRecord = (instance, level, message, namespace, params) => ({
   instance,
@@ -27,10 +25,71 @@ const createRecord = (instance, level, message, namespace, params) => ({
   timestamp: Date.now() - epoch,
 });
 
-const debugFilter = { filter: ({ level }) => level !== Level.debug };
-const quietFilter = { filter: () => false };
+function reportError(message, ...params) {
+  // eslint-disable-next-line no-use-before-define
+  Log.consoleWriter.writer(createRecord(
+    // eslint-disable-next-line no-use-before-define
+    Log.level.error,
+    message,
+    // eslint-disable-next-line import/no-named-as-default-member
+    Constant.namespace,
+    params,
+  ));
+}
 
-const consoleWriter = {
+function writeRecord(record) {
+  const committing = [...filters].every((filter) => {
+    try {
+      return filter(record);
+    } catch (error) {
+      reportError('Log filter error:', { record, filter });
+      return true;
+    }
+  });
+  if (committing) {
+    writers.forEach((writer) => {
+      try {
+        writer(record);
+      } catch (error) {
+        reportError('Log writer error:', { record, writer });
+      }
+    });
+  }
+}
+
+/**
+ * @type {Tacocat.Log.Factory}
+ * @param {string} namespace
+ */
+function Log(namespace) {
+  const index = (indexes.get(namespace) ?? 0) + 1;
+  indexes.set(namespace, index);
+  const id = `${namespace}-${index}`;
+
+  const createWriter = (level) => (message, ...params) => writeRecord(
+    createRecord(index, level, message, namespace, params),
+  );
+
+  return Object.seal({
+    id,
+    namespace,
+    module(name) {
+      return Log(`${namespace}/${name}`);
+    },
+    debug: createWriter(Level.debug),
+    error: createWriter(Level.error),
+    info: createWriter(Level.info),
+    warn: createWriter(Level.warn),
+    [Symbol.toStringTag]: tag,
+  });
+}
+
+Log.level = Level;
+
+Log.debugFilter = { filter: ({ level }) => level !== Level.debug };
+Log.quietFilter = { filter: () => false };
+
+Log.consoleWriter = {
   writer({
     instance, level, message, namespace, params, timestamp,
   }) {
@@ -44,68 +103,16 @@ const consoleWriter = {
   },
 };
 
-function commitError(message, ...params) {
-  consoleWriter.write(createRecord(
-    Level.error,
-    message,
-    // eslint-disable-next-line no-use-before-define
-    Log.common.namespace,
-    params,
-  ));
-}
+/** @type {Tacocat.Log.isLog} */
+Log.isLog = (object) => object != null && object[Symbol.toStringTag] === tag;
 
-function commitRecord(record) {
-  if ([...filters].every((filter) => {
-    try {
-      return filter(record);
-    } catch (error) {
-      commitError('Log filter error:', { record, filter });
-      return true;
-    }
-  })) {
-    writers.forEach((writer) => {
-      try {
-        writer(record);
-      } catch (error) {
-        commitError('Log writer error:', { record, writer });
-      }
-    });
-  }
-}
-
-/**
- * @type {Tacocat.Log.Factory}
- */
-function Log(namespace) {
-  const instance = (instances.get(namespace) ?? 0) + 1;
-  instances.set(namespace, instance);
-
-  const createPipeline = (level) => (message, ...params) => commitRecord(
-    createRecord(instance, level, message, namespace, params),
-  );
-
-  return {
-    namespace,
-    module(name) {
-      return Log(`${namespace}/${name}`);
-    },
-    debug: createPipeline(Level.debug),
-    error: createPipeline(Level.error),
-    info: createPipeline(Level.info),
-    warn: createPipeline(Level.warn),
-    [Symbol.toStringTag]: tag,
-  };
-}
-
-Log.level = Level;
-
-Log.reset = () => {
+Log.reset = (env) => {
   filters.clear();
   writers.clear();
-  if (isProd) {
-    Log.use(debugFilter);
+  if (true || env?.startsWith('dev')) { // TODO: restore
+    Log.use(Log.consoleWriter);
   } else {
-    Log.use(consoleWriter);
+    Log.use(Log.debugFilter);
   }
 };
 
@@ -126,9 +133,8 @@ Log.use = (...modules) => {
   return Log;
 };
 
-Log.common = Log('tacocat');
-Log.level = Level;
+// eslint-disable-next-line import/no-named-as-default-member
+Log.common = Log(Constant.namespace);
 Log.reset();
 
 export default Log;
-export { debugFilter, isLog, quietFilter };

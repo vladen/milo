@@ -1,24 +1,22 @@
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { delay, isFunction, isNil } from './utilities.js';
-
-const defaults = { signal: undefined, timeout: 30000 };
+import { isNil } from './util.js';
 
 /**
- * @param {Tacocat.Engine.Control} control
- * @returns {Tacocat.Internal.Control}
+ * @param {AbortSignal?} signal
+ * @returns {Tacocat.Engine.Control}
  */
-function Control({
-  signal,
-  timeout = defaults.timeout,
-} = defaults) {
+function Control(signal) {
   const log = Log.common.module('control');
 
-  function dispose(disposer) {
-    safeSync(log, 'Disposer callback error:', disposer);
+  /**
+   * @param {Tacocat.Engine.Disposer[]} disposers
+   */
+  function dispose(disposers) {
+    disposers?.forEach((disposer) => safeSync(log, 'Disposer callback error:', disposer));
   }
 
-  /** @type {Map<any, (() => void)[]>} */
+  /** @type {Map<any, Tacocat.Engine.Disposer[]>} */
   const disposers = new Map();
 
   const onAbort = (listener) => signal?.addEventListener(
@@ -29,42 +27,29 @@ function Control({
 
   onAbort(() => {
     log.debug('Aborted:', signal.reason?.message ?? signal.reason);
-    [...disposers.values()].flat().forEach(dispose);
+    dispose([...disposers.values()].flat());
   });
 
-  log.debug('Created:', { signal, timeout });
+  log.debug('Activated:', { signal });
 
   return {
     dispose(disposer, key = null) {
+      /** @type {Tacocat.Engine.Disposer[]} */
+      const newDisposers = Array.isArray(disposer) ? disposer.flat(3) : [disposer];
       if (signal?.aborted) {
-        dispose(disposer);
+        dispose(newDisposers);
         return true;
       }
       if (!disposers.has(key)) disposers.set(key, []);
-      disposers.get(key).unshift(disposer);
+      disposers.set(key, [...newDisposers, ...disposers.get(key)]);
       return false;
     },
 
-    async expire(fallback) {
-      await Promise.race([
-        new Promise(onAbort),
-        delay(timeout, signal).then(() => {
-          log.debug('Expired:', timeout);
-        }),
-      ]);
-
-      return isFunction(fallback)
-        // @ts-ignore
-        ? safeSync(log, 'Fallback error:', fallback)
-        : fallback;
-    },
-
     release(key) {
-      if (!isNil(key)) disposers.get(key)?.forEach(dispose);
+      if (!isNil(key)) dispose(disposers.get(key));
     },
 
     signal,
-    timeout,
   };
 }
 
