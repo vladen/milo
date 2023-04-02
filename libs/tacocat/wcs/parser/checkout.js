@@ -1,5 +1,5 @@
 import { WeakCache } from '../../cache.js';
-import { CheckoutCssSelector, CheckoutDatasetParam, CheckoutTarget, Key } from '../constant.js';
+import { Checkout, Key } from '../constant/index.js';
 import { parsePlaceholderDataset, parseOstLinkContext, getOstLinkParams } from './common.js';
 import Log from '../../log.js';
 import { parseJson } from '../../parser.js';
@@ -14,7 +14,7 @@ const settingsCache = WeakCache();
 
 const log = Log.common.module('Wcs').module('parsers').module('checkout');
 
-const targetValues = Object.values(CheckoutTarget);
+const targetValues = Object.values(Checkout.Target);
 
 /**
  * @param {string[]} osis
@@ -49,7 +49,7 @@ export function parseCheckoutDataset(element) {
   const base = parsePlaceholderDataset(element);
   if (isNil(base)) return undefined;
 
-  const Param = CheckoutDatasetParam.pending;
+  const Param = Checkout.DatasetParam.pending;
   const {
     [Param.client]: client = defaultClient,
     [Param.promo]: promo = '',
@@ -103,7 +103,7 @@ export function parseCheckoutHref(element) {
 export const parseCheckoutLiterals = (element) => literalsCache.getOrSet(
   element,
   () => {
-    const source = querySelectorUp(element, CheckoutCssSelector.literals);
+    const source = querySelectorUp(element, Checkout.CssSelector.literals);
     const { ctaLabel = '' } = parseJson(source?.textContent) ?? {};
     return { literals: { ctaLabel } };
   },
@@ -116,7 +116,7 @@ export const parseCheckoutLiterals = (element) => literalsCache.getOrSet(
 export const parseCheckoutSettings = (element) => settingsCache.getOrSet(
   element,
   () => {
-    const source = querySelectorUp(element, CheckoutCssSelector.settings);
+    const source = querySelectorUp(element, Checkout.CssSelector.settings);
     const json = parseJson(source?.textContent) ?? {};
     const client = json[Key.client] ?? defaultClient;
     const step = json[Key.step] ?? defaultStep;

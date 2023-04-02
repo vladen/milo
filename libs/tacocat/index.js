@@ -57,7 +57,7 @@ function Step2(detail) {
       [Stage.pending]: [],
       [Stage.rejected]: [],
       [Stage.resolved]: [],
-      [Stage.stale]: [],
+      [Stage.mounted]: [],
     };
   }
   /**
@@ -104,8 +104,8 @@ function Step2(detail) {
     resolved(presenter) {
       return present(presenter, Stage.resolved);
     },
-    stale(presenter) {
-      return present(presenter, Stage.stale);
+    mounted(presenter) {
+      return present(presenter, Stage.mounted);
     },
   };
 }

@@ -15,6 +15,8 @@ const Extract = (extractors) => (control, cycle) => {
     Event.observed,
     async ({ detail: { context, element } }, event) => {
       const { id: prevId, ...prevRest } = context;
+      const detail = { context, element };
+      if (!isNil(event)) detail.event = event;
 
       const success = await safeAsyncEvery(
         log,
@@ -27,7 +29,7 @@ const Extract = (extractors) => (control, cycle) => {
             Object.assign(context, result);
             return true;
           }
-          log.debug('Extractor function returned not object, ignoring placeholder:', { context, element, event });
+          log.debug('Extractor function returned not object, ignoring placeholder:', detail);
           return false;
         },
       );
@@ -36,10 +38,8 @@ const Extract = (extractors) => (control, cycle) => {
         const { id: nextId, ...nextRest } = context;
         if (JSON.stringify(nextRest) !== JSON.stringify(prevRest)) {
           context.id = prevId;
-          cycle.extract(context);
-          const detail = { context, element };
-          if (!isNil(event)) detail.event = event;
           log.debug('Extracted:', detail);
+          cycle.extract(context);
         }
       }
     },

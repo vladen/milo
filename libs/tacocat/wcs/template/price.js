@@ -1,5 +1,5 @@
 import { pendingTemplate, rejectedTemplate } from './common.js';
-import { Key, PriceCssClass, PriceDatasetParam, namespace } from '../constant.js';
+import { Key, Price, namespace } from '../constant/index.js';
 import Log from '../../log.js';
 import { createTag, isNil, isObject } from '../../util.js';
 
@@ -13,13 +13,22 @@ const log = Log.common.module(namespace).module('template').module('price');
 function priceTemplate(element, template) {
   /** @type {HTMLElement} */
   let tag = element;
-  if (template === Key.priceStrikethrough && tag.tagName !== 'S') {
-    tag = createTag('s');
+  if (template === Key.priceStrikethrough) {
+    if (tag.tagName !== 'S') tag = createTag('s');
   } else if (tag.tagName !== 'SPAN') {
     tag = createTag('span');
   }
-  tag.classList.add(PriceCssClass.placeholder);
+  if (tag !== element) log.debug('Created element:', { element: tag });
+  tag.classList.add(Price.CssClass.placeholder);
   return tag;
+}
+
+/**
+ * Removes content of price placeholder element.
+ * @param {HTMLElement} element
+ */
+export function mountedPriceTemplate(element) {
+  element.innerHTML = '';
 }
 
 /**
@@ -36,13 +45,13 @@ export function pendingPriceTemplate(element, { context }) {
   const tag = priceTemplate(element, context.template);
   pendingTemplate(tag, { context });
 
-  const Param = PriceDatasetParam.pending;
+  const Param = Price.DatasetParam.pending;
   tag.dataset[Param.format] = context.format.toString();
   tag.dataset[Param.recurrence] = context.recurrence.toString();
   tag.dataset[Param.tax] = context.tax.toString();
   tag.dataset[Param.unit] = context.unit.toString();
 
-  tag.classList.remove(PriceCssClass.link);
+  tag.classList.remove(Price.CssClass.link);
 
   return tag;
 }
@@ -79,19 +88,11 @@ export function resolvedPriceTemplate(element, { context, offers }) {
     tag.textContent += ` ${context.literals.perUnitLabel}`;
   }
 
-  const Param = PriceDatasetParam.resolved;
+  const Param = Price.DatasetParam.resolved;
   tag.dataset[Param.analytics] = offer.analytics ?? '';
   tag.dataset[Param.commitment] = offer.commitment;
   tag.dataset[Param.offer] = offer.offerId;
   tag.dataset[Param.term] = offer.term;
 
   return tag;
-}
-
-/**
- * Removes content of price placeholder element.
- * @param {HTMLElement} element
- */
-export function stalePriceTemplate(element) {
-  element.innerHTML = '';
 }

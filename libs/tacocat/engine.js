@@ -50,7 +50,7 @@ function Placeholder(cycle, placeholder) {
           }
         });
       },
-      update(context = {}) {
+      update(context) {
         cycle.observe(placeholder.element, context);
       },
     });

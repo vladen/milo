@@ -1,25 +1,25 @@
 import {
   pendingCheckoutTemplate,
   resolvedCheckoutTemplate,
-  staleCheckoutTemplate,
+  mountedCheckoutTemplate,
 } from './checkout.js';
 import { rejectedTemplate } from './common.js';
 import {
   pendingPriceTemplate,
   resolvedPriceTemplate,
-  stalePriceTemplate,
+  mountedPriceTemplate,
 } from './price.js';
 
 export default {
   Checkout: {
+    mounted: mountedCheckoutTemplate,
     pending: pendingCheckoutTemplate,
     resolved: resolvedCheckoutTemplate,
-    stale: staleCheckoutTemplate,
   },
   Price: {
+    mounted: mountedPriceTemplate,
     pending: pendingPriceTemplate,
     resolved: resolvedPriceTemplate,
-    stale: stalePriceTemplate,
   },
   rejected: rejectedTemplate,
 };

@@ -3,7 +3,7 @@
 import { readFile } from '@web/test-runner-commands';
 import WcsMock from './mocks/wcs.js';
 import { expect } from './tool.js';
-import Tacocat from '../../libs/tacocat/index.js';
+import Tacocat, { Util } from '../../libs/tacocat/index.js';
 import Wcs from '../../libs/tacocat/wcs/index.js';
 
 /*
@@ -52,10 +52,12 @@ describe('module "Tacocat"', () => {
         JSON.parse(await readFile({ path: './mocks/offers.json' })),
       );
 
-      await run(checkoutOstLink.observe(observation));
-      await run(checkoutPlaceholder.observe(observation));
-      await run(priceOstLink.observe(observation));
-      await run(pricePlaceholder.observe(observation));
+      await run(
+        checkoutOstLink.observe(observation),
+        checkoutPlaceholder.observe(observation),
+        priceOstLink.observe(observation),
+        pricePlaceholder.observe(observation),
+      );
 
       expect(document.body).dom.to.equalSnapshot();
     });

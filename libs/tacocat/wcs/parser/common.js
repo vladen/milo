@@ -1,5 +1,4 @@
-import { WeakCache } from '../../cache.js';
-import { Key, DatasetParam, ostBaseUrl } from '../constant.js';
+import { Key, DatasetParam, ostBaseUrl } from '../constant/index.js';
 import Log from '../../log.js';
 import { parseJson } from '../../parser.js';
 import { safeSync } from '../../safe.js';

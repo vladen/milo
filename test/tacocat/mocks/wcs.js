@@ -43,7 +43,7 @@ export default function WcsMock(responsesByCountry) {
     get checkoutOstLink() {
       return Tacocat
         .select(
-          Wcs.Constant.CheckoutCssSelector.link,
+          Wcs.Constant.Checkout.CssSelector.link,
           Wcs.Matcher.templateHrefParam('checkout'),
         )
         .extract((_, element) => Wcs.Parser.Checkout.settings(element))
@@ -51,18 +51,21 @@ export default function WcsMock(responsesByCountry) {
         .extract((_, element) => Wcs.Parser.Checkout.literals(element))
         .extract(() => Wcs.getLocale())
         .provide(mockProvider)
-        .stale(Wcs.Template.Checkout.stale)
+        .mounted(Wcs.Template.Checkout.mounted)
         .pending(Wcs.Template.Checkout.pending);
     },
 
     get checkoutPlaceholder() {
       return Tacocat
         .select(
-          Wcs.Constant.CheckoutCssSelector.placeholder,
+          Wcs.Constant.Checkout.CssSelector.placeholder,
           Wcs.Matcher.templateDatasetParam('checkout'),
         )
         .extract((_, element) => Wcs.Parser.Checkout.settings(element))
-        .extract((_, element) => Wcs.Parser.Checkout.dataset(element))
+        .extract(
+          (_, element) => Wcs.Parser.Checkout.dataset(element),
+          Wcs.Constant.Checkout.DatasetReactions,
+        )
         .extract((_, element) => Wcs.Parser.Checkout.literals(element))
         .extract(() => Wcs.getLocale())
         .provide(mockProvider)
@@ -74,7 +77,7 @@ export default function WcsMock(responsesByCountry) {
     get priceOstLink() {
       return Tacocat
         .select(
-          Wcs.Constant.PriceCssSelector.link,
+          Wcs.Constant.Price.CssSelector.link,
           Wcs.Matcher.templateHrefParam('price'),
         )
         .extract((_, element) => Wcs.Parser.Price.settings(element))
@@ -82,18 +85,21 @@ export default function WcsMock(responsesByCountry) {
         .extract((_, element) => Wcs.Parser.Price.literals(element))
         .extract(() => Wcs.getLocale())
         .provide(mockProvider)
-        .stale(Wcs.Template.Price.stale)
+        .mounted(Wcs.Template.Price.mounted)
         .pending(Wcs.Template.Price.pending);
     },
 
     get pricePlaceholder() {
       return Tacocat
         .select(
-          Wcs.Constant.PriceCssSelector.placeholder,
+          Wcs.Constant.Price.CssSelector.placeholder,
           Wcs.Matcher.templateDatasetParam('price'),
         )
         .extract((_, element) => Wcs.Parser.Price.settings(element))
-        .extract((_, element) => Wcs.Parser.Price.dataset(element))
+        .extract(
+          (_, element) => Wcs.Parser.Price.dataset(element),
+          Wcs.Constant.Price.DatasetReactions,
+        )
         .extract((_, element) => Wcs.Parser.Price.literals(element))
         .extract(() => Wcs.getLocale())
         .provide(mockProvider)

@@ -21,7 +21,7 @@ snapshots["module \"Tacocat\" pipeline processes placeholders present in DOM"] =
       data-taco-wcs-term="MONTHLY"
       data-taco-wcs-unit="true"
     >
-      54.99
+      54.99 /seat
     </span>
     <a
       class="taco-resolved taco-wcs-checkout"
@@ -88,11 +88,18 @@ snapshots["module \"Tacocat\" pipeline processes placeholders present in DOM"] =
       PUF
     </h1>
     <s
-      class="taco-wcs-price"
+      class="taco-resolved taco-wcs-price"
       data-taco-wcs-analytics="ccsn_direct_individual:puf:us"
       data-taco-wcs-commitment="YEAR"
+      data-taco-wcs-extra="{}"
+      data-taco-wcs-format="false"
       data-taco-wcs-offer="offer-1"
+      data-taco-wcs-osis="osi-puf"
+      data-taco-wcs-recurrence="false"
+      data-taco-wcs-tax="false"
+      data-taco-wcs-template="priceStrikethrough"
       data-taco-wcs-term="ANNUAL"
+      data-taco-wcs-unit="false"
     >
       599.88
     </s>
@@ -113,7 +120,7 @@ snapshots["module \"Tacocat\" pipeline processes placeholders present in DOM"] =
       499.88
     </span>
     <button
-      class="taco-wcs-checkout"
+      class="taco-resolved taco-wcs-checkout"
       data-taco-wcs-analytics="ccsn_direct_individual:puf:us"
       data-taco-wcs-commitments="YEAR"
       data-taco-wcs-offers="offer-1"

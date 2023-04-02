@@ -6,7 +6,7 @@ import { safeSync } from './safe.js';
 import { isFunction, isNil } from './util.js';
 
 const childListMutation = 'childList';
-const observableMutations = ['attributes', 'characterData', childListMutation];
+const observableMutations = ['attributes', 'attributeFilter', 'characterData', childListMutation];
 
 /**
  * @param {{
@@ -34,10 +34,10 @@ function Observe({
   }
 
   const cycle = Cycle(control, scope, selector, filter);
-  /** @type {Set<{ element: HTMLElement }>} */
+  /** @type {Set<HTMLElement>} */
   const removed = new Set();
-  /** @type {Set<{ element: HTMLElement, event?: Event }>} */
-  const updated = new Set();
+  /** @type {Map<HTMLElement, Event?>} */
+  const updated = new Map();
   let timer;
 
   /**
@@ -89,39 +89,47 @@ function Observe({
     function dispatch() {
       if (control.signal?.aborted) return;
       timer = 0;
-      removed.forEach(({ element }) => {
-        unmount(element);
-      });
+      removed.forEach(unmount);
 
-      updated.forEach(({ element, event }) => {
+      updated.forEach((event, element) => {
         mount(element, (nextEvent) => {
           // eslint-disable-next-line no-debugger
           debugger;
-          updated.add({ element, event: nextEvent });
+          updated.set(element, nextEvent);
           schedule();
         });
         const detail = { element };
         if (!isNil(event)) detail.event = event;
-        log.debug('Observed:', detail);
-        cycle.observe(element, undefined, event);
+        setTimeout(() => {
+          log.debug('Observed:', detail);
+          cycle.observe(element, undefined, event);
+        }, 1);
       });
     }
 
     timer = setTimeout(dispatch, 0);
   }
 
+  /**
+   * Adds element to the remove queue and schedules async handling.
+   * @param {HTMLElement} element
+   */
   function remove(element) {
     if (element) {
-      removed.add({ element });
+      removed.add(element);
       updated.delete(element);
     }
     schedule();
   }
 
+  /**
+   * Adds element to the update queue and schedules async handling.
+   * @param {HTMLElement} element
+   */
   function update(element) {
     if (element) {
       removed.delete(element);
-      updated.add({ element });
+      updated.set(element, undefined);
     }
     schedule();
   }
@@ -134,11 +142,10 @@ function Observe({
   // Scan current DOM tree for matching elements
   cycle.select().forEach(update);
 
+  let observing = false;
   // Setup mutation observer
   if (observableMutations.some((mutation) => reactions.mutations[mutation])) {
     const observer = new MutationObserver((records) => records.forEach((record) => {
-      // eslint-disable-next-line no-debugger
-      debugger;
       if (record.type === childListMutation) {
         const { addedNodes, removedNodes } = record;
         removedNodes.forEach((node) => remove(cycle.match(node)));
@@ -147,14 +154,13 @@ function Observe({
         update(cycle.match(record.target));
       }
     }));
-
     observer.observe(scope, reactions.mutations);
     control.dispose(() => observer.disconnect());
-    log.debug('Observing:', { scope, selector });
+    observing = true;
   }
 
   control.dispose(() => log.debug('Aborted'));
-  log.debug('Activated:', { reactions, scope, selector });
+  log.debug('Activated:', { observing, reactions, scope, selector });
   return Engine(cycle);
 }
 

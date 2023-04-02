@@ -1,5 +1,5 @@
 import { pendingTemplate, rejectedTemplate } from './common.js';
-import { CheckoutCssClass, CheckoutDatasetParam, CheckoutTarget, Key, namespace } from '../constant.js';
+import { Checkout, Key, namespace } from '../constant/index.js';
 import { createTag } from '../../util.js';
 import Log from '../../log.js';
 
@@ -12,21 +12,21 @@ const baseUrl = 'https://commerce.adobe.com';
  */
 function onCheckoutButtonClick(event) {
   const {
-    [CheckoutDatasetParam.pending.target]: target,
-    [CheckoutDatasetParam.resolved.url]: url,
+    [Checkout.DatasetParam.pending.target]: target,
+    [Checkout.DatasetParam.resolved.url]: url,
   // @ts-ignore
   } = event.target?.dataset ?? {};
   if (!url) {
     log.warn('Missing "url" dataset item on clicked button, canceling navigation:', event);
   }
   switch (target) {
-    case CheckoutTarget.blank:
+    case Checkout.Target.blank:
       window.open(url);
       break;
-    case CheckoutTarget.parent:
+    case Checkout.Target.parent:
       window.parent.location.assign(url);
       break;
-    case CheckoutTarget.self:
+    case Checkout.Target.self:
       window.location.assign(url);
       break;
     default:
@@ -61,10 +61,22 @@ function checkoutTemplate(element, { context }, event, control) {
       context.literals.ctaLabel,
     );
   }
-  tag.classList.add(CheckoutCssClass.placeholder);
+  tag.classList.add(Checkout.CssClass.placeholder);
 
   // @ts-ignore
   return tag;
+}
+
+/**
+ * Sets href of `a` element to '#' or disables `button` element.
+ * @param {HTMLElement} element
+ */
+export function mountedCheckoutTemplate(element) {
+  if (element instanceof HTMLAnchorElement) {
+    element.style.display = 'none';
+  } else if (element instanceof HTMLButtonElement) {
+    element.disabled = true;
+  }
 }
 
 /**
@@ -82,13 +94,13 @@ export function pendingCheckoutTemplate(element, { context }, event, control) {
   const tag = checkoutTemplate(element, { context }, event, control);
   pendingTemplate(tag, { context });
 
-  const Param = CheckoutDatasetParam.pending;
+  const Param = Checkout.DatasetParam.pending;
   tag.dataset[Param.client] = context.client;
   tag.dataset[Param.quantities] = context.quantities.join(',');
   tag.dataset[Param.step] = context.step;
   tag.dataset[Param.target] = context.target;
 
-  tag.classList.remove(CheckoutCssClass.link);
+  tag.classList.remove(Checkout.CssClass.link);
 
   if (element instanceof HTMLAnchorElement) {
     element.href = '#';
@@ -133,7 +145,7 @@ export function resolvedCheckoutTemplate(element, { context, offers }, event, co
 
   const tag = checkoutTemplate(element, { context }, event, control);
 
-  const Param = CheckoutDatasetParam.resolved;
+  const Param = Checkout.DatasetParam.resolved;
   tag.dataset[Param.analytics] = analytics.join(' ');
   tag.dataset[Param.commitments] = offers.map(({ commitment }) => commitment).join(',');
   tag.dataset[Param.offers] = offers.map(({ offerId }) => offerId).join(',');
@@ -151,16 +163,4 @@ export function resolvedCheckoutTemplate(element, { context, offers }, event, co
   tag.textContent = context.literals.ctaLabel;
 
   return tag;
-}
-
-/**
- * Sets href of `a` element to '#' or disables `button` element.
- * @param {HTMLElement} element
- */
-export function staleCheckoutTemplate(element) {
-  if (element instanceof HTMLAnchorElement) {
-    element.style.display = 'none';
-  } else if (element instanceof HTMLButtonElement) {
-    element.disabled = true;
-  }
 }

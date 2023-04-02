@@ -1,4 +1,4 @@
-import { DatasetParam } from '../constant.js';
+import { DatasetParam } from '../constant/index.js';
 import { isNil } from '../../util.js';
 
 /**

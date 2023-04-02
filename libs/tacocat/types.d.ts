@@ -22,11 +22,11 @@ declare namespace Tacocat {
 
   type hasContext = (candidate: any) => candidate is Contextful<any>;
 
-  type Stale = 'stale';
+  type Mounted = 'mounted';
   type Pending = 'pending';
   type Rejected = 'rejected';
   type Resolved = 'resolved';
-  type Stage = Stale | Pending | Rejected | Resolved;
+  type Stage = Mounted | Pending | Rejected | Resolved;
 
   type SomeContext = Context<{}>;
   type SomeContextful = Contextful<SomeContext>;
@@ -65,6 +65,12 @@ declare namespace Tacocat {
 
     type Filter = (element: Element) => boolean;
 
+    type MountedPresenter = (
+      element: Element,
+      event: Event | undefined,
+      control: Control,
+    ) => undefined | Element;
+
     type Mutations = Omit<
       MutationObserverInit,
       'attributeOldValue' | 'characterDataOldValue'
@@ -92,12 +98,6 @@ declare namespace Tacocat {
     type ResolvedPresenter<T extends object, U extends object> = (
       element: Element,
       result: Resolution<T, U>,
-      event: Event | undefined,
-      control: Control,
-    ) => undefined | Element;
-
-    type StalePresenter = (
-      element: Element,
       event: Event | undefined,
       control: Control,
     ) => undefined | Element;
@@ -152,23 +152,23 @@ declare namespace Tacocat {
        */
       select<T extends object>(selector: string, filter?: Filter): Select;
       CssClass: {
+        mounted: string;
         pending: string;
         rejected: string;
         resolved: string;
-        stale: string;
       };
       Event: {
+        mounted: string;
         pending: string;
         rejected: string;
         resolved: string;
-        stale: string;
       };
       Log: Log.Factory;
       Stage: {
+        mounted: Mounted;
         pending: Pending;
         rejected: Rejected;
         resolved: Resolved;
-        stale: Stale;
       };
     }
 
@@ -192,7 +192,7 @@ declare namespace Tacocat {
     }
 
     interface StalePlaceholder<T extends object, U extends object>
-      extends Placeholder<Stale, T, U> {
+      extends Placeholder<Mounted, T, U> {
     }
 
     interface PendingPlaceholder<T extends object, U extends object>
@@ -215,7 +215,7 @@ declare namespace Tacocat {
         reactions?: Reactions,
         signal?: AbortSignal
       }): Instance<T, U>;
-      stale(presenter: StalePresenter): Present<T, U>;
+      mounted(presenter: MountedPresenter): Present<T, U>;
       pending(presenter: PendingPresenter<T>): Present<T, U>;
       rejected(presenter: RejectedPresenter<T>): Present<T, U>;
       resolved(presenter: ResolvedPresenter<T, U>): Present<T, U>;

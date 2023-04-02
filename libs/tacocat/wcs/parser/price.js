@@ -1,19 +1,11 @@
 import { WeakCache } from '../../cache.js';
-import { Key, PriceDatasetParam, namespace } from '../constant.js';
-import Log from '../../log.js';
+import { Key, Price, namespace } from '../constant/index.js';
 import { getOstLinkParams, parsePlaceholderDataset, parseOstLinkContext } from './common.js';
 import { parseJson } from '../../parser.js';
 import { isNil, querySelectorUp, toBoolean } from '../../util.js';
 
 const literalsCache = WeakCache();
 const settingsCache = WeakCache();
-
-const log = Log.common.module('Wcs').module('parsers').module('price');
-
-const PriceCssSelector = {
-  literals: `.${namespace}-${Key.price}-${Key.literals}`,
-  settings: `.${namespace}-${Key.price}-${Key.settings}`,
-};
 
 /**
  * @param {HTMLElement} element
@@ -23,7 +15,7 @@ export function parsePriceDataset(element) {
   const base = parsePlaceholderDataset(element);
   if (isNil(base)) return undefined;
 
-  const Param = PriceDatasetParam.pending;
+  const Param = Price.DatasetParam.pending;
   const {
     [Param.format]: format,
     [Param.recurrence]: recurrence,
@@ -74,7 +66,7 @@ export function parsePriceHref(element) {
 export const parsePriceLiterals = (element) => literalsCache.getOrSet(
   element,
   () => {
-    const source = querySelectorUp(element, PriceCssSelector.literals);
+    const source = querySelectorUp(element, Price.CssSelector.literals);
     const {
       perUnitLabel = '',
       recurrenceLabel = '',
@@ -90,7 +82,7 @@ export const parsePriceLiterals = (element) => literalsCache.getOrSet(
 export const parsePriceSettings = (element) => settingsCache.getOrSet(
   element,
   () => {
-    const source = querySelectorUp(element, PriceCssSelector.settings);
+    const source = querySelectorUp(element, Price.CssSelector.settings);
     const json = parseJson(source?.textContent) ?? {};
     const format = toBoolean(json[Key.format]);
     const recurrence = toBoolean(json[Key.recurrence]);

@@ -3,7 +3,7 @@ import Log from './log.js';
 import { safeSync } from './safe.js';
 import { isHTMLElement, isNil } from './util.js';
 
-const StageCssClass = [CssClass.pending, CssClass.rejected, CssClass.resolved, CssClass.stale];
+const StageCssClass = [CssClass.pending, CssClass.rejected, CssClass.resolved, CssClass.mounted];
 
 /**
  * @param {Element} element
@@ -27,13 +27,17 @@ const Present = (presenters) => (control, cycle) => {
   cycle.listen(
     cycle.scope,
     [Event.observed, Event.extracted, Event.provided],
-    ({ detail: { context, element, result, stage } }, event) => {
+    ({ detail: { context, element, result, stage }, type }, event) => {
+      if (type === Event.observed && stage !== Stage.mounted) return;
       /** @type {Tacocat.Internal.Presenter[]} */
       const group = presenters[stage];
-      setStageCssClasses(element, stage);
+
+      const detail = { context, element, stage };
+      if (!isNil(event)) detail.event = event;
+      if (!isNil(result)) detail.result = result;
 
       if (!group?.length) {
-        log.debug('No presenters, ignoring result:', { context, element, event, result, stage });
+        log.debug('No presenters, ignoring:', detail);
         return;
       }
 
@@ -55,13 +59,11 @@ const Present = (presenters) => (control, cycle) => {
         element,
       ) ?? element;
 
-      if (!last.isConnected) element.replaceWith(last);
+      setStageCssClasses(last, stage);
 
-      cycle.present(context, last);
-      const detail = { context, element: last, stage };
-      if (!isNil(event)) detail.event = event;
-      if (!isNil(result)) detail.result = result;
+      detail.element = last;
       log.debug('Presented:', detail);
+      cycle.present(context, last);
     },
   );
 
