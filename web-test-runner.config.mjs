@@ -1,6 +1,5 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import { importMapsPlugin } from '@web/dev-server-import-maps';
-import { filePlugin } from '@web/test-runner-commands/plugins';
 
 /** @type {import('@web/test-runner').TestRunnerConfig} */
 export default {
@@ -18,5 +17,5 @@ export default {
       '**/special/tacocat/**',
     ],
   },
-  plugins: [importMapsPlugin({}), filePlugin()],
+  plugins: [importMapsPlugin({})],
 };
