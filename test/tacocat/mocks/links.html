@@ -9,6 +9,7 @@
     "step": "email"
   }
 </script>
+
 <script class="taco-wcs-price-literals" type="application/json">
   {
     "perUnitLabel": "/seat",
@@ -25,42 +26,46 @@
 
 <section>
   <h1>ABM</h1>
+  <!-- price with recurrence and unit -->
   <a
     class="taco-wcs-ost-price"
-    href="${ostBaseUrl}?osi=osi-abm&template=price&recurrence=1&unit=1&tax=1"
+    href="${ostBaseUrl}?osi=osi-abm&template=price&recurrence=1&unit=1"
   ></a>
+  <!-- checkout link to recommendation step -->
   <a
     class="taco-wcs-ost-checkout"
-    href="${ostBaseUrl}?osi=osi-abm&template=checkoutLink&workflowStep=recommendation"
+    href="${ostBaseUrl}?osi=osi-abm&template=checkout&step=recommendation"
   ></a>
 </section>
 
 <section>
   <h1>M2M</h1>
+  <!-- optical price with recurrence and unit -->
   <a
     class="taco-wcs-ost-price"
     href="${ostBaseUrl}?osi=osi-m2m&template=priceOptical&recurrence=1"
   ></a>
-
+  <!-- checkout link with custom cli -->
   <a
     class="taco-wcs-ost-checkout"
-    href="${ostBaseUrl}?osi=osi-m2m&template=checkoutLink&client=adobe-firefly"
+    href="${ostBaseUrl}?osi=osi-m2m&template=checkout&cli=adobe-firefly"
   ></a>
 </section>
 
 <section>
   <h1>PUF</h1>
+  <!-- unformatted strikethrough price -->
   <a
     class="taco-wcs-ost-price"
     href="${ostBaseUrl}?osi=osi-puf&template=priceStrikethrough&format=0"
   ></a>
   <a
     class="taco-wcs-ost-price"
-    href="${ostBaseUrl}?osi=osi-puf-promo&template=price"
+    href="${ostBaseUrl}?osi=osi-puf-promo&template=price&promo=promo-123"
   ></a>
-
+  <!-- checkout button with 2 osis -->
   <a
     class="taco-wcs-ost-checkout"
-    href="${ostBaseUrl}?osi=osi-puf&osi=puf-promo&template=checkoutButton"
+    href="${ostBaseUrl}?osi=osi-puf&osi=osi-puf-promo&template=checkoutButton&promo-123"
   ></a>
 </section>

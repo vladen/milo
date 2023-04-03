@@ -147,9 +147,17 @@ export function resolvedCheckoutTemplate(element, { context, offers }, event, co
 
   const Param = Checkout.DatasetParam.resolved;
   tag.dataset[Param.analytics] = analytics.join(' ');
-  tag.dataset[Param.commitments] = offers.map(({ commitment }) => commitment).join(',');
+  const commitments = offers.map(({ commitment }) => commitment);
+  const uniqueCommitments = new Set(commitments);
+  tag.dataset[Param.commitments] = uniqueCommitments.size === 1
+    ? [...uniqueCommitments][0]
+    : commitments.join(',');
   tag.dataset[Param.offers] = offers.map(({ offerId }) => offerId).join(',');
-  tag.dataset[Param.terms] = offers.map(({ term }) => term).join(',');
+  const terms = offers.map(({ term }) => term);
+  const uniqueTerms = new Set(terms);
+  tag.dataset[Param.terms] = uniqueTerms.size === 1
+    ? [...uniqueTerms][0]
+    : terms.join(',');
 
   if (tag instanceof HTMLAnchorElement) {
     tag.href = url.toString();

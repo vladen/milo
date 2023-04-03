@@ -25,11 +25,11 @@ describe('module "Tacocat"', () => {
 
   afterEach(() => {
     controller.abort();
-    Tacocat.Log.reset();
     document.body.innerHTML = '';
+    Tacocat.Log.reset();
   });
   beforeEach(() => {
-    Tacocat.Log.use();
+    // Tacocat.Log.reset('dev');
     controller = new AbortController();
     observation = { signal: controller.signal };
   });
