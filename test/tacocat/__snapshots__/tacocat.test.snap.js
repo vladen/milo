@@ -108,13 +108,13 @@ snapshots["module \"Tacocat\" OST pipeline processes placeholders"] =
       data-taco-wcs-offer="offer-2"
       data-taco-wcs-osis="osi-puf-promo"
       data-taco-wcs-promo="promo-123"
-      data-taco-wcs-recurrence="true"
+      data-taco-wcs-recurrence="false"
       data-taco-wcs-tax="false"
       data-taco-wcs-template="price"
       data-taco-wcs-term="ANNUAL"
       data-taco-wcs-unit="true"
     >
-      499.88 /term /seat
+      499.88 /seat
     </span>
     <button
       class="taco-resolved taco-wcs-checkout"
