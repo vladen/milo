@@ -63,7 +63,6 @@ function checkoutTemplate(element, { context }, event, control) {
       context.literals.ctaLabel,
     );
   }
-  if (tag !== element) log.debug('Created:', { element: tag });
   tag.classList.add(Checkout.CssClass.placeholder);
 
   // @ts-ignore
