@@ -1,6 +1,5 @@
 import { Key, DatasetParam, ostBaseUrl } from '../constant/index.js';
 import Log from '../../log.js';
-import { parseJson } from '../../parser.js';
 import { safeSync } from '../../safe.js';
 import { isNil } from '../../util.js';
 
@@ -19,9 +18,9 @@ export function parsePlaceholderDataset(element) {
     [Param.template]: template,
   } = element.dataset;
 
-  const set = new Set([osi, ...(osis?.split('\n') ?? [])]);
-  set.delete('');
-  if (!set.size) {
+  const parsedOsis = new Set([osi, ...(osis?.split('\n') ?? [])]);
+  parsedOsis.delete('');
+  if (!parsedOsis.size) {
     log.warn('Missing "osi" or "osis" dataset item, ignoring:', element.dataset);
     return undefined;
   }
@@ -32,7 +31,7 @@ export function parsePlaceholderDataset(element) {
   }
 
   return {
-    osis: [...set],
+    osis: [...parsedOsis],
     promo,
     template,
   };
@@ -59,11 +58,10 @@ export function getOstLinkParams(element) {
 }
 
 /**
- * @param {HTMLAnchorElement} element
  * @param {URLSearchParams} params
  * @returns {Tacocat.Wcs.PlaceholderContext}
  */
-export function parseOstLinkContext(element, params) {
+export function parseOstLinkParams(params) {
   const osis = params.getAll(Key.osi).filter((osi) => osi);
   if (!osis.length) {
     log.warn('Missing "osi" param, ignoring:', params.toString());
@@ -74,6 +72,6 @@ export function parseOstLinkContext(element, params) {
     log.warn('Missing "template" param, ignoring:', params.toString());
     return undefined;
   }
-  const promo = params.get(Key.promo);
+  const promo = params.get(Key.promo) || undefined;
   return { osis, promo, template };
 }

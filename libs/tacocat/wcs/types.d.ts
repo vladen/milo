@@ -25,7 +25,7 @@ declare namespace Tacocat {
 
     interface PlaceholderContext {
       osis: string[];
-      promo: string;
+      promo?: string;
       template: string;
     }
 

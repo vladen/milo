@@ -1,3 +1,4 @@
+import { isNil } from '../../util.js';
 import { DatasetParam } from '../constant/index.js';
 
 /**
@@ -8,6 +9,9 @@ import { DatasetParam } from '../constant/index.js';
 export function pendingTemplate(element, { context }) {
   const Param = DatasetParam.pending;
   element.dataset[Param.osis] = context.osis.join('\n');
+  if (!isNil(context.promo)) {
+    element.dataset[Param.promo] = context.promo;
+  }
   element.dataset[Param.template] = context.template;
   return element;
 }

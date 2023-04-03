@@ -197,7 +197,9 @@ function Cycle(control, scope, selector, filter) {
         }
 
         dispatch(false, Event.presented, placeholder);
-        if (release) control.release(placeholder.element);
+        if (release) {
+          control.release(placeholder.element);
+        }
       } else {
         log.warn('Presented placeholder was not found, ignoring:', { context, element });
       }

@@ -1,6 +1,6 @@
 import { pendingTemplate, rejectedTemplate } from './common.js';
 import { Checkout, Key, namespace } from '../constant/index.js';
-import { createTag } from '../../util.js';
+import { createTag, isNil } from '../../util.js';
 import Log from '../../log.js';
 
 const log = Log.common.module(namespace).module('template').module('checkout');
@@ -46,14 +46,16 @@ function onCheckoutButtonClick(event) {
  */
 function checkoutTemplate(element, { context }, event, control) {
   let tag = element;
-  if (context.template === Key.checkoutButton && element.tagName !== 'BUTTON') {
-    tag = createTag(
-      'button',
-      {},
-      context.literals.ctaLabel,
-    );
-    tag.addEventListener('click', onCheckoutButtonClick);
-    control.dispose(() => tag.removeEventListener('click', onCheckoutButtonClick));
+  if (context.template === Key.checkoutButton) {
+    if (element.tagName !== 'BUTTON') {
+      tag = createTag(
+        'button',
+        {},
+        context.literals.ctaLabel,
+      );
+      tag.addEventListener('click', onCheckoutButtonClick);
+      control.dispose(() => tag.removeEventListener('click', onCheckoutButtonClick));
+    }
   } else if (element.tagName !== 'A') {
     tag = createTag(
       'a',
@@ -61,6 +63,7 @@ function checkoutTemplate(element, { context }, event, control) {
       context.literals.ctaLabel,
     );
   }
+  if (tag !== element) log.debug('Created:', { element: tag });
   tag.classList.add(Checkout.CssClass.placeholder);
 
   // @ts-ignore
@@ -132,6 +135,9 @@ export function resolvedCheckoutTemplate(element, { context, offers }, event, co
   url.searchParams.append(Key.cli, context.client);
   url.searchParams.append(Key.co, context.country);
   url.searchParams.append(Key.lang, context.language);
+  if (!isNil(context.promo)) {
+    url.searchParams.append(Key.promoid, context.promo);
+  }
   offers.forEach((offer, index) => {
     if (offer.analytics) analytics.push(offer.analytics);
     const prefix = `items[${index}]`;

@@ -28,6 +28,7 @@ export const Key = {
   priceOptical: 'priceOptical',
   priceStrikethrough: 'priceStrikethrough',
   promo: 'promo',
+  promoid: 'promoid',
   q: 'q',
   quantity: 'quantity',
   quantities: 'quantities',

@@ -18,7 +18,7 @@ function priceTemplate(element, template) {
   } else if (tag.tagName !== 'SPAN') {
     tag = createTag('span');
   }
-  if (tag !== element) log.debug('Created element:', { element: tag });
+  if (tag !== element) log.debug('Created:', { element: tag });
   tag.classList.add(Price.CssClass.placeholder);
   return tag;
 }

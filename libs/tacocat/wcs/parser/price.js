@@ -1,6 +1,6 @@
 import { WeakCache } from '../../cache.js';
-import { Key, Price, namespace } from '../constant/index.js';
-import { getOstLinkParams, parsePlaceholderDataset, parseOstLinkContext } from './common.js';
+import { Key, Price } from '../constant/index.js';
+import { getOstLinkParams, parsePlaceholderDataset, parseOstLinkParams } from './common.js';
 import { parseJson } from '../../parser.js';
 import { isNil, querySelectorUp, toBoolean } from '../../util.js';
 
@@ -42,11 +42,11 @@ export function parsePriceDataset(element) {
 export function parsePriceHref(element) {
   const params = getOstLinkParams(element);
   if (isNil(params)) return undefined;
-  const base = parseOstLinkContext(element, params);
+  const base = parseOstLinkParams(params);
   if (isNil(base)) return undefined;
   const format = toBoolean(params.get(Key.format) ?? false);
   const promo = params.get(Key.promo);
-  const recurrence = toBoolean(params.get(Key.client));
+  const recurrence = toBoolean(params.get(Key.recurrence));
   const tax = toBoolean(params.get(Key.tax) ?? false);
   const unit = toBoolean(params.get(Key.unit) ?? false);
   return {

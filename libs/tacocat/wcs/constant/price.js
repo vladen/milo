@@ -23,6 +23,7 @@ export const CssSelector = {
 export const DatasetReactions = {
   mutations: {
     attributeFilter: [
+      // eslint-disable-next-line import/no-named-as-default-member
       ...Common.DatasetReactions.mutations.attributeFilter,
       qualifyDatasetAttribute(namespace, Key.format),
       qualifyDatasetAttribute(namespace, Key.recurrence),
@@ -37,6 +38,7 @@ export const DatasetReactions = {
 
 export const DatasetParam = {
   [Stage.pending]: {
+    // eslint-disable-next-line import/no-named-as-default-member
     ...Common.DatasetParam[Stage.pending],
     format: qualifyDatasetName(namespace, Key.format),
     recurrence: qualifyDatasetName(namespace, Key.recurrence),
@@ -44,6 +46,7 @@ export const DatasetParam = {
     unit: qualifyDatasetName(namespace, Key.unit),
   },
   [Stage.resolved]: {
+    // eslint-disable-next-line import/no-named-as-default-member
     ...Common.DatasetParam[Stage.resolved],
     commitment: qualifyDatasetName(namespace, Key.commitment),
     offer: qualifyDatasetName(namespace, Key.offer),

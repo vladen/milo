@@ -9,8 +9,10 @@ export const CssClass = {
 export const CssSelector = {
   link: `a.${CssClass.link}[href^="${ostBaseUrl}"]`,
   literals: `script.${qualifyCssName(namespace, Key.checkout, Key.literals)}`,
-  placeholder: `a.${CssClass.placeholder
-  }, button.${CssClass.placeholder
+  placeholder: `a.${
+    CssClass.placeholder
+  }, button.${
+    CssClass.placeholder
   }`,
   settings: `script.${qualifyCssName(namespace, Key.checkout, Key.settings)}`,
 };
@@ -21,6 +23,7 @@ export const CssSelector = {
 export const DatasetReactions = {
   mutations: {
     attributeFilter: [
+      // eslint-disable-next-line import/no-named-as-default-member
       ...Common.DatasetReactions.mutations.attributeFilter,
       qualifyDatasetAttribute(namespace, Key.promo),
       qualifyDatasetAttribute(namespace, Key.quantity),
@@ -36,6 +39,7 @@ export const DatasetReactions = {
 
 export const DatasetParam = {
   [Stage.pending]: {
+    // eslint-disable-next-line import/no-named-as-default-member
     ...Common.DatasetParam[Stage.pending],
     client: qualifyDatasetName(namespace, Key.client),
     promo: qualifyDatasetName(namespace, Key.promo),
@@ -45,6 +49,7 @@ export const DatasetParam = {
     target: qualifyDatasetName(namespace, Key.target),
   },
   [Stage.resolved]: {
+    // eslint-disable-next-line import/no-named-as-default-member
     ...Common.DatasetParam[Stage.resolved],
     commitments: qualifyDatasetName(namespace, Key.commitments),
     offers: qualifyDatasetName(namespace, Key.offers),

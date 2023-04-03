@@ -1,6 +1,6 @@
 import { WeakCache } from '../../cache.js';
 import { Checkout, Key } from '../constant/index.js';
-import { parsePlaceholderDataset, parseOstLinkContext, getOstLinkParams } from './common.js';
+import { parsePlaceholderDataset, parseOstLinkParams, getOstLinkParams } from './common.js';
 import Log from '../../log.js';
 import { parseJson } from '../../parser.js';
 import { isNil, isString, querySelectorUp, toInteger } from '../../util.js';
@@ -79,18 +79,16 @@ export function parseCheckoutDataset(element) {
 export function parseCheckoutHref(element) {
   const params = getOstLinkParams(element);
   if (isNil(params)) return undefined;
-  const base = parseOstLinkContext(element, params);
+  const base = parseOstLinkParams(params);
   if (isNil(base)) return undefined;
   const client = params.get(Key.cli) || defaultClient;
   const [quantity = '', quantities = ''] = params.getAll(Key.q);
-  const promo = params.get(Key.promo);
   const step = params.get('step') || defaultStep;
   const target = parseTarget(params.get(Key.target));
   return {
     ...base,
     client,
     quantities: parseQuantities(base.osis, quantity, quantities),
-    promo,
     step,
     target,
   };
