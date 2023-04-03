@@ -3,11 +3,12 @@ import { safeSync } from './safe.js';
 import { isNil } from './util.js';
 
 /**
+ * @param {string} alias
  * @param {AbortSignal?} signal
  * @returns {Tacocat.Engine.Control}
  */
-function Control(signal) {
-  const log = Log.common.module('control');
+function Control(alias, signal) {
+  const log = Log.common.module('control', alias);
 
   /**
    * @param {Tacocat.Engine.Disposer[]} disposers
@@ -31,6 +32,9 @@ function Control(signal) {
   log.debug('Activated:', { signal });
 
   return {
+    get alias() {
+      return alias;
+    },
     dispose(disposer, key = null) {
       /** @type {Tacocat.Engine.Disposer[]} */
       const newDisposers = Array.isArray(disposer) ? disposer.flat(3) : [disposer];

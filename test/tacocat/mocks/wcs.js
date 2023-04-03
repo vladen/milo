@@ -40,24 +40,10 @@ export default function WcsMock(responsesByCountry) {
   }
 
   return {
-    get checkoutOstLink() {
+    get checkoutCta() {
       return Tacocat
         .select(
-          Wcs.Constant.Checkout.CssSelector.link,
-          Wcs.Matcher.templateHrefParam('checkout'),
-        )
-        .extract((_, element) => Wcs.Parser.Checkout.settings(element))
-        .extract((_, element) => Wcs.Parser.Checkout.href(element))
-        .extract((_, element) => Wcs.Parser.Checkout.literals(element))
-        .extract(() => Wcs.getLocale())
-        .provide(mockProvider)
-        .mounted(Wcs.Template.Checkout.mounted)
-        .pending(Wcs.Template.Checkout.pending);
-    },
-
-    get checkoutPlaceholder() {
-      return Tacocat
-        .select(
+          'checkoutCta',
           Wcs.Constant.Checkout.CssSelector.placeholder,
           Wcs.Matcher.templateDatasetParam('checkout'),
         )
@@ -74,24 +60,26 @@ export default function WcsMock(responsesByCountry) {
         .resolved(Wcs.Template.Checkout.resolved);
     },
 
-    get priceOstLink() {
+    get checkoutOstLink() {
       return Tacocat
         .select(
-          Wcs.Constant.Price.CssSelector.link,
-          Wcs.Matcher.templateHrefParam('price'),
+          'checkoutOstLink',
+          Wcs.Constant.Checkout.CssSelector.link,
+          Wcs.Matcher.templateHrefParam('checkout'),
         )
-        .extract((_, element) => Wcs.Parser.Price.settings(element))
-        .extract((_, element) => Wcs.Parser.Price.href(element))
-        .extract((_, element) => Wcs.Parser.Price.literals(element))
+        .extract((_, element) => Wcs.Parser.Checkout.settings(element))
+        .extract((_, element) => Wcs.Parser.Checkout.href(element))
+        .extract((_, element) => Wcs.Parser.Checkout.literals(element))
         .extract(() => Wcs.getLocale())
         .provide(mockProvider)
-        .mounted(Wcs.Template.Price.mounted)
-        .pending(Wcs.Template.Price.pending);
+        .mounted(Wcs.Template.Checkout.mounted)
+        .pending(Wcs.Template.Checkout.pending);
     },
 
-    get pricePlaceholder() {
+    get price() {
       return Tacocat
         .select(
+          'price',
           Wcs.Constant.Price.CssSelector.placeholder,
           Wcs.Matcher.templateDatasetParam('price'),
         )
@@ -106,6 +94,22 @@ export default function WcsMock(responsesByCountry) {
         .pending(Wcs.Template.Price.pending)
         .rejected(Wcs.Template.rejected)
         .resolved(Wcs.Template.Price.resolved);
+    },
+
+    get priceOstLink() {
+      return Tacocat
+        .select(
+          'priceOstLink',
+          Wcs.Constant.Price.CssSelector.link,
+          Wcs.Matcher.templateHrefParam('price'),
+        )
+        .extract((_, element) => Wcs.Parser.Price.settings(element))
+        .extract((_, element) => Wcs.Parser.Price.href(element))
+        .extract((_, element) => Wcs.Parser.Price.literals(element))
+        .extract(() => Wcs.getLocale())
+        .provide(mockProvider)
+        .mounted(Wcs.Template.Price.mounted)
+        .pending(Wcs.Template.Price.pending);
     },
 
     /**

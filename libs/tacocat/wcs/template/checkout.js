@@ -139,10 +139,6 @@ export function resolvedCheckoutTemplate(element, { context, offers }, event, co
     url.searchParams.append(`${prefix}[${Key.id}]`, offer.offerId);
   });
 
-  Object.entries(context.extra).forEach(
-    ([key, value]) => url.searchParams.append(key, value),
-  );
-
   const tag = checkoutTemplate(element, { context }, event, control);
 
   const Param = Checkout.DatasetParam.resolved;

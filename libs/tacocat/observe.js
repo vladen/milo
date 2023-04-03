@@ -10,20 +10,19 @@ const observableMutations = ['attributes', 'attributeFilter', 'characterData', c
 
 /**
  * @param {{
+ *  control: Tacocat.Engine.Control;
  *  reactions: Tacocat.Internal.Reactions;
  *  subscribers: Tacocat.Internal.Subscriber[];
  *  scope: HTMLElement;
- *  signal: AbortSignal;
  *  selector: string;
  *  filter: Tacocat.Engine.Filter;
  * }} detail
  * @returns {Tacocat.Internal.Engine}
  */
 function Observe({
-  filter, reactions, scope, selector, signal, subscribers,
+  control, filter, reactions, scope, selector, subscribers,
 }) {
-  const control = Control(signal);
-  const log = Log.common.module('observe');
+  const log = Log.common.module('observe', control.alias);
 
   if (control.signal?.aborted) {
     return {

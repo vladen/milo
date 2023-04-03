@@ -2,10 +2,10 @@ import Constant from './constant.js';
 import { isFunction } from './util.js';
 
 const epoch = Date.now();
-/** @type {Map<string, number>} */
-const indexes = new Map();
 
 const filters = new Set();
+/** @type {Map<string, number>} */
+const instances = new Map();
 const tag = 'Log';
 const writers = new Set();
 
@@ -16,7 +16,16 @@ const Level = Object.freeze({
   warn: 'warn',
 });
 
-const createRecord = (instance, level, message, namespace, params) => ({
+/**
+ * @param {string} alias
+ * @param {number} instance
+ * @param {Tacocat.Log.Level} level
+ * @param {string} message
+ * @param {string} namespace
+ * @param {object} params
+ */
+const createRecord = (alias, instance, level, message, namespace, params) => ({
+  alias,
   instance,
   level,
   message,
@@ -28,6 +37,8 @@ const createRecord = (instance, level, message, namespace, params) => ({
 function reportError(message, ...params) {
   // eslint-disable-next-line no-use-before-define
   Log.consoleWriter.writer(createRecord(
+    undefined,
+    0,
     // eslint-disable-next-line no-use-before-define
     Log.level.error,
     message,
@@ -60,21 +71,29 @@ function writeRecord(record) {
 /**
  * @type {Tacocat.Log.Factory}
  * @param {string} namespace
+ * @param {string} [alias]
  */
-function Log(namespace) {
-  const index = (indexes.get(namespace) ?? 0) + 1;
-  indexes.set(namespace, index);
-  const id = `${namespace}-${index}`;
+function Log(namespace, alias) {
+  const instance = (instances.get(namespace) ?? 0) + 1;
+  instances.set(namespace, instance);
+  const id = `${namespace}-${instance}`;
 
   const createWriter = (level) => (message, ...params) => writeRecord(
-    createRecord(index, level, message, namespace, params),
+    createRecord(alias, instance, level, message, namespace, params),
   );
 
   return Object.seal({
+    alias,
     id,
     namespace,
-    module(name) {
-      return Log(`${namespace}/${name}`);
+    /**
+     * @param {string} name
+     * @param {string} alias
+     * @returns {Tacocat.Log.Instance}
+     */
+    // eslint-disable-next-line no-shadow
+    module(name, alias) {
+      return Log(`${namespace}/${name}`, alias);
     },
     debug: createWriter(Level.debug),
     error: createWriter(Level.error),
@@ -91,11 +110,11 @@ Log.quietFilter = { filter: () => false };
 
 Log.consoleWriter = {
   writer({
-    instance, level, message, namespace, params, timestamp,
+    alias, instance, level, message, namespace, params, timestamp,
   }) {
     // eslint-disable-next-line no-console
     console[level](
-      `[${namespace}] #${instance}`,
+      `[${namespace}${alias ? `:${alias}` : ''} #${instance}]`,
       message,
       ...params,
       `(+${timestamp}ms)`,

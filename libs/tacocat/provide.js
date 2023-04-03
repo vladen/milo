@@ -14,7 +14,7 @@ function Provide(provider) {
   let timer;
 
   return (control, cycle) => {
-    const log = Log.common.module('provide');
+    const log = Log.common.module('provide', control.alias);
 
     /**
      * @param {Map<string, Tacocat.SomeContext>} pending

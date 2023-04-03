@@ -13,7 +13,6 @@ const log = Log.common.module('Wcs').module('parsers');
 export function parsePlaceholderDataset(element) {
   const Param = DatasetParam.pending;
   const {
-    [Param.extra]: extra,
     [Param.osi]: osi = '',
     [Param.osis]: osis = '',
     [Param.promo]: promo,
@@ -33,7 +32,6 @@ export function parsePlaceholderDataset(element) {
   }
 
   return {
-    extra: extra ? parseJson(extra, 'Unable to parse "extra" dataset item as JSON:') : null,
     osis: [...set],
     promo,
     template,
@@ -66,7 +64,6 @@ export function getOstLinkParams(element) {
  * @returns {Tacocat.Wcs.PlaceholderContext}
  */
 export function parseOstLinkContext(element, params) {
-  const extra = { ...element.dataset };
   const osis = params.getAll(Key.osi).filter((osi) => osi);
   if (!osis.length) {
     log.warn('Missing "osi" param, ignoring:', params.toString());
@@ -77,5 +74,6 @@ export function parseOstLinkContext(element, params) {
     log.warn('Missing "template" param, ignoring:', params.toString());
     return undefined;
   }
-  return { extra, osis, template };
+  const promo = params.get(Key.promo);
+  return { osis, promo, template };
 }

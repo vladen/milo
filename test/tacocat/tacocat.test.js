@@ -29,7 +29,7 @@ describe('module "Tacocat"', () => {
     Tacocat.Log.reset();
   });
   beforeEach(() => {
-    // Tacocat.Log.reset('dev');
+    Tacocat.Log.reset('dev');
     controller = new AbortController();
     observation = { signal: controller.signal };
   });
@@ -43,8 +43,8 @@ describe('module "Tacocat"', () => {
       );
 
       const {
-        checkoutOstLink, checkoutPlaceholder,
-        priceOstLink, pricePlaceholder,
+        checkoutCta, checkoutOstLink,
+        price, priceOstLink,
         run,
       } = WcsMock(
         JSON.parse(await readFile({ path: './mocks/offers.json' })),
@@ -52,9 +52,9 @@ describe('module "Tacocat"', () => {
 
       await run(
         checkoutOstLink.observe(observation),
-        checkoutPlaceholder.observe(observation),
+        checkoutCta.observe(observation),
         priceOstLink.observe(observation),
-        pricePlaceholder.observe(observation),
+        price.observe(observation),
       );
 
       expect(document.body).dom.to.equalSnapshot();

@@ -24,7 +24,6 @@ declare namespace Tacocat {
     }
 
     interface PlaceholderContext {
-      extra: DOMStringMap;
       osis: string[];
       promo: string;
       template: string;
@@ -70,8 +69,7 @@ declare namespace Tacocat {
       unit: boolean;
     }
 
-    interface PriceContext extends PriceSettings, WcsContext {
-    }
+    interface PriceContext extends PriceSettings, WcsContext {}
 
     interface PricePlaceholderContext
       extends PriceContext,

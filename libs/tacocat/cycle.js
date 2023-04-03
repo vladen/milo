@@ -28,7 +28,7 @@ class TacocatCycleEvent extends CustomEvent {
 function Cycle(control, scope, selector, filter) {
   /** @type {WeakMap<Event, Event>} */
   const events = new WeakMap();
-  const log = Log.common.module('cycle');
+  const log = Log.common.module('cycle', control.alias);
 
   let increment = 0;
   function nextId() {

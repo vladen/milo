@@ -1,5 +1,6 @@
 import { Cache, WeakCache } from './cache.js';
 import Constant, { CssClass, Event, Stage } from './constant.js';
+import Control from './control.js';
 import Extract from './extract.js';
 import Log from './log.js';
 import Observe from './observe.js';
@@ -42,6 +43,7 @@ function assertReactions(reactions) {
 /**
  * @template T, U
  * @param {{
+ *  alias: string;
  *  filter: Tacocat.Engine.Filter;
  *  presenters?: Tacocat.Internal.Presenters;
  *  provider: Tacocat.Internal.Provider;
@@ -54,10 +56,10 @@ function assertReactions(reactions) {
 function Step2(detail) {
   if (isNil(detail.presenters)) {
     detail.presenters = {
+      [Stage.mounted]: [],
       [Stage.pending]: [],
       [Stage.rejected]: [],
       [Stage.resolved]: [],
-      [Stage.mounted]: [],
     };
   }
   /**
@@ -88,9 +90,9 @@ function Step2(detail) {
       }
       return Observe({
         ...detail,
+        control: Control(detail.alias, signal),
         reactions: mergeReactions(...detail.reactions, reactions),
         scope,
-        signal,
         subscribers: [...detail.subscribers, Present(detail.presenters)],
       });
     },
@@ -113,6 +115,7 @@ function Step2(detail) {
 /**
  * @template T, U
  * @param {{
+ *  alias: string;
  *  filter: Tacocat.Engine.Filter;
  *  extractors?: Tacocat.Internal.Extractor[];
  *  reactions?: Tacocat.Engine.Reactions[];
@@ -152,11 +155,11 @@ const Tacocat = Object.freeze({
    * @param {Tacocat.Engine.Filter} filter
    * @returns {Tacocat.Engine.Select}
    */
-  select(selector, filter = (() => true)) {
+  select(alias, selector, filter = (() => true)) {
     if (!isFunction(filter)) {
       throw new Error('Tacocat DOM element filter must be a function');
     }
-    return Step1({ selector, filter });
+    return Step1({ alias, filter, selector });
   },
   CssClass,
   Event,

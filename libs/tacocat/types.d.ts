@@ -116,6 +116,7 @@ declare namespace Tacocat {
     }
 
     interface Control {
+      get alias(): string;
       dispose(disposers: Tacocat.Engine.Disposers, key: any): boolean;
       release(key: any): void;
       signal?: AbortSignal;
@@ -150,7 +151,7 @@ declare namespace Tacocat {
        * Defines CSS selector matching placeholder elements to be processed by tacocat.
        * @param selector
        */
-      select<T extends object>(selector: string, filter?: Filter): Select;
+      select(alias: string, selector: string, filter?: Filter): Select;
       CssClass: {
         mounted: string;
         pending: string;
@@ -238,10 +239,10 @@ declare namespace Tacocat {
     >;
     type Presenter = PendingPresenter | RejectedPresenter | ResolvedPresenter;
     type Presenters = {
+      mounted: ResolvedPresenter[];
       pending: PendingPresenter[];
       rejected: RejectedPresenter[];
       resolved: ResolvedPresenter[];
-      stale: ResolvedPresenter[];
     };
     type Provider = Tacocat.Engine.Provider<SomeContext, SomeContextful>;
     type RejectedPresenter = Tacocat.Engine.RejectedPresenter<SomeContext>;
@@ -293,7 +294,7 @@ declare namespace Tacocat {
     type isLog = (candidate: any) => candidate is Instance;
 
     type Factory = {
-      (namespace: string): Instance;
+      (namespace: string, alias?: string): Instance;
       common: Instance;
       level: {
         debug: 'debug';
@@ -315,11 +316,12 @@ declare namespace Tacocat {
 
     // --- interfaces ---
     interface Instance {
+      readonly alias: string;
       readonly id: string;
       readonly namespace: string;
       debug(message: string, ...params: any[]): void;
       error(message: string, ...params: any[]): void;
-      module(name: string): Instance;
+      module(name: string, alias?: string): Instance;
       info(message: string, ...params: any[]): void;
       warn(message: string, ...params: any[]): void;
     }
@@ -330,6 +332,7 @@ declare namespace Tacocat {
     }
 
     interface Record {
+      alias?: string;
       instance: number;
       level: Level;
       message: string;

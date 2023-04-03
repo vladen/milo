@@ -22,7 +22,7 @@ function setStageCssClasses(element, stage) {
  * @returns {Tacocat.Internal.Subscriber}
  */
 const Present = (presenters) => (control, cycle) => {
-  const log = Log.common.module('present');
+  const log = Log.common.module('present', control.alias);
 
   cycle.listen(
     cycle.scope,

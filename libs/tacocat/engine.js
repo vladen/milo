@@ -63,6 +63,7 @@ function Placeholder(cycle, placeholder) {
  * @returns {Tacocat.Internal.Engine}
  */
 const Engine = (cycle) => ({
+  // @ts-ignore
   get placeholders() {
     return cycle.placeholders.map((placeholder) => Placeholder(cycle, placeholder));
   },

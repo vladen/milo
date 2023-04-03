@@ -15,7 +15,6 @@ export const Key = {
   commitments: 'commitments',
   co: 'co',
   cs: 'cs',
-  extra: 'extra',
   format: 'format',
   id: 'id',
   lang: 'lang',
@@ -50,7 +49,6 @@ export const Key = {
 export const DatasetReactions = {
   mutations: {
     attributeFilter: [
-      qualifyDatasetAttribute(namespace, Key.extra),
       qualifyDatasetAttribute(namespace, Key.osi),
       qualifyDatasetAttribute(namespace, Key.osis),
       qualifyDatasetAttribute(namespace, Key.promo),
@@ -61,7 +59,6 @@ export const DatasetReactions = {
 
 export const DatasetParam = {
   [Stage.pending]: {
-    extra: qualifyDatasetName(namespace, Key.extra),
     osi: qualifyDatasetName(namespace, Key.osi),
     osis: qualifyDatasetName(namespace, Key.osis),
     promo: qualifyDatasetName(namespace, Key.promo),

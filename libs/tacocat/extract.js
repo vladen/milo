@@ -8,7 +8,7 @@ import { isNil, isObject } from './util.js';
  * @returns {Tacocat.Internal.Subscriber}
  */
 const Extract = (extractors) => (control, cycle) => {
-  const log = Log.common.module('extract');
+  const log = Log.common.module('extract', control.alias);
 
   cycle.listen(
     cycle.scope,
