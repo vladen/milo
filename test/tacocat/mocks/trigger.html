@@ -1,4 +1,19 @@
-Cards for price selection:
+<style>
+  .taco-wcs-card.selected {
+    font-weight: bold;
+  }
+  .taco-wcs-price {
+    display: block;
+    padding-left: 20px;
+  }
+  .taco-wcs-price-dynamic {
+    display: block;
+    font-weight: bold;
+    padding-left: 20px;
+  }
+</style>
+
+<h3>Cards for price selection:</h3>
 <div class="taco-wcs-card selected">
   This card is selected by default
   <span
@@ -18,8 +33,10 @@ Cards for price selection:
     data-taco-wcs-template="price"
   ></span>
 </div>
+<br>
 
-Selected price (should contain price from the card having "selected" class):
+<h3>Selected price:</h3>
+Should price on the card with "selected" class
 <span
   class="taco-wcs-price-dynamic"
   data-taco-wcs-recurrence="true"

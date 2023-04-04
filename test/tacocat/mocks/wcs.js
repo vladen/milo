@@ -188,7 +188,9 @@ export default function WcsMock({
     async run(...engines) {
       await Util.delay(10);
       await Promise.all(
-        engines.flatMap(({ placeholders }) => placeholders).map(({ promise }) => promise),
+        engines.flatMap(({ placeholders }) => placeholders).map(
+          (placeholder) => placeholder.promise,
+        ),
       );
       await Util.delay(10);
     },

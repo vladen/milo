@@ -1,4 +1,4 @@
-import { isMap, isWeakMap, toArray } from './util.js';
+import { isMap, isWeakMap } from './util.js';
 
 const value$ = {};
 

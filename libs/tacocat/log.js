@@ -122,9 +122,6 @@ Log.consoleWriter = {
   },
 };
 
-/** @type {Tacocat.Log.isLog} */
-Log.isLog = (object) => object != null && object[Symbol.toStringTag] === tag;
-
 Log.reset = (env = 'prod') => {
   filters.clear();
   writers.clear();

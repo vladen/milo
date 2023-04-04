@@ -3,7 +3,9 @@ export const snapshots = {};
 
 snapshots["module \"Tacocat\" listens to scope events and updates placeholder on event"] = 
 `<body>
-  Cards for price selection:
+  <h3>
+    Cards for price selection:
+  </h3>
   <div class="taco-wcs-card">
     This card is selected by default
     <span
@@ -42,7 +44,11 @@ snapshots["module \"Tacocat\" listens to scope events and updates placeholder on
       82.49
     </span>
   </div>
-  Selected price (should contain price from the card having "selected" class):
+  <br>
+  <h3>
+    Selected price:
+  </h3>
+  Should price on the card with "selected" class
   <span
     class="taco-resolved taco-wcs-price taco-wcs-price-dynamic"
     data-taco-wcs-analytics="ccsn_direct_individual:m2m:us"

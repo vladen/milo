@@ -52,19 +52,40 @@ const Placeholder = (cycle, placeholder) => ({
 });
 
 /**
- * @param {Tacocat.Internal.Cycle} cycle
+ * @param {Tacocat.Internal.Cycle} [cycle]
  * @returns {Tacocat.Internal.Engine}
  */
 function Engine(cycle) {
   const cache = WeakCache();
+
   return {
     get placeholders() {
+      if (!cycle) return [];
       return cycle.placeholders.map(
         (placeholder) => cache.getOrSet(
-          placeholder,
+          [placeholder],
           () => Placeholder(cycle, placeholder),
         ),
       );
+    },
+
+    * select(selector, filter = () => true) {
+      if (!cycle) return;
+      const placeholders = new Map(
+        cycle.placeholders.map((placeholder) => [placeholder.element, placeholder]),
+      );
+      // eslint-disable-next-line no-restricted-syntax
+      for (const element of cycle.control.scope.querySelectorAll(selector)) {
+        if (element instanceof HTMLElement && filter(element)) {
+          const placeholder = placeholders.get(element);
+          if (placeholder) {
+            yield cache.getOrSet(
+              [placeholder],
+              () => Placeholder(cycle, placeholder),
+            );
+          }
+        }
+      }
     },
   };
 }

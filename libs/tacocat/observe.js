@@ -19,19 +19,12 @@ const observableMutations = ['attributes', 'attributeFilter', 'characterData', c
  * @returns {Tacocat.Internal.Engine}
  */
 function Observe({ control, filter, reactions, subscribers }) {
+  if (control.signal?.aborted) return Engine();
+
+  const cycle = Cycle(control, filter);
   const { scope, selector } = control;
   const fact = { reactions, scope, selector };
   const log = Log.common.module('observe', control.alias);
-
-  if (control.signal?.aborted) {
-    return {
-      get placeholders() {
-        return [];
-      },
-    };
-  }
-
-  const cycle = Cycle(control, filter);
   /** @type {Set<HTMLElement>} */
   const removed = new Set();
   /** @type {Map<HTMLElement, Event?>} */
@@ -69,18 +62,24 @@ function Observe({ control, filter, reactions, subscribers }) {
   }
 
   /**
-   * Schedules async dispatch of observation results.
+   * Schedules async handling of observed mutations or triggers.
    */
   function schedule() {
     if (timer) return;
 
+    /**
+     * Mounts added elements, unmounts removed.
+     * Runs cycle iteration.
+     */
     function dispatch() {
-      if (control.signal?.aborted) return;
       timer = 0;
+      if (control.signal?.aborted) return;
+
       removed.forEach(unmount);
 
       updated.forEach((event, element) => {
         mount(element, (nextEvent) => {
+          // Will be called by triggers or event listeners attached by triggers
           updated.set(element, nextEvent);
           schedule();
         });
@@ -124,7 +123,9 @@ function Observe({ control, filter, reactions, subscribers }) {
   });
 
   // Scan current DOM tree for matching elements
-  cycle.select().forEach(update);
+  [...scope.querySelectorAll(selector)]
+    .filter(filter)
+    .forEach(update);
 
   // Setup mutation observer
   if (observableMutations.some((mutation) => reactions.mutations[mutation])) {

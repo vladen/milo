@@ -5,7 +5,6 @@ import WcsMock, { CssClass, CssSelector } from './mocks/wcs.js';
 import { expect } from './tool.js';
 import Tacocat from '../../libs/tacocat/index.js';
 import Wcs from '../../libs/tacocat/wcs/index.js';
-import { delay } from '../../libs/tacocat/util.js';
 
 /*
 - tiggering by events
@@ -53,7 +52,7 @@ describe('module "Tacocat"', () => {
 
     const pipeline1 = price().observe(observation);
     const pipeline2 = priceDynamic().observe(observation);
-    await delay(10);
+    await run(pipeline1, pipeline2);
 
     const cards = document.querySelectorAll(CssSelector.card);
     cards[0].classList.remove(CssClass.selected);

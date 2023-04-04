@@ -153,6 +153,12 @@ declare namespace Tacocat {
         | ResolvedPlaceholder<T, U>
         | MountedPlaceholder<T, U>
       )[];
+      select(selector: string, filter?: Filter): Iterator<(
+        | PendingPlaceholder<T, U>
+        | RejectedPlaceholder<T, U>
+        | ResolvedPlaceholder<T, U>
+        | MountedPlaceholder<T, U>
+      )>;
     }
 
     interface MountedPlaceholder<T extends object, U extends object>
@@ -269,7 +275,6 @@ declare namespace Tacocat {
       observe(element: HTMLElement, context?: SomeContext, event?: Event): void;
       present(context: SomeContext, element?: HTMLElement): void;
       provide(result: SomeResult): void;
-      select(): Element[];
     }
 
     interface Reactions {
@@ -286,8 +291,6 @@ declare namespace Tacocat {
 
   module Log {
     // --- types ---
-    type isLog = (candidate: any) => candidate is Instance;
-
     type Factory = {
       (namespace: string, alias?: string): Instance;
       common: Instance;
@@ -302,7 +305,6 @@ declare namespace Tacocat {
       debugFilter: Module;
       quietFilter: Module;
 
-      isLog: isLog;
       reset(environment?: string): void;
       use(...modules: Module[]): Factory;
     };

@@ -197,10 +197,6 @@ function Cycle(control, filter) {
         log.warn('Provided result is unexpected, ignoring:', result);
       }
     },
-
-    select() {
-      return [...scope.querySelectorAll(selector)].filter(filter);
-    },
   };
 }
 
