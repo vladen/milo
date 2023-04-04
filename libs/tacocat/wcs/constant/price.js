@@ -1,5 +1,6 @@
 import Common, { Key, namespace, ostBaseUrl } from './common.js';
-import { Stage, qualifyCssName, qualifyDatasetAttribute, qualifyDatasetName } from '../../constant.js';
+import { Stage } from '../../constant.js';
+import { qualifyCssName, qualifyDataAttribute, qualifyJsName } from '../../util.js';
 
 export const CssClass = {
   link: qualifyCssName(namespace, Key.ost, Key.price),
@@ -25,10 +26,10 @@ export const DatasetReactions = {
     attributeFilter: [
       // eslint-disable-next-line import/no-named-as-default-member
       ...Common.DatasetReactions.mutations.attributeFilter,
-      qualifyDatasetAttribute(namespace, Key.format),
-      qualifyDatasetAttribute(namespace, Key.recurrence),
-      qualifyDatasetAttribute(namespace, Key.tax),
-      qualifyDatasetAttribute(namespace, Key.unit),
+      qualifyDataAttribute(namespace, Key.format),
+      qualifyDataAttribute(namespace, Key.recurrence),
+      qualifyDataAttribute(namespace, Key.tax),
+      qualifyDataAttribute(namespace, Key.unit),
     ],
     attributes: true,
     childList: true,
@@ -40,17 +41,17 @@ export const DatasetParam = {
   [Stage.pending]: {
     // eslint-disable-next-line import/no-named-as-default-member
     ...Common.DatasetParam[Stage.pending],
-    format: qualifyDatasetName(namespace, Key.format),
-    recurrence: qualifyDatasetName(namespace, Key.recurrence),
-    tax: qualifyDatasetName(namespace, Key.tax),
-    unit: qualifyDatasetName(namespace, Key.unit),
+    format: qualifyJsName(namespace, Key.format),
+    recurrence: qualifyJsName(namespace, Key.recurrence),
+    tax: qualifyJsName(namespace, Key.tax),
+    unit: qualifyJsName(namespace, Key.unit),
   },
   [Stage.resolved]: {
     // eslint-disable-next-line import/no-named-as-default-member
     ...Common.DatasetParam[Stage.resolved],
-    commitment: qualifyDatasetName(namespace, Key.commitment),
-    offer: qualifyDatasetName(namespace, Key.offer),
-    term: qualifyDatasetName(namespace, Key.term),
+    commitment: qualifyJsName(namespace, Key.commitment),
+    offer: qualifyJsName(namespace, Key.offer),
+    term: qualifyJsName(namespace, Key.term),
   },
 };
 

@@ -1,6 +1,6 @@
 import { WeakCache } from '../../cache.js';
+import { extractDataset, extractOstLinkParams, getOstLinkParams, validateContext } from './common.js';
 import { Key, Price } from '../constant/index.js';
-import { getOstLinkParams, parsePlaceholderDataset, parseOstLinkParams } from './common.js';
 import { parseJson } from '../../parser.js';
 import { isNil, querySelectorUp, toBoolean } from '../../util.js';
 
@@ -8,11 +8,14 @@ const literalsCache = WeakCache();
 const settingsCache = WeakCache();
 
 /**
- * @param {HTMLElement} element
- * @returns {Omit<Tacocat.Wcs.PricePlaceholderContext, keyof Tacocat.Wcs.LocaleContext>}
+ * @template T
+ * @type {Tacocat.Engine.Extractor<T & object, Omit<
+ *  Tacocat.Wcs.PricePlaceholderContext,
+ *  keyof Tacocat.Wcs.LocaleContext
+ * >>}
  */
-export function parsePriceDataset(element) {
-  const base = parsePlaceholderDataset(element);
+export async function extractPriceDataset(state) {
+  const base = extractDataset(state);
   if (isNil(base)) return undefined;
 
   const Param = Price.DatasetParam.pending;
@@ -21,7 +24,7 @@ export function parsePriceDataset(element) {
     [Param.recurrence]: recurrence,
     [Param.tax]: tax,
     [Param.unit]: unit,
-  } = element.dataset;
+  } = state.element.dataset;
 
   return {
     ...base,
@@ -33,19 +36,18 @@ export function parsePriceDataset(element) {
 }
 
 /**
- * @param {HTMLAnchorElement} element
- * @returns {Omit<
- *  Tacocat.Wcs.PricePlaceholderContext,
- *  keyof Tacocat.Wcs.LocaleContext
- * >}
- */
-export function parsePriceHref(element) {
+ * @template T
+ * @type {Tacocat.Engine.Extractor<T & object, Omit<
+*  Tacocat.Wcs.PricePlaceholderContext,
+*  keyof Tacocat.Wcs.LocaleContext
+* >>}
+*/
+export async function extractPriceHref({ element }) {
   const params = getOstLinkParams(element);
   if (isNil(params)) return undefined;
-  const base = parseOstLinkParams(params);
+  const base = extractOstLinkParams(params);
   if (isNil(base)) return undefined;
   const format = toBoolean(params.get(Key.format) ?? false);
-  const promo = params.get(Key.promo);
   const recurrence = toBoolean(params.get(Key.recurrence));
   const tax = toBoolean(params.get(Key.tax) ?? false);
   const unit = toBoolean(params.get(Key.unit) ?? false);
@@ -53,19 +55,18 @@ export function parsePriceHref(element) {
     ...base,
     format,
     recurrence,
-    promo,
     tax,
     unit,
   };
 }
 
 /**
- * @param {HTMLElement} element
- * @returns {Tacocat.Wcs.PriceLiterals}
- */
-export const parsePriceLiterals = (element) => literalsCache.getOrSet(
-  element,
-  () => {
+ * @template T
+ * @type {Tacocat.Engine.Extractor<T & object, Tacocat.Wcs.PriceLiterals>}
+*/
+export const extractPriceLiterals = ({ element }) => literalsCache.getOrSet(
+  [element],
+  async () => {
     const source = querySelectorUp(element, Price.CssSelector.literals);
     const {
       perUnitLabel = '',
@@ -76,12 +77,12 @@ export const parsePriceLiterals = (element) => literalsCache.getOrSet(
 );
 
 /**
- * @param {HTMLElement} element
- * @returns {Tacocat.Wcs.PricePlaceholderContext}
- */
-export const parsePriceSettings = (element) => settingsCache.getOrSet(
-  element,
-  () => {
+ * @template T
+ * @type {Tacocat.Engine.Extractor<T & object, Tacocat.Wcs.PriceSettings>}
+*/
+export const extractPriceSettings = ({ element }) => settingsCache.getOrSet(
+  [element],
+  async () => {
     const source = querySelectorUp(element, Price.CssSelector.settings);
     const json = parseJson(source?.textContent) ?? {};
     const format = toBoolean(json[Key.format]);
@@ -91,3 +92,15 @@ export const parsePriceSettings = (element) => settingsCache.getOrSet(
     return { format, recurrence, tax, unit };
   },
 );
+
+/**
+ * @template T
+ * @type {Tacocat.Engine.Extractor<
+*  T & Tacocat.Wcs.PricePlaceholderContext & Tacocat.Wcs.LiteralsContext,
+*  T & Tacocat.Wcs.PricePlaceholderContext & Tacocat.Wcs.LiteralsContext
+* >}
+*/
+export function validatePriceContext(detail) {
+  // @ts-ignore
+  return validateContext(detail);
+}

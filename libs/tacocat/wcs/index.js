@@ -1,13 +1,11 @@
-import { getLocale } from './locale.js';
 import Constant from './constant/index.js';
-import Parser from './parser/index.js';
-import Template from './template/index.js';
+import Extractor from './extractor/index.js';
+import Presenter from './presenter/index.js';
 import Matcher from './match.js';
 
 export default {
-  getLocale,
   Constant,
+  Extractor,
   Matcher,
-  Parser,
-  Template,
+  Presenter,
 };

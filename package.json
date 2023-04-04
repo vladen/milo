@@ -5,7 +5,7 @@
   "description": "Website foundation technology.",
   "scripts": {
     "test": "wtr --config ./web-test-runner.config.mjs \"./test/**/*.test.(js|html)\" --node-resolve --port=2000 --coverage --concurrent-browsers 4",
-    "test:tacocat": "wtr --config ./web-test-runner.config.mjs \"./test/**/tacocat/*.test.(js|html)\" --node-resolve --port=2001 --coverage --concurrent-browsers 4 --watch",
+    "test:tacocat": "wtr --config ./web-test-runner.config.mjs \"./test/**/tacocat/*.test.(js|html)\" --node-resolve --port=2001 --coverage --concurrent-browsers 1 --watch",
     "test:watch": "npm test -- --watch",
     "test:file": "wtr --config ./web-test-runner.config.mjs --node-resolve --port=2000 --coverage",
     "libs": "hlx up --port=6456",

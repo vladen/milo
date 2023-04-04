@@ -1,4 +1,4 @@
-import { createTag } from '../utils/utils.js';
+import namespace from './namespace.js';
 
 /** @type {Tacocat.isNil} */
 export const isNil = (value) => value == null;
@@ -66,14 +66,7 @@ export const setContext = (result, context) => Object.defineProperty(
 /** @type {Tacocat.hasContext}} */
 export const hasContext = (object) => isObject(object)
   // @ts-ignore
-  && isString(object.context.id) && !!object.context.id.length;
-
-/**
- * @param {boolean?} existing
- * @param {boolean?} overriding
- * @returns {boolean}
- */
-const combineFlags = (existing, overriding) => (existing ?? false) || (overriding ?? false);
+  && isObject(object.context) && isString(object.context.id) && !!object.context.id;
 
 /**
  * @param {number} timeout
@@ -89,6 +82,25 @@ export const delay = (timeout, signal = null) => new Promise((resolve) => {
 });
 
 /**
+ * @param {string[]} names
+ */
+export const qualifyCssName = (...names) => (
+  (names[0]?.startsWith(`${namespace}-`) ? names : [namespace, ...names])
+    .filter((name) => name)
+    .map((name) => name.replace(
+      /\p{Ll}(\p{Lu}|\p{N})/g,
+      (_, prev, next) => `${prev}-${next[0].toLowerCase()}`,
+    ))
+    .join('-'));
+
+export const qualifyDataAttribute = (...names) => `data-${qualifyCssName(...names)}`;
+
+export const qualifyJsName = (...names) => qualifyCssName(...names).replace(
+  /(\w)-(\w)/g,
+  (_, prev, next) => `${prev}${next.toUpperCase()}`,
+);
+
+/**
  * @param {HTMLElement} element
  * @param {string} selector
  * @returns {HTMLElement?}
@@ -97,8 +109,15 @@ export const querySelectorUp = (element, selector) => (
   isNil(element?.parentElement)
     ? null
     : element.parentElement.querySelector(selector)
-      ?? querySelectorUp(element.parentElement, selector)
+    ?? querySelectorUp(element.parentElement, selector)
 );
+
+/**
+ * @param {boolean?} existing
+ * @param {boolean?} overriding
+ * @returns {boolean}
+ */
+const combineFlags = (existing, overriding) => (existing ?? false) || (overriding ?? false);
 
 /**
  *
@@ -106,11 +125,6 @@ export const querySelectorUp = (element, selector) => (
  * @returns {Tacocat.Internal.Reactions}
  */
 export const mergeReactions = (...reactions) => ({
-  events: [...new Set(
-    reactions
-      .flatMap(({ events } = {}) => toArray(events))
-      .filter((event) => isString(event)),
-  )],
   mutations: reactions
     .map(({ mutations } = {}) => mutations)
     .filter((mutations) => isObject(mutations))
@@ -133,15 +147,11 @@ export const mergeReactions = (...reactions) => ({
       },
       {},
     ),
-  triggers: reactions
-    .map(({ trigger } = {}) => trigger)
-    .filter((trigger) => isFunction(trigger)),
+  trigger: reactions
+    .flatMap(({ trigger } = {}) => (isNil(trigger) ? [] : toArray(trigger))),
 });
 
-export { createTag };
-
 export default {
-  createTag,
   delay,
   querySelectorUp,
   hasContext,
@@ -153,6 +163,9 @@ export default {
   isObject,
   isPromise,
   isString,
+  qualifyCssName,
+  qualifyDataAttribute,
+  qualifyJsName,
   setContext,
   toArray,
   toBoolean,

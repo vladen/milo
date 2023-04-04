@@ -18,6 +18,9 @@ declare namespace Tacocat {
     >;
 
     // --- interfaces ---
+    interface LiteralsContext {
+      literals?: Record<string, string>;
+    }
     interface LocaleContext {
       country: string;
       language: string;
@@ -32,7 +35,7 @@ declare namespace Tacocat {
     interface WcsContext extends LocaleContext {
       currency?: string;
       osis: string[];
-      promo: string;
+      promo?: string;
     }
 
     interface CheckoutLiterals {

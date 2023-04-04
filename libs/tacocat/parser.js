@@ -1,6 +1,6 @@
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isNil } from './util';
+import { isNil } from './util.js';
 
 const log = Log.common.module('parser');
 

@@ -1,18 +1,27 @@
 import Log from './log.js';
+import { isFunction } from './util.js';
 
-const getLog = (log) => (Log.isLog(log) ? log : Log.common ?? console);
+/**
+ * @param {Tacocat.Log.Instance} log
+ * @param {string} message
+ * @param {Error} error
+ */
+const logError = (log, message, error) => (log ?? Log.common ?? console).error(message, error);
 
 /**
  * @template T
  * @param {Tacocat.Log.Instance} log
  * @param {string} message
  * @param {() => Promise<T>} operation
+ * @param {Promise<T> | ((error: Error) => T)} [fallback]
  * @returns {Promise<T | undefined>}
  */
-function safeAsync(log, message, operation) {
+function safeAsync(log, message, operation, fallback) {
   const reportError = (error) => {
-    getLog(log).error(message, error);
-    return Promise.resolve(undefined);
+    logError(log, message, error);
+    return Promise.resolve(
+      isFunction(fallback) ? fallback(error) : fallback,
+    );
   };
   try {
     return Promise.resolve(operation()).catch(reportError);
@@ -25,38 +34,17 @@ function safeAsync(log, message, operation) {
  * @template T
  * @param {Tacocat.Log.Instance} log
  * @param {string} message
- * @param {T[]} array
- * @param {(item: T, index: number) => Promise<boolean>} operation
- * @returns {Promise<boolean>}
- */
-function safeAsyncEvery(log, message, array, operation) {
-  const safeAsyncStep = (index, result) => {
-    if (!result || index >= array.length) {
-      return Promise.resolve(!!result);
-    }
-    return safeAsync(log, message, () => operation(array[index], index)).then(
-      (nextResult) => safeAsyncStep(index + 1, nextResult),
-      () => Promise.resolve(false),
-    );
-  };
-
-  return safeAsyncStep(0, true);
-}
-
-/**
- * @template T
- * @param {Tacocat.Log.Instance} log
- * @param {string} message
  * @param {() => T} operation
+ * @param {T | ((error: Error) => T)} [fallback]
  * @returns {T | undefined}
  */
-function safeSync(log, message, operation) {
+function safeSync(log, message, operation, fallback) {
   try {
     return operation();
   } catch (error) {
-    getLog(log).error(message, error);
-    return undefined;
+    logError(log, message, error);
+    return isFunction(fallback) ? fallback(error) : fallback;
   }
 }
 
-export { safeAsync, safeAsyncEvery, safeSync };
+export { safeAsync, safeSync };

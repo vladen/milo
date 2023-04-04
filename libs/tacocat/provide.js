@@ -1,8 +1,8 @@
 import { Event } from './constant.js';
-import { NotProvidedError } from './errors.js';
+import { NotProvidedError } from './error.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { hasContext, isNil, isPromise } from './util.js';
+import { hasContext, isError, isNil, isPromise } from './util.js';
 
 /**
  * @param {Tacocat.Internal.Provider} provider
@@ -22,7 +22,11 @@ function Provide(provider) {
      * @param {any} result
      */
     function traverse(pending, promises, result) {
-      if (isNil(result)) return;
+      if (isNil(result)) {
+        debugger;
+        return;
+      }
+
       if (Array.isArray(result)) {
         result.forEach((item) => traverse(pending, promises, item));
         return;
@@ -45,6 +49,11 @@ function Provide(provider) {
         } else {
           log.warn('Unexpected result, ignoring:', result);
         }
+        return;
+      }
+
+      if (isError(result)) {
+        log.error('Provider rejection, skipping:', result);
       }
     }
 
@@ -55,28 +64,26 @@ function Provide(provider) {
       /** @type {Map<string, Tacocat.SomeContext>} */
       const pending = new Map(waiting.entries());
       waiting.clear();
-
+      const contexts = [...pending.values()];
       const promises = [];
       safeSync(
         log,
         'Provider callback error:',
-        () => traverse(pending, promises, provider([...pending.values()], control)),
+        () => traverse(pending, promises, provider({ contexts, control })),
       );
 
       let i = 0;
       while (i < promises.length) {
         // eslint-disable-next-line no-await-in-loop
-        await promises[i].catch(() => {});
+        await promises[i];
         i += 1;
       }
 
-      traverse(pending, [], [...pending.values()].map(
-        (context) => NotProvidedError(context),
-      ));
+      traverse(pending, [], [...pending.values()].map(NotProvidedError));
     }
 
     cycle.listen(
-      cycle.scope,
+      control.scope,
       Event.extracted,
       ({ detail: { context } }) => {
         waiting.set(context.id, context);
@@ -84,7 +91,7 @@ function Provide(provider) {
       },
     );
 
-    control.dispose(() => log.debug('Aborted'));
+    control.capture(() => log.debug('Aborted'));
     log.debug('Activated:', { provider });
   };
 }

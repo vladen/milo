@@ -6,9 +6,9 @@ import Log from './log.js';
 import Observe from './observe.js';
 import Present from './present.js';
 import Provide from './provide.js';
-import Util, { isFunction, isNil, isObject, isString, mergeReactions } from './util.js';
+import Util, { isFunction, isNil, isObject, mergeReactions } from './util.js';
 
-export { Constant, Cache, Util, WeakCache };
+export { Constant, Util };
 
 function assertExtractor(extractor) {
   if (!isFunction(extractor)) {
@@ -28,12 +28,6 @@ function assertProvider(provider) {
 function assertReactions(reactions) {
   if (!isObject(reactions)) {
     throw new Error('Tacocat reactions must be an object');
-  }
-  if (!isNil(reactions.events) && (
-    isString(reactions.events)
-    || (Array.isArray(reactions.events) && reactions.events.every(isString))
-  )) {
-    throw new Error('Tacocat reactions events must be a string or an array of strings');
   }
   if (!isNil(reactions.trigger) && !isFunction(reactions.trigger)) {
     throw new Error('Tacocat reactions trigger must be a function');
@@ -90,7 +84,7 @@ function Step2(detail) {
       }
       return Observe({
         ...detail,
-        control: Control(detail.alias, signal),
+        control: Control(detail.alias, scope, detail.selector, signal),
         reactions: mergeReactions(...detail.reactions, reactions),
         scope,
         subscribers: [...detail.subscribers, Present(detail.presenters)],
@@ -161,10 +155,12 @@ const Tacocat = Object.freeze({
     }
     return Step1({ alias, filter, selector });
   },
+  Cache,
   CssClass,
   Event,
   Log,
   Stage,
+  WeakCache,
 });
 
 export default Tacocat;

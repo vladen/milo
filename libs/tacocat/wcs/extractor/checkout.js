@@ -1,6 +1,6 @@
 import { WeakCache } from '../../cache.js';
 import { Checkout, Key } from '../constant/index.js';
-import { parsePlaceholderDataset, parseOstLinkParams, getOstLinkParams } from './common.js';
+import { extractDataset, extractOstLinkParams, getOstLinkParams, validateContext } from './common.js';
 import Log from '../../log.js';
 import { parseJson } from '../../parser.js';
 import { isNil, isString, querySelectorUp, toInteger } from '../../util.js';
@@ -9,11 +9,9 @@ const defaultClient = 'adobe';
 const defaultStep = 'email';
 const defaultTarget = '_top';
 
+const log = Log.common.module('Wcs').module('extractor').module('checkout');
 const literalsCache = WeakCache();
 const settingsCache = WeakCache();
-
-const log = Log.common.module('Wcs').module('parsers').module('checkout');
-
 const targetValues = Object.values(Checkout.Target);
 
 /**
@@ -22,7 +20,7 @@ const targetValues = Object.values(Checkout.Target);
  * @param {string} quantities
  * @returns {number[]}
  */
-function parseQuantities(osis, quantity, quantities) {
+function extractQuantities(osis, quantity, quantities) {
   const defaultQuantity = toInteger(quantity, 1);
   const quantityItems = quantities.split(',');
   return osis.reduce(
@@ -31,7 +29,7 @@ function parseQuantities(osis, quantity, quantities) {
   );
 }
 
-function parseTarget(target) {
+function extractTarget(target) {
   if (isString(target)) {
     // eslint-disable-next-line no-param-reassign
     target = target.toLowerCase();
@@ -42,11 +40,15 @@ function parseTarget(target) {
 }
 
 /**
- * @param {HTMLElement} element
- * @returns {Omit<Tacocat.Wcs.CheckoutPlaceholderContext, keyof Tacocat.Wcs.LocaleContext>}
+ * @template T
+ * @type {Tacocat.Engine.Extractor<T & object, Omit<
+ *  Tacocat.Wcs.CheckoutPlaceholderContext,
+ *  keyof Tacocat.Wcs.LocaleContext
+ * >>}
  */
-export function parseCheckoutDataset(element) {
-  const base = parsePlaceholderDataset(element);
+export async function extractCheckoutDataset(state) {
+  // @ts-ignore
+  const base = await extractDataset(state);
   if (isNil(base)) return undefined;
 
   const Param = Checkout.DatasetParam.pending;
@@ -57,50 +59,51 @@ export function parseCheckoutDataset(element) {
     [Param.quantities]: quantities = '',
     [Param.step]: step = defaultStep,
     [Param.target]: target = defaultTarget,
-  } = element.dataset;
+  } = state.element.dataset;
 
   return {
     ...base,
     client,
     promo,
-    quantities: parseQuantities(base.osis, quantity, quantities),
+    quantities: extractQuantities(base.osis, quantity, quantities),
     step,
-    target: parseTarget(target),
+    target: extractTarget(target),
   };
 }
 
 /**
- * @param {HTMLAnchorElement} element
- * @returns {Omit<
+ * @template T
+ * @type {Tacocat.Engine.Extractor<T & object, Omit<
  *  Tacocat.Wcs.CheckoutPlaceholderContext,
  *  keyof Tacocat.Wcs.LocaleContext
- * >}
+ * >>}
  */
-export function parseCheckoutHref(element) {
-  const params = getOstLinkParams(element);
+export async function extractCheckoutHref(state) {
+  // @ts-ignore
+  const params = getOstLinkParams(state.element);
   if (isNil(params)) return undefined;
-  const base = parseOstLinkParams(params);
+  const base = extractOstLinkParams(params);
   if (isNil(base)) return undefined;
   const client = params.get(Key.cli) || defaultClient;
   const [quantity = '', quantities = ''] = params.getAll(Key.q);
   const step = params.get('step') || defaultStep;
-  const target = parseTarget(params.get(Key.target));
+  const target = extractTarget(params.get(Key.target));
   return {
     ...base,
     client,
-    quantities: parseQuantities(base.osis, quantity, quantities),
+    quantities: extractQuantities(base.osis, quantity, quantities),
     step,
     target,
   };
 }
 
 /**
- * @param {HTMLElement} element
- * @returns {Tacocat.Wcs.CheckoutLiterals}
-*/
-export const parseCheckoutLiterals = (element) => literalsCache.getOrSet(
-  element,
-  () => {
+ * @template T
+ * @type {Tacocat.Engine.Extractor<T & object, Tacocat.Wcs.CheckoutLiterals>}
+ */
+export const extractCheckoutLiterals = ({ element }) => literalsCache.getOrSet(
+  [element],
+  async () => {
     const source = querySelectorUp(element, Checkout.CssSelector.literals);
     const { ctaLabel = '' } = parseJson(source?.textContent) ?? {};
     return { literals: { ctaLabel } };
@@ -108,18 +111,40 @@ export const parseCheckoutLiterals = (element) => literalsCache.getOrSet(
 );
 
 /**
- * @param {HTMLElement} element
- * @returns {Tacocat.Wcs.CheckoutSettings}
+ * @template T
+ * @type {Tacocat.Engine.Extractor<T & object, Tacocat.Wcs.CheckoutSettings>}
  */
-export const parseCheckoutSettings = (element) => settingsCache.getOrSet(
-  element,
-  () => {
+export const extractCheckoutSettings = ({ element }) => settingsCache.getOrSet(
+  [element],
+  async () => {
     const source = querySelectorUp(element, Checkout.CssSelector.settings);
     const json = parseJson(source?.textContent) ?? {};
     const client = json[Key.client] ?? defaultClient;
     const step = json[Key.step] ?? defaultStep;
-    const target = parseTarget(json[Key.target]);
-
+    const target = extractTarget(json[Key.target]);
     return { client, step, target };
   },
 );
+
+/**
+ * @template T
+ * @type {Tacocat.Engine.Extractor<
+ *  T & Tacocat.Wcs.CheckoutPlaceholderContext & Tacocat.Wcs.LiteralsContext,
+ *  T & Tacocat.Wcs.CheckoutPlaceholderContext & Tacocat.Wcs.LiteralsContext
+ * >}
+ */
+export async function validateCheckoutContext(detail) {
+  // @ts-ignore
+  const result = await validateContext(detail);
+  if (!result) return undefined;
+  const { context, context: { quantities, osis, step } } = detail;
+  if (!Array.isArray(quantities) || quantities.length !== osis.length) {
+    log.warn('Invalid "quantities" context, skipping:', detail);
+    return undefined;
+  }
+  if (!isString(step) || !step) {
+    log.warn('Invalid "step" context, skipping:', detail);
+    return undefined;
+  }
+  return context;
+}

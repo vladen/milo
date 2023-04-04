@@ -1,4 +1,5 @@
-import { qualifyDatasetAttribute, qualifyDatasetName, Stage } from '../../constant.js';
+import { Stage } from '../../constant.js';
+import { qualifyDataAttribute, qualifyJsName } from '../../util.js';
 
 export const namespace = 'wcs';
 
@@ -50,22 +51,22 @@ export const Key = {
 export const DatasetReactions = {
   mutations: {
     attributeFilter: [
-      qualifyDatasetAttribute(namespace, Key.osi),
-      qualifyDatasetAttribute(namespace, Key.osis),
-      qualifyDatasetAttribute(namespace, Key.promo),
-      qualifyDatasetAttribute(namespace, Key.template),
+      qualifyDataAttribute(namespace, Key.osi),
+      qualifyDataAttribute(namespace, Key.osis),
+      qualifyDataAttribute(namespace, Key.promo),
+      qualifyDataAttribute(namespace, Key.template),
     ],
   },
 };
 
 export const DatasetParam = {
   [Stage.pending]: {
-    osi: qualifyDatasetName(namespace, Key.osi),
-    osis: qualifyDatasetName(namespace, Key.osis),
-    promo: qualifyDatasetName(namespace, Key.promo),
-    template: qualifyDatasetName(namespace, Key.template),
+    osi: qualifyJsName(namespace, Key.osi),
+    osis: qualifyJsName(namespace, Key.osis),
+    promo: qualifyJsName(namespace, Key.promo),
+    template: qualifyJsName(namespace, Key.template),
   },
-  [Stage.resolved]: { analytics: qualifyDatasetName(namespace, Key.analytics) },
+  [Stage.resolved]: { analytics: qualifyJsName(namespace, Key.analytics) },
 };
 
 export default {

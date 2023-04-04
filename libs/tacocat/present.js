@@ -25,19 +25,20 @@ const Present = (presenters) => (control, cycle) => {
   const log = Log.common.module('present', control.alias);
 
   cycle.listen(
-    cycle.scope,
+    control.scope,
     [Event.observed, Event.extracted, Event.provided],
-    ({ detail: { context, element, result, stage }, type }, event) => {
+    ({ detail, type }) => {
+      const { context, element, event, result, stage } = detail;
       if (type === Event.observed && stage !== Stage.mounted) return;
       /** @type {Tacocat.Internal.Presenter[]} */
       const group = presenters[stage];
 
-      const detail = { context, element, stage };
-      if (!isNil(event)) detail.event = event;
-      if (!isNil(result)) detail.result = result;
+      const fact = { context, element, stage };
+      if (!isNil(event)) fact.event = event;
+      if (!isNil(result)) fact.result = result;
 
       if (!group?.length) {
-        log.debug('No presenters, ignoring:', detail);
+        log.debug('No presenters, ignoring:', fact);
         return;
       }
 
@@ -46,13 +47,12 @@ const Present = (presenters) => (control, cycle) => {
           log,
           'Presenter callback error:',
           () => {
-            const next = presenter(
-              current,
+            const next = presenter({
+              ...detail,
+              element: current,
               // @ts-ignore
-              result ?? { context },
-              event,
-              control,
-            );
+              result: result ?? { context },
+            });
             return isHTMLElement(next) ? next : current;
           },
         ),
@@ -61,13 +61,13 @@ const Present = (presenters) => (control, cycle) => {
 
       setStageCssClasses(last, stage);
 
-      detail.element = last;
-      log.debug('Presented:', detail);
+      fact.element = last;
+      log.debug('Presented:', fact);
       cycle.present(context, last);
     },
   );
 
-  control.dispose(() => log.debug('Aborted'));
+  control.capture(() => log.debug('Aborted'));
   log.debug('Activated:', { presenters });
 };
 

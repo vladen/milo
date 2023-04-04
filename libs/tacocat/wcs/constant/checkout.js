@@ -1,5 +1,6 @@
 import Common, { Key, namespace, ostBaseUrl } from './common.js';
-import { Stage, qualifyCssName, qualifyDatasetAttribute, qualifyDatasetName } from '../../constant.js';
+import { Stage } from '../../constant.js';
+import { qualifyCssName, qualifyDataAttribute, qualifyJsName } from '../../util.js';
 
 export const CssClass = {
   link: qualifyCssName(namespace, Key.ost, Key.checkout),
@@ -25,11 +26,11 @@ export const DatasetReactions = {
     attributeFilter: [
       // eslint-disable-next-line import/no-named-as-default-member
       ...Common.DatasetReactions.mutations.attributeFilter,
-      qualifyDatasetAttribute(namespace, Key.promo),
-      qualifyDatasetAttribute(namespace, Key.quantity),
-      qualifyDatasetAttribute(namespace, Key.quantities),
-      qualifyDatasetAttribute(namespace, Key.step),
-      qualifyDatasetAttribute(namespace, Key.target),
+      qualifyDataAttribute(namespace, Key.promo),
+      qualifyDataAttribute(namespace, Key.quantity),
+      qualifyDataAttribute(namespace, Key.quantities),
+      qualifyDataAttribute(namespace, Key.step),
+      qualifyDataAttribute(namespace, Key.target),
     ],
     attributes: true,
     childList: true,
@@ -41,20 +42,20 @@ export const DatasetParam = {
   [Stage.pending]: {
     // eslint-disable-next-line import/no-named-as-default-member
     ...Common.DatasetParam[Stage.pending],
-    client: qualifyDatasetName(namespace, Key.client),
-    promo: qualifyDatasetName(namespace, Key.promo),
-    quantity: qualifyDatasetName(namespace, Key.quantity),
-    quantities: qualifyDatasetName(namespace, Key.quantities),
-    step: qualifyDatasetName(namespace, Key.step),
-    target: qualifyDatasetName(namespace, Key.target),
+    client: qualifyJsName(namespace, Key.client),
+    promo: qualifyJsName(namespace, Key.promo),
+    quantity: qualifyJsName(namespace, Key.quantity),
+    quantities: qualifyJsName(namespace, Key.quantities),
+    step: qualifyJsName(namespace, Key.step),
+    target: qualifyJsName(namespace, Key.target),
   },
   [Stage.resolved]: {
     // eslint-disable-next-line import/no-named-as-default-member
     ...Common.DatasetParam[Stage.resolved],
-    commitments: qualifyDatasetName(namespace, Key.commitments),
-    offers: qualifyDatasetName(namespace, Key.offers),
-    terms: qualifyDatasetName(namespace, Key.terms),
-    url: qualifyDatasetName(namespace, Key.url),
+    commitments: qualifyJsName(namespace, Key.commitments),
+    offers: qualifyJsName(namespace, Key.offers),
+    terms: qualifyJsName(namespace, Key.terms),
+    url: qualifyJsName(namespace, Key.url),
   },
 };
 

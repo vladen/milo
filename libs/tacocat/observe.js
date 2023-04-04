@@ -1,16 +1,15 @@
-import Control from './control.js';
 import Cycle from './cycle.js';
 import Engine from './engine.js';
 import Log from './log.js';
 import { safeSync } from './safe.js';
-import { isFunction, isNil } from './util.js';
+import { isNil, toArray } from './util.js';
 
 const childListMutation = 'childList';
 const observableMutations = ['attributes', 'attributeFilter', 'characterData', childListMutation];
 
 /**
  * @param {{
- *  control: Tacocat.Engine.Control;
+ *  control: Tacocat.Internal.Control;
  *  reactions: Tacocat.Internal.Reactions;
  *  subscribers: Tacocat.Internal.Subscriber[];
  *  scope: HTMLElement;
@@ -19,9 +18,9 @@ const observableMutations = ['attributes', 'attributeFilter', 'characterData', c
  * }} detail
  * @returns {Tacocat.Internal.Engine}
  */
-function Observe({
-  control, filter, reactions, scope, selector, subscribers,
-}) {
+function Observe({ control, filter, reactions, subscribers }) {
+  const { scope, selector } = control;
+  const fact = { reactions, scope, selector };
   const log = Log.common.module('observe', control.alias);
 
   if (control.signal?.aborted) {
@@ -32,7 +31,7 @@ function Observe({
     };
   }
 
-  const cycle = Cycle(control, scope, selector, filter);
+  const cycle = Cycle(control, filter);
   /** @type {Set<HTMLElement>} */
   const removed = new Set();
   /** @type {Map<HTMLElement, Event?>} */
@@ -47,25 +46,15 @@ function Observe({
    */
   function mount(element, listener) {
     if (cycle.exists(element)) return;
+
     log.debug('Mounting:', { element });
-
-    reactions.events.forEach((type) => {
-      element.addEventListener(type, listener, { signal: control.signal });
-    });
-
-    reactions.triggers.forEach((trigger) => {
-      // eslint-disable-next-line no-debugger
-      debugger;
-      const result = safeSync(
+    toArray(reactions.trigger).flat().forEach((trigger) => {
+      safeSync(
         log,
-        'Trigger function error:',
+        'Trigger callback error:',
         () => trigger(element, listener, control),
       );
-      if (isFunction(result)) {
-        control.dispose(result, element);
-      } else if (!isNil(result)) {
-        log.warn('Trigger must return a function:', { result, trigger });
-      }
+      log.debug('Installed trigger:', { element, trigger });
     });
   }
 
@@ -92,17 +81,13 @@ function Observe({
 
       updated.forEach((event, element) => {
         mount(element, (nextEvent) => {
-          // eslint-disable-next-line no-debugger
-          debugger;
           updated.set(element, nextEvent);
           schedule();
         });
         const detail = { element };
         if (!isNil(event)) detail.event = event;
-        setTimeout(() => {
-          log.debug('Observed:', detail);
-          cycle.observe(element, undefined, event);
-        }, 1);
+        log.debug('Observed:', detail);
+        cycle.observe(element, undefined, event);
       });
     }
 
@@ -141,7 +126,6 @@ function Observe({
   // Scan current DOM tree for matching elements
   cycle.select().forEach(update);
 
-  let observing = false;
   // Setup mutation observer
   if (observableMutations.some((mutation) => reactions.mutations[mutation])) {
     const observer = new MutationObserver((records) => records.forEach((record) => {
@@ -154,12 +138,12 @@ function Observe({
       }
     }));
     observer.observe(scope, reactions.mutations);
-    control.dispose(() => observer.disconnect());
-    observing = true;
+    control.capture(() => observer.disconnect());
+    fact.observing = true;
   }
 
-  control.dispose(() => log.debug('Aborted'));
-  log.debug('Activated:', { observing, reactions, scope, selector });
+  control.capture(() => log.debug('Aborted'));
+  log.debug('Activated:', fact);
   return Engine(cycle);
 }
 

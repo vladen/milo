@@ -1,4 +1,4 @@
-import { isMap, isWeakMap } from './util.js';
+import { isMap, isWeakMap, toArray } from './util.js';
 
 const value$ = {};
 
@@ -10,17 +10,13 @@ export const Cache = () => {
   const cache = new Map();
   return {
     getOrSet(keys, factory) {
-      // eslint-disable-next-line no-param-reassign
-      keys = Array.isArray(keys) ? keys : [keys];
       const { length } = keys;
       let map = cache;
       for (let i = 0; i < length - 1; i += 1) {
         const key = keys[i];
         if (map.has(key)) {
           const value = map.get(key);
-          if (!isMap(value)) {
-            map.set(key, new Map([[value$, value]]));
-          }
+          if (!isMap(value)) map.set(key, new Map([[value$, value]]));
         } else {
           map.set(key, new Map());
         }

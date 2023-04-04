@@ -1,7 +1,7 @@
 import { Event } from './constant.js';
 import Log from './log.js';
-import { safeAsyncEvery } from './safe.js';
-import { isNil, isObject } from './util.js';
+import { safeAsync } from './safe.js';
+import { isError, isNil, isObject } from './util.js';
 
 /**
  * @param {Tacocat.Internal.Extractor[]} extractors
@@ -11,41 +11,60 @@ const Extract = (extractors) => (control, cycle) => {
   const log = Log.common.module('extract', control.alias);
 
   cycle.listen(
-    cycle.scope,
+    cycle.control.scope,
     Event.observed,
-    async ({ detail: { context, element } }, event) => {
+    async ({ detail }) => {
+      const { context, element, event } = detail;
+      const fact = { context, element };
+      if (!isNil(event)) fact.event = event;
       const { id: prevId, ...prevRest } = context;
-      const detail = { context, element };
-      if (!isNil(event)) detail.event = event;
 
-      const success = await safeAsyncEvery(
-        log,
-        'Extractor function error:',
-        extractors,
-        async (extractor) => {
-          if (control.signal?.aborted) return false;
-          const result = await extractor(context, element, event, control);
-          if (isObject(result)) {
-            Object.assign(context, result);
-            return true;
-          }
-          log.debug('Extractor function returned not object, ignoring placeholder:', detail);
-          return false;
-        },
-      );
+      for (let i = 0; i < extractors.length; i += 1) {
+        if (control.signal?.aborted) return;
 
-      if (success) {
-        const { id: nextId, ...nextRest } = context;
-        if (JSON.stringify(nextRest) !== JSON.stringify(prevRest)) {
-          context.id = prevId;
-          log.debug('Extracted:', detail);
-          cycle.extract(context);
+        const extractor = extractors[i];
+        // eslint-disable-next-line no-await-in-loop
+        const result = await safeAsync(
+          log,
+          'Extractor callback error:',
+          () => extractor(detail),
+          (error) => error,
+        );
+
+        if (isNil(result)) {
+          fact.extractor = extractor;
+          log.debug('Extractor callback has resolved to nothing, skipping:', fact);
+          return;
         }
+
+        if (isError(result)) {
+          fact.result = result;
+          fact.extractor = extractor;
+          log.error('Extractor callback has rejected with error, skipping:', fact);
+        }
+
+        if (isObject(result)) {
+          Object.entries(result).forEach(([key, value]) => {
+            if (!isNil(value)) context[key] = value;
+          });
+        } else {
+          fact.result = result;
+          fact.extractor = extractor;
+          log.warn('Extractor callback has resolved to unexpected type, skipping:', fact);
+          return;
+        }
+      }
+
+      const { id: nextId, ...nextRest } = context;
+      if (JSON.stringify(nextRest) !== JSON.stringify(prevRest)) {
+        context.id = prevId;
+        log.debug('Extracted:', fact);
+        cycle.extract(context);
       }
     },
   );
 
-  control.dispose(() => log.debug('Aborted'));
+  control.capture(() => log.debug('Aborted'));
   log.debug('Activated:', { extractors });
 };
 

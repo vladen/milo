@@ -3,36 +3,70 @@
 import Tacocat, { Util } from '../../../libs/tacocat/index.js';
 import Wcs from '../../../libs/tacocat/wcs/index.js';
 
+export const CssClass = {
+  card: Util.qualifyCssName(Wcs.Constant.namespace, 'card'),
+  priceDynamic: Util.qualifyCssName(Wcs.Constant.Price.CssClass.placeholder, 'dynamic'),
+  selected: 'selected',
+};
+
+export const CssSelector = {
+  card: `div.${CssClass.card}`,
+  priceDynamic: `span.${CssClass.priceDynamic}`,
+  selected: `.${CssClass.selected}`,
+};
+
+export const countries = ['US', 'GB', 'HK'];
+
 /**
+ * @param {Tacocat.Wcs.LocaleContext} locale
  * @param {{
  *  [country: string]: { resolvedOffers: Tacocat.Wcs.Offer[] },
- * }} responsesByCountry
+ * }} responses
  */
-export default function WcsMock(responsesByCountry) {
-  const selectOffers = (country, osis) => responsesByCountry[country]?.resolvedOffers.filter(
-    ({ offerSelectorIds }) => osis.some(
-      (osi) => offerSelectorIds?.includes(osi),
-    ),
+export default function WcsMock({
+  country = 'US',
+  data = {},
+}) {
+  const cache = Tacocat.Cache();
+  const log = Tacocat.Log.common.module('wcs').module('mock');
+
+  async function localeExtractor() {
+    await Util.delay(1);
+    return { country, languag: 'en' };
+  }
+
+  const selectOffers = (osis) => cache.getOrSet(
+    [osis.sort().join('\n')],
+    () => {
+      const offers = data[country]?.resolvedOffers.filter(
+        ({ offerSelectorIds }) => osis.some(
+          (osi) => offerSelectorIds?.includes(osi),
+        ),
+      );
+      log.debug('Fetched:', { offers });
+      return offers;
+    },
   );
 
   /**
- * @param {Tacocat.Wcs.WcsContext[]} contexts
- * @returns {Promise<
- *  Tacocat.Resolution<Tacocat.Wcs.WcsContext, { offers: Tacocat.Wcs.Offer[] }>
-  * >[]}
-  */
-  async function mockProvider(contexts) {
-    // TODO: add cache
+   * @type {Tacocat.Engine.Provider<Tacocat.Wcs.WcsContext, Tacocat.Wcs.Offers>}
+   */
+  async function mockProvider({ contexts }) {
     return contexts.map(
       (context) => new Promise(
-        (resolve, reject) => {
+        (resolve) => {
           context.country = (context.country ?? 'US').toUpperCase();
-          /** @type {Tacocat.Wcs.Offer[]} */
-          const offers = selectOffers(context.country, context.osis);
-          if (offers.length) {
+          if (!Util.isString(context.country) || context.country !== country) {
+            throw new Error('Invalid "country" context');
+          }
+          if (!context.osis?.length) {
+            throw new Error('Missing "osis" context');
+          }
+          const offers = selectOffers(context.osis);
+          if (offers?.length) {
             resolve(Util.setContext({ offers }, context));
           } else {
-            reject(Util.setContext(new Error(`Offers not found: ${context.osis.join(',')}`), context));
+            throw new Error('Offers not found');
           }
         },
       ),
@@ -40,76 +74,112 @@ export default function WcsMock(responsesByCountry) {
   }
 
   return {
-    get checkoutCta() {
+    checkoutCta() {
       return Tacocat
         .select(
           'checkoutCta',
           Wcs.Constant.Checkout.CssSelector.placeholder,
           Wcs.Matcher.templateDatasetParam('checkout'),
         )
-        .extract((_, element) => Wcs.Parser.Checkout.settings(element))
-        .extract(
-          (_, element) => Wcs.Parser.Checkout.dataset(element),
-          Wcs.Constant.Checkout.DatasetReactions,
-        )
-        .extract((_, element) => Wcs.Parser.Checkout.literals(element))
-        .extract(() => Wcs.getLocale())
+        .extract(Wcs.Extractor.Checkout.settings)
+        .extract(Wcs.Extractor.Checkout.dataset, Wcs.Constant.Checkout.DatasetReactions)
+        .extract(Wcs.Extractor.Checkout.literals)
+        .extract(localeExtractor)
+        .extract(Wcs.Extractor.Checkout.validate)
         .provide(mockProvider)
-        .pending(Wcs.Template.Checkout.pending)
-        .rejected(Wcs.Template.rejected)
-        .resolved(Wcs.Template.Checkout.resolved);
+        .pending(Wcs.Presenter.Checkout.pending)
+        .rejected(Wcs.Presenter.rejected)
+        .resolved(Wcs.Presenter.Checkout.resolved);
     },
 
-    get checkoutOstLink() {
+    checkoutOstLink() {
       return Tacocat
         .select(
           'checkoutOstLink',
           Wcs.Constant.Checkout.CssSelector.link,
           Wcs.Matcher.templateHrefParam('checkout'),
         )
-        .extract((_, element) => Wcs.Parser.Checkout.settings(element))
-        .extract((_, element) => Wcs.Parser.Checkout.href(element))
-        .extract((_, element) => Wcs.Parser.Checkout.literals(element))
-        .extract(() => Wcs.getLocale())
+        .extract(Wcs.Extractor.Checkout.settings)
+        .extract(Wcs.Extractor.Checkout.href)
+        .extract(Wcs.Extractor.Checkout.literals)
+        .extract(localeExtractor)
+        .extract(Wcs.Extractor.Checkout.validate)
         .provide(mockProvider)
-        .mounted(Wcs.Template.Checkout.mounted)
-        .pending(Wcs.Template.Checkout.pending);
+        .mounted(Wcs.Presenter.Checkout.mounted)
+        .pending(Wcs.Presenter.Checkout.pending);
     },
 
-    get price() {
+    price() {
       return Tacocat
         .select(
           'price',
           Wcs.Constant.Price.CssSelector.placeholder,
           Wcs.Matcher.templateDatasetParam('price'),
         )
-        .extract((_, element) => Wcs.Parser.Price.settings(element))
-        .extract(
-          (_, element) => Wcs.Parser.Price.dataset(element),
-          Wcs.Constant.Price.DatasetReactions,
-        )
-        .extract((_, element) => Wcs.Parser.Price.literals(element))
-        .extract(() => Wcs.getLocale())
+        .extract(Wcs.Extractor.Price.settings)
+        .extract(Wcs.Extractor.Price.dataset, Wcs.Constant.Price.DatasetReactions)
+        .extract(Wcs.Extractor.Price.literals)
+        .extract(localeExtractor)
+        .extract(Wcs.Extractor.Price.validate)
         .provide(mockProvider)
-        .pending(Wcs.Template.Price.pending)
-        .rejected(Wcs.Template.rejected)
-        .resolved(Wcs.Template.Price.resolved);
+        .pending(Wcs.Presenter.Price.pending)
+        .rejected(Wcs.Presenter.rejected)
+        .resolved(Wcs.Presenter.Price.resolved);
     },
 
-    get priceOstLink() {
+    priceDynamic() {
+      return Tacocat
+        .select(
+          'priceDynamic',
+          CssSelector.priceDynamic,
+          Wcs.Matcher.templateDatasetParam('price'),
+        )
+        .extract(Wcs.Extractor.Price.settings)
+        .extract(Wcs.Extractor.Price.dataset)
+        .extract(
+          (state) => {
+            const { target } = state.event ?? {};
+            const element = (
+              target?.matches(CssSelector.card + CssSelector.selected)
+                ? target
+                : state.scope.querySelector(CssSelector.card + CssSelector.selected)
+            ).querySelector(
+              Wcs.Constant.Price.CssSelector.placeholder,
+            );
+            return element
+              ? Wcs.Extractor.Price.dataset({ ...state, element })
+              : null;
+          },
+          {
+            trigger(_, listener, control) {
+              control.listen(control.scope, [Tacocat.Event.resolved, 'click'], listener);
+            },
+          },
+        )
+        .extract(Wcs.Extractor.Price.literals)
+        .extract(localeExtractor)
+        .extract(Wcs.Extractor.Price.validate)
+        .provide(mockProvider)
+        .pending(Wcs.Presenter.Price.pending)
+        .rejected(Wcs.Presenter.rejected)
+        .resolved(Wcs.Presenter.Price.resolved);
+    },
+
+    priceOstLink() {
       return Tacocat
         .select(
           'priceOstLink',
           Wcs.Constant.Price.CssSelector.link,
           Wcs.Matcher.templateHrefParam('price'),
         )
-        .extract((_, element) => Wcs.Parser.Price.settings(element))
-        .extract((_, element) => Wcs.Parser.Price.href(element))
-        .extract((_, element) => Wcs.Parser.Price.literals(element))
-        .extract(() => Wcs.getLocale())
+        .extract(Wcs.Extractor.Price.settings)
+        .extract(Wcs.Extractor.Price.href)
+        .extract(Wcs.Extractor.Price.literals)
+        .extract(localeExtractor)
+        .extract(Wcs.Extractor.Price.validate)
         .provide(mockProvider)
-        .mounted(Wcs.Template.Price.mounted)
-        .pending(Wcs.Template.Price.pending);
+        .mounted(Wcs.Presenter.Price.mounted)
+        .pending(Wcs.Presenter.Price.pending);
     },
 
     /**

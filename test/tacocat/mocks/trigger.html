@@ -1,0 +1,27 @@
+Cards for price selection:
+<div class="taco-wcs-card selected">
+  This card is selected by default
+  <span
+    class="taco-wcs-price"
+    data-taco-wcs-osi="osi-abm"
+    data-taco-wcs-recurrence="true"
+    data-taco-wcs-template="price"
+  ></span>
+</div>
+
+<div class="taco-wcs-card">
+  This card is selected by JavaScript
+  <span
+    class="taco-wcs-price"
+    data-taco-wcs-osi="osi-m2m"
+    data-taco-wcs-recurrence="true"
+    data-taco-wcs-template="price"
+  ></span>
+</div>
+
+Selected price (should contain price from the card having "selected" class):
+<span
+  class="taco-wcs-price-dynamic"
+  data-taco-wcs-recurrence="true"
+  data-taco-wcs-template="price"
+></span>

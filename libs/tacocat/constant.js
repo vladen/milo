@@ -1,20 +1,7 @@
-export const namespace = 'taco';
+import namespace from './namespace.js';
+import { qualifyCssName, qualifyDataAttribute, qualifyJsName } from './util.js';
 
-/**
- * @param {string[]} names
- */
-export const qualifyCssName = (...names) => [namespace, ...names]
-  .filter((name) => name)
-  .map((name) => name.replace(
-    /\p{Ll}(\p{Lu}|\p{N})/g,
-    (_, prev, next) => `${prev}-${next[0].toLowerCase()}`,
-  ))
-  .join('-');
-export const qualifyDatasetAttribute = (...names) => `data-${qualifyCssName(...names)}`;
-export const qualifyDatasetName = (...names) => qualifyCssName(...names).replace(
-  /(\w)-(\w)/g,
-  (_, prev, next) => `${prev}${next.toUpperCase()}`,
-);
+export { namespace };
 
 export const Stage = {
   /** @type {Tacocat.Mounted} */
@@ -36,31 +23,31 @@ export const Key = {
   presented: 'presented',
 };
 
-export const Event = {
-  extracted: qualifyCssName(Key.extracted),
+export const CssClass = {
+  disabled: qualifyCssName(Key.disabled),
   mounted: qualifyCssName(Key.mounted),
-  observed: qualifyCssName(Key.observed),
   pending: qualifyCssName(Key.pending),
-  presented: qualifyCssName(Key.presented),
-  provided: qualifyCssName(Key.provided),
   rejected: qualifyCssName(Key.rejected),
   resolved: qualifyCssName(Key.resolved),
 };
 
-export const CssClass = {
-  disabled: qualifyCssName(Key.disabled),
-  mounted: Event.mounted,
-  pending: Event.pending,
-  rejected: Event.rejected,
-  resolved: Event.resolved,
+export const Event = {
+  extracted: qualifyJsName(Key.extracted),
+  mounted: qualifyJsName(Key.mounted),
+  observed: qualifyJsName(Key.observed),
+  pending: qualifyJsName(Key.pending),
+  presented: qualifyJsName(Key.presented),
+  provided: qualifyJsName(Key.provided),
+  rejected: qualifyJsName(Key.rejected),
+  resolved: qualifyJsName(Key.resolved),
 };
 
 export default {
-  qualifyCssName,
-  qualifyDatasetAttribute,
-  qualifyDatasetName,
   CssClass,
   Event,
   Stage,
+  qualifyCssName,
+  qualifyDataAttribute,
+  qualifyJsName,
   namespace,
 };

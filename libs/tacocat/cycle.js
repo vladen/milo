@@ -1,51 +1,47 @@
-import { Event, Stage, qualifyDatasetName } from './constant.js';
+import { Event, Stage } from './constant.js';
 import Log from './log.js';
-import { isHTMLElement, isError, toArray, isNil, isObject } from './util.js';
-
-const marker$ = Symbol(qualifyDatasetName('marker'));
-
-/** @type {Tacocat.CycleEvent} */
-class TacocatCycleEvent extends CustomEvent {
-  /**
-   * @param {boolean} bubbles
-   * @param {Symbol} marker
-   * @param {string} type
-   * @param {Tacocat.Internal.Placeholder} detail
-   */
-  constructor(bubbles, marker, type, { context, element, result, stage }) {
-    super(type, { bubbles, detail: { context, element, result, stage } });
-    Object.defineProperty(this, marker$, { value: marker });
-  }
-}
+import { isHTMLElement, isError, isNil, isObject } from './util.js';
 
 /**
- * @param {Tacocat.Engine.Control} control
- * @param {HTMLElement} scope
- * @param {string} selector
+ * @param {Tacocat.Internal.Control} control
  * @param {Tacocat.Engine.Filter} filter
  * @returns {Tacocat.Internal.Cycle}
  */
-function Cycle(control, scope, selector, filter) {
-  /** @type {WeakMap<Event, Event>} */
-  const events = new WeakMap();
-  const log = Log.common.module('cycle', control.alias);
-
+function Cycle(control, filter) {
   let increment = 0;
+  const log = Log.common.module('cycle', control.alias);
+  const { scope, selector } = control;
+
+  /** @type {Tacocat.Internal.CycleEvent} */
+  class TacocatCycleEvent extends CustomEvent {
+    /**
+     * @param {boolean} bubbles
+     * @param {string} type
+     * @param {Tacocat.Internal.Placeholder} placeholder
+     */
+    constructor(bubbles, type, placeholder) {
+      super(type, {
+        bubbles,
+        detail: Object.freeze({ ...placeholder, control, scope, selector }),
+      });
+    }
+  }
+
   function nextId() {
     increment += 1;
     return `${increment}-${Date.now()}`;
   }
 
-  const marker = Symbol(nextId());
   /**
    * @param {boolean} bubbles
    * @param {string} type
    * @param {Tacocat.Internal.Placeholder} placeholder
    */
   function dispatch(bubbles, type, placeholder) {
-    const tacoEvent = new TacocatCycleEvent(bubbles, marker, type, placeholder);
-    if (placeholder.event) events.set(tacoEvent, placeholder.event);
-    (bubbles ? placeholder.element : scope).dispatchEvent(tacoEvent);
+    control.dispatch(
+      bubbles ? placeholder.element : scope,
+      new TacocatCycleEvent(bubbles, type, placeholder),
+    );
   }
 
   /** @type {Map<any, Tacocat.Internal.Placeholder>} */
@@ -58,7 +54,7 @@ function Cycle(control, scope, selector, filter) {
     // eslint-disable-next-line no-param-reassign
     const context = placeholders.get(element)?.context;
     if (!isNil(context)) {
-      log.debug('Disposed:', { context, element });
+      log.debug('Disposed:', { context, element, placeholders });
       placeholders.delete(context.id);
       placeholders.delete(element);
     }
@@ -85,14 +81,9 @@ function Cycle(control, scope, selector, filter) {
   }
 
   return {
+    control,
     get placeholders() {
       return [...placeholders.values()];
-    },
-    get scope() {
-      return scope;
-    },
-    get selector() {
-      return selector;
     },
 
     dispose(element) {
@@ -117,23 +108,8 @@ function Cycle(control, scope, selector, filter) {
       }
     },
 
-    listen(target, types, listener, options = {}) {
-      if (control.signal?.aborted) return;
-
-      const disposers = [];
-      const tacocatListener = (event) => {
-        if (event[marker$] === marker) {
-          if (options.once) {
-            disposers.forEach((disposer) => disposer());
-          }
-          listener(event, events.get(event));
-        }
-      };
-      toArray(types).forEach((type) => {
-        target.addEventListener(type, tacocatListener, options);
-        disposers.push(() => target.removeEventListener(type, tacocatListener));
-      });
-      control.dispose(disposers);
+    listen(target, type, listener, options) {
+      control.listen(target, type, listener, options);
     },
 
     match(node) {
@@ -163,7 +139,7 @@ function Cycle(control, scope, selector, filter) {
         };
         placeholders.set(element, placeholder);
         placeholders.set(context.id, placeholder);
-        control.dispose(() => dispose(element), element);
+        control.capture(() => dispose(element), element);
         dispatch(true, Event.mounted, placeholder);
       } else if (isNil(placeholder.context)) {
         context.id = nextId();
@@ -173,6 +149,7 @@ function Cycle(control, scope, selector, filter) {
         const { id } = placeholder.context;
         placeholder.context = Object.assign(placeholder.context, context, { id });
       }
+      placeholder.event = event;
       dispatch(false, Event.observed, placeholder);
     },
 
@@ -180,7 +157,6 @@ function Cycle(control, scope, selector, filter) {
       if (control.signal?.aborted) return;
 
       const placeholder = placeholders.get(context.id);
-      let release = false;
       if (placeholder) {
         if (element !== placeholder.element) {
           if (!element.isConnected) placeholder.element.replaceWith(element);
@@ -192,14 +168,11 @@ function Cycle(control, scope, selector, filter) {
             log.debug('Placeholder was updated by presenter:', detail);
           } else {
             log.debug('Placeholder was changed by presenter:', detail);
-            release = true;
+            control.release(placeholder.element);
           }
         }
 
         dispatch(false, Event.presented, placeholder);
-        if (release) {
-          control.release(placeholder.element);
-        }
       } else {
         log.warn('Presented placeholder was not found, ignoring:', { context, element });
       }
