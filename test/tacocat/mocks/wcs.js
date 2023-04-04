@@ -138,7 +138,9 @@ export default function WcsMock({
         .extract(Wcs.Extractor.Price.dataset)
         .extract(
           (state) => {
+            // Extract price placeholder context from selected card
             const { target } = state.event ?? {};
+            // Find selected price placeholder
             const element = (
               target?.matches(CssSelector.card + CssSelector.selected)
                 ? target
@@ -146,6 +148,7 @@ export default function WcsMock({
             ).querySelector(
               Wcs.Constant.Price.CssSelector.placeholder,
             );
+            // If found, extract its price dataset
             return element
               ? Wcs.Extractor.Price.dataset({ ...state, element })
               : null;
