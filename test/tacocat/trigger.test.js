@@ -44,6 +44,22 @@ describe('module "Tacocat"', () => {
       Wcs.Constant.ostBaseUrl,
     );
 
+    const cards = document.querySelectorAll(CssSelector.card);
+
+    function clickCard(index) {
+      cards.forEach((card) => {
+        card.classList.remove(CssClass.selected);
+      });
+      cards[index].classList.add(CssClass.selected);
+      cards[index].click();
+    }
+
+    cards.forEach((card, index) => {
+      card.addEventListener('click', () => {
+        clickCard(index);
+      });
+    });
+
     const { price, priceDynamic, run } = WcsMock({
       data: JSON.parse(
         await readFile({ path: './mocks/offers.json' }),
@@ -54,13 +70,8 @@ describe('module "Tacocat"', () => {
     const pipeline2 = priceDynamic().observe(observation);
     await run(pipeline1, pipeline2);
 
-    const cards = document.querySelectorAll(CssSelector.card);
-    cards[0].classList.remove(CssClass.selected);
-    cards[1].classList.add(CssClass.selected);
-    cards[1].click();
-
+    clickCard(1);
     await run(pipeline1, pipeline2);
-
     expect(document.body).dom.to.equalSnapshot();
   });
 });

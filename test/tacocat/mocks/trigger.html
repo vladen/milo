@@ -1,10 +1,29 @@
 <style>
-  .taco-wcs-card.selected {
+  body {
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  .taco-wcs-card {
+    border: 1px solid #666;
+    border-radius: 4px;
+    cursor: pointer;
     font-weight: bold;
+    margin: 2px 4px;
+    padding: 10px 20px;
+    text-align: center;
+  }
+  .taco-wcs-card.selected {
+    background-color: #eee;
+    border: 1px solid #000;
+    font-weight: bold;
+  }
+  .taco-wcs-cards {
+    border: 1px dotted #000;
+    border-radius: 4px;
+    display: inline-flex;
+    padding: 2px 4px;
   }
   .taco-wcs-price {
     display: block;
-    padding-left: 20px;
   }
   .taco-wcs-price-dynamic {
     display: block;
@@ -14,29 +33,30 @@
 </style>
 
 <h3>Cards for price selection:</h3>
-<div class="taco-wcs-card selected">
-  This card is selected by default
-  <span
-    class="taco-wcs-price"
-    data-taco-wcs-osi="osi-abm"
-    data-taco-wcs-recurrence="true"
-    data-taco-wcs-template="price"
-  ></span>
+<div class="taco-wcs-cards">
+  <div class="taco-wcs-card selected">
+    Product1<br>
+    <span
+      class="taco-wcs-price"
+      data-taco-wcs-osi="osi-abm"
+      data-taco-wcs-recurrence="true"
+      data-taco-wcs-template="price"
+    ></span>
+  </div>
+
+  <div class="taco-wcs-card">
+    Product2<br>
+    <span
+      class="taco-wcs-price"
+      data-taco-wcs-osi="osi-m2m"
+      data-taco-wcs-recurrence="true"
+      data-taco-wcs-template="price"
+    ></span>
+  </div>
+  <br />
 </div>
 
-<div class="taco-wcs-card">
-  This card is selected by JavaScript
-  <span
-    class="taco-wcs-price"
-    data-taco-wcs-osi="osi-m2m"
-    data-taco-wcs-recurrence="true"
-    data-taco-wcs-template="price"
-  ></span>
-</div>
-<br>
-
-<h3>Selected price:</h3>
-Should price on the card with "selected" class
+<h4>Selected price:</h4>
 <span
   class="taco-wcs-price-dynamic"
   data-taco-wcs-recurrence="true"

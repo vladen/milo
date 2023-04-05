@@ -194,7 +194,7 @@ function Cycle(control, filter) {
         );
         dispatch(false, Event.provided, placeholder);
       } else {
-        log.warn('Provided result is unexpected, ignoring:', result);
+        log.debug('Provided result is unexpected, ignoring:', result);
       }
     },
   };

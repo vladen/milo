@@ -87,7 +87,7 @@ export function pendingCheckoutPresenter(detail) {
   const { context } = detail;
   const tag = checkoutPresenter(detail);
   if (tag) {
-    pendingPresenter(detail);
+    pendingPresenter({ ...detail, element: tag });
 
     const Param = Checkout.DatasetParam.pending;
     tag.dataset[Param.client] = context.client;
@@ -155,9 +155,6 @@ export function resolvedCheckoutPresenter(detail) {
       : terms.join(',');
 
     if (tag instanceof HTMLAnchorElement) {
-      if (!tag.href) {
-        debugger;
-      }
       tag.href = url.toString();
       tag.style.display = null;
       tag.target = context.target;

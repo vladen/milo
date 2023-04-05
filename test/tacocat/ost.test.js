@@ -24,7 +24,7 @@ describe('module "Tacocat"', () => {
   let observation;
 
   afterEach(() => {
-    controller.abort();
+    controller?.abort();
     document.body.innerHTML = '';
     Tacocat.Log.reset();
   });
@@ -32,7 +32,7 @@ describe('module "Tacocat"', () => {
   beforeEach(() => {
     // Tacocat.Log.reset('dev');
     controller = new AbortController();
-    observation = { signal: controller.signal };
+    observation = { signal: controller?.signal };
   });
 
   it('replaces OST links with price/CTA placeholders and resolves them', async () => {
