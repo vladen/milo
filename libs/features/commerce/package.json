@@ -1,0 +1,32 @@
+{
+  "name": "@milo/commerce",
+  "module": "./src/index.js",
+  "type": "module",
+  "types": "./src/index.d.ts",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "npm run build:bundle && npm run build:types",
+    "build:bundle": "esbuild index.js --alias:react=./src/react-shim.js --bundle --format=esm --metafile=stats.json --minify --outfile=../../deps/commerce.js --platform=browser --sourcemap --target=es2020",
+    "build:types": "cp types.d.ts ../../deps/commerce.d.ts",
+    "build:watch": "npm run build:bundle --watch",
+    "test": "wtr --config ../../../web-test-runner.config.mjs \"./test/**/*.test.(js|html)\" --node-resolve --port=2001 --coverage --concurrent-browsers 4",
+    "test:watch": "npm test -- --watch",
+    "test:file": "wtr --config ../../../web-test-runner.config.mjs --coverage --node-resolve --port=2001",
+    "test:file:watch": "wtr --config ../../../web-test-runner.config.mjs --coverage --node-resolve --port=2001 --watch"
+  },
+  "dependencies": {
+    "@dexter/tacocat-consonant-templates": "^1.9.7",
+    "@dexter/tacocat-core": "^1.10.3",
+    "@pandora/commerce-checkout-url-builder": "^1.0.3",
+    "@pandora/data-models-odm": "^0.4.2",
+    "@pandora/data-source-utils": "^0.3.1",
+    "@pandora/data-source-wcs": "^0.2.4",
+    "@pandora/fetch": "^1.2.4"
+  },
+  "devDependencies": {
+    "@esm-bundle/chai-as-promised": "^7.1.1",
+    "@types/chai-as-promised": "^7.1.5",
+    "@types/sinon": "^10.0.15",
+    "esbuild": "^0.18.11"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "checkJs": true,
+    "rootDir": ".",
+    "module": "esnext",
+    "moduleResolution": "NodeNext",
+    "outDir": "../../libs",
+    "target": "esnext"
+  },
+  "include": ["./**/*"],
+  "exclude": ["node_modules"]
+}

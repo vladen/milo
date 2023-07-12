@@ -1,47 +1,25 @@
-import { loadScript, getConfig, getMetadata } from '../../utils/utils.js';
+/// <reference path="../../deps/commerce.d.ts" />
+import { getConfig, getMetadata, loadScript } from '../../utils/utils.js';
 
-export const VERSION = '1.16.0';
-export const ENV_PROD = 'prod';
 export const CTA_PREFIX = /^CTA +/;
 
-const SUPPORTED_LANGS = [
-  'ar', 'bg', 'cs', 'da', 'de', 'en', 'es', 'et', 'fi', 'fr', 'he', 'hu', 'it', 'ja', 'ko',
-  'lt', 'lv', 'nb', 'nl', 'pl', 'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'zh_CN', 'zh_TW',
-];
-
-const GEO_MAPPINGS = {
-  africa: 'en-ZA',
-  mena_en: 'en-DZ',
-  il_he: 'iw-IL',
-  mena_ar: 'ar-DZ',
-  id_id: 'in-ID',
-  no: 'nb-NO',
-};
-
-// eslint-disable-next-line import/prefer-default-export
-export function getTacocatLocale(locale) {
-  if (!locale) {
-    return { country: 'US', language: 'en' };
+export async function polyfill() {
+  if (polyfill.done) return;
+  polyfill.done = true;
+  let isSupported = false;
+  document.createElement('div', {
+    // eslint-disable-next-line getter-return
+    get is() {
+      isSupported = true;
+    },
+  });
+  /* c8 ignore start */
+  if (!isSupported) {
+    const { codeRoot, miloLibs } = getConfig();
+    const base = miloLibs || codeRoot;
+    await loadScript(`${base}/deps/custom-elements.js`);
   }
-  const wcsLocale = (GEO_MAPPINGS[locale.prefix] ?? locale.ietf).split('-', 2);
-  let language = wcsLocale[0];
-  const country = wcsLocale[1] || 'US';
-  if (!SUPPORTED_LANGS.includes(language)) {
-    language = 'en';
-  }
-  return { country, language };
-}
-
-export function getTacocatEnv(envName, locale) {
-  const { country, language } = getTacocatLocale(locale);
-  const host = envName === ENV_PROD
-    ? 'https://www.adobe.com'
-    : 'https://www.stage.adobe.com';
-
-  const literalScriptUrl = `${host}/special/tacocat/literals/${language}.js`;
-  const scriptUrl = `${host}/special/tacocat/lib/${VERSION}/tacocat.js`;
-  const tacocatEnv = envName === ENV_PROD ? 'PRODUCTION' : 'STAGE';
-  return { country, language, literalScriptUrl, scriptUrl, tacocatEnv };
+  /* c8 ignore stop */
 }
 
 export const omitNullValues = (target) => {
@@ -53,97 +31,46 @@ export const omitNullValues = (target) => {
   return target;
 };
 
-window.tacocat = window.tacocat || {};
-
-export const imsCountryPromise = () => new Promise((resolve) => {
-  let count = 0;
-  const check = setInterval(() => {
-    count += 1;
-    if (window.adobeIMS) {
-      clearInterval(check);
-      if (window.adobeIMS.isSignedInUser()) {
-        window.adobeIMS
-          .getProfile()
-          .then(({ countryCode }) => resolve(countryCode))
-          .catch(() => resolve());
-      } else {
-        resolve();
-      }
-    } else if (count > 25) {
-      clearInterval(check);
-      resolve();
-    }
-  }, 200);
-});
-window.tacocat.imsCountryPromise = imsCountryPromise();
-
-export const runTacocat = (tacocatEnv, country, language) => {
-  // init lana logger
-  window.tacocat.initLanaLogger('merch-at-scale', tacocatEnv, { country }, { consumer: 'milo' });
-  // launch tacocat library
-  window.tacocat.tacocat({
-    env: tacocatEnv,
-    country,
-    language,
-  });
-};
-
-window.tacocat.loadPromise = new Promise((resolve) => {
-  const { env, locale } = getConfig();
-  const {
-    literalScriptUrl,
-    scriptUrl,
-    country,
-    language,
-    tacocatEnv,
-  } = getTacocatEnv(env.name, locale);
-
-  loadScript(literalScriptUrl)
-    .catch(() => ({})) /* ignore if literals fail */
-    .then(() => loadScript(scriptUrl))
-    .then(() => {
-      runTacocat(tacocatEnv, country, language);
-      resolve(false);
-    })
-    .catch((error) => {
-      console.error('Failed to load tacocat', error);
-      resolve(true);
-    });
-});
-
-export function buildCheckoutButton(link, dataAttrs = {}) {
+/**
+ * @param {Commerce.Instance} commerce
+ * @param {HTMLElement} el
+ * @param {Record<string, string>} [options]
+ * @returns {Commerce.HTMLCheckoutLinkElement}
+ */
+export function buildCta(commerce, el, options = {}) {
   const a = document.createElement('a', { is: 'checkout-link' });
   a.setAttribute('is', 'checkout-link');
   const classes = ['con-button'];
   if (document.querySelector('.marquee')) {
-    if (link.closest('.marquee')) {
+    if (el.closest('.marquee')) {
       classes.push('button-l');
     }
   }
-  if (link.firstElementChild?.tagName === 'STRONG' || link.parentElement?.tagName === 'STRONG') {
+  if (el.firstElementChild?.tagName === 'STRONG' || el.parentElement?.tagName === 'STRONG') {
     classes.push('blue');
   }
   a.setAttribute('class', classes.join(' '));
-  Object.assign(a.dataset, dataAttrs);
-  a.textContent = link.textContent?.replace(CTA_PREFIX, '');
-  window.tacocat.imsCountryPromise.then((countryCode) => {
-    if (countryCode) {
-      a.dataset.imsCountry = countryCode;
-    }
-  })
+  Object.assign(a.dataset, omitNullValues(options));
+  a.textContent = el.textContent?.replace(CTA_PREFIX, '');
+  commerce.ims.country
+    .then((countryCode) => {
+      if (countryCode) a.dataset.imsCountry = countryCode;
+    })
     .catch(() => { /* do nothing */ });
   return a;
 }
 
-function buildPrice(dataAttrs = {}) {
+/**
+ * @param {Commerce.Instance} [commerce]
+ * @param {HTMLElement} [el]
+ * @param {Record<string, string>} [options]
+ * @returns {Commerce.HTMLInlinePriceElement}
+ */
+function buildPrice(commerce, el, options = {}) {
   const span = document.createElement('span', { is: 'inline-price' });
   span.setAttribute('is', 'inline-price');
-  Object.assign(span.dataset, omitNullValues(dataAttrs));
+  Object.assign(span.dataset, omitNullValues(options));
   return span;
-}
-
-function isCTA(type) {
-  return type === 'checkoutUrl';
 }
 
 /**
@@ -151,23 +78,25 @@ function isCTA(type) {
  * To get the default, 'undefinded' should be passed, empty string will trigger an error!
  *
  * clientId - code config -> default (adobe_com)
- * checkoutType - merch link -> metadata -> default (UCv3)
+ * workflow - merch link -> metadata -> default (UCv3)
  * workflowStep - merch link -> default (email)
  * marketSegment - merch link -> default (COM)
- * @param {*} searchParams link level overrides for checkout parameters
+ * @param {Commerce.Instance} commerce
+ * @param {URLSearchParams} searchParams link level overrides for checkout parameters
  * @returns checkout context object required to build a checkout url
  */
-export function getCheckoutContext(searchParams, config) {
-  const { commerce } = config;
-  const checkoutClientId = commerce?.checkoutClientId;
-  const checkoutWorkflow = searchParams.get('checkoutType') ?? getMetadata('checkout-type');
+export function getCheckoutContext({ settings }, searchParams) {
+  const checkoutWorkflow = searchParams.get('workflow')
+    ?? getMetadata('checkout-type')
+    ?? settings.checkoutWorkflow;
   const checkoutWorkflowStep = searchParams
     ?.get('workflowStep')
-    ?.replace('_', '/');
+    ?.replace('_', '/')
+    ?? settings.checkoutWorkflowStep;
   const checkoutMarketSegment = searchParams.get('marketSegment');
 
   return {
-    checkoutClientId,
+    checkoutClientId: settings.checkoutClientId,
     checkoutWorkflow,
     checkoutWorkflowStep,
     checkoutMarketSegment,
@@ -176,10 +105,12 @@ export function getCheckoutContext(searchParams, config) {
 
 export default async function init(el) {
   if (!el?.classList?.contains('merch')) return undefined;
-  const fail = await window.tacocat.loadPromise;
-  if (fail) {
-    return undefined;
-  }
+
+  await polyfill();
+  const { init: initCommerce, Log } = await import('../../deps/commerce.js');
+  const log = Log.commerce.module('merch');
+  const commerce = await initCommerce(getConfig);
+
   const { searchParams } = new URL(el.href);
   const osi = searchParams.get('osi');
   const type = searchParams.get('type');
@@ -189,38 +120,42 @@ export default async function init(el) {
     return undefined;
   }
 
-  const promotionCode = (searchParams.get('promo')
-      ?? el.closest('[data-promotion-code]')?.dataset.promotionCode)
-    || undefined;
-
+  const promotionCode = (
+    searchParams.get('promo') ?? el.closest('[data-promotion-code]')?.dataset.promotionCode
+  ) || undefined;
   const perpetual = searchParams.get('perp') === 'true' || undefined;
 
-  if (isCTA(type)) {
-    const options = omitNullValues({
+  let build;
+  let options;
+  if (type === 'checkoutUrl') {
+    build = buildCta;
+    options = {
       promotionCode,
       perpetual,
       wcsOsi: osi,
-      ...getCheckoutContext(searchParams, getConfig()),
-    });
-    const cta = buildCheckoutButton(el, options);
-    el.replaceWith(cta);
-    return cta;
+      ...getCheckoutContext(commerce, searchParams),
+    };
+  } else {
+    build = buildPrice;
+    const displayRecurrence = searchParams.get('term');
+    const displayPerUnit = searchParams.get('seat');
+    const displayTax = searchParams.get('tax');
+    const displayOldPrice = promotionCode ? searchParams.get('old') : undefined;
+    options = {
+      displayOldPrice,
+      displayPerUnit,
+      displayRecurrence,
+      displayTax,
+      perpetual,
+      promotionCode,
+      template: type === 'price' ? undefined : type,
+      wcsOsi: osi,
+    };
   }
 
-  const displayRecurrence = searchParams.get('term');
-  const displayPerUnit = searchParams.get('seat');
-  const displayTax = searchParams.get('tax');
-  const displayOldPrice = promotionCode ? searchParams.get('old') : undefined;
-  const price = buildPrice({
-    wcsOsi: osi,
-    template: type === 'price' ? undefined : type,
-    displayRecurrence,
-    displayPerUnit,
-    displayTax,
-    displayOldPrice,
-    promotionCode,
-    perpetual,
-  });
-  el.replaceWith(price);
-  return price;
+  const node = build(commerce, el, omitNullValues(options));
+  log.debug('Rendering:', { type, options, node });
+  el.replaceWith(node);
+
+  return node;
 }
