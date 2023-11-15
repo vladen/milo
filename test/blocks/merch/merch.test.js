@@ -25,9 +25,11 @@ const config = {
  * <expected attribute value, UNDEF if should be undefined>}
  */
 const validatePriceSpan = async (selector, expectedAttributes) => {
-  const el = await merch(document.querySelector(
-    selector,
-  ));
+  const a = document.querySelector(selector);
+  const el = await merch(a);
+  // NOTE: for some reason some tests run twice and `merch` replaces original OST link
+  // returning the link back to the document
+  el.parentElement.append(a);
   const { nodeName, dataset } = await el.onceSettled();
   expect(nodeName).to.equal('SPAN');
   if (!expectedAttributes.template) {
